@@ -26,7 +26,7 @@ const SEO_TOOLS: Record<string, SeoToolConfig> = {
   'project-report-maker': {
     title: 'Free Online Project Report Maker for College & Engineering',
     subtitle: 'Generate standard academic project reports with automatic Cover Page, Certificate, Declaration, Table of Contents, List of Figures, and IEEE Citations.',
-    metaDesc: 'Create professional university project reports, college assignments, and thesis documents online with DocFlow. Paginated A4 canvas, equation editor, flowcharts, and instant PDF/DOCX export.',
+    metaDesc: 'Create professional university project reports, college assignments, and thesis documents online with DocProEditor. Paginated A4 canvas, equation editor, flowcharts, and instant PDF/DOCX export.',
     heroBadge: 'Academic Project Report Builder',
     templateId: 'academic-project-report',
     features: [
@@ -36,15 +36,15 @@ const SEO_TOOLS: Record<string, SeoToolConfig> = {
       { title: 'Multi-Format PDF & DOCX Export', desc: 'Export high-resolution printable PDFs or editable Word DOCX files directly from your browser.' },
     ],
     faqs: [
-      { q: 'Is DocFlow free for students and researchers?', a: 'Yes! DocFlow provides core features 100% free without watermarks, page limits, or forced subscriptions.' },
+      { q: 'Is DocProEditor free for students and researchers?', a: 'Yes! DocProEditor provides core features 100% free without watermarks, page limits, or forced subscriptions.' },
       { q: 'Can I customize the university cover page?', a: 'Yes, our Academic Cover Page builder allows you to specify University Name, Department, Guide Name, Student USN, and Academic Year.' },
-      { q: 'Does this save my work if I close the tab?', a: 'Yes, DocFlow uses browser-native IndexedDB to automatically save every keystroke locally on your machine.' },
+      { q: 'Does this save my work if I close the tab?', a: 'Yes, DocProEditor uses browser-native IndexedDB to automatically save every keystroke locally on your machine.' },
     ],
   },
   'resume-maker': {
     title: 'Professional ATS-Friendly Resume & CV Builder',
     subtitle: 'Craft modern, high-impact software engineer, business, and academic resumes with clean typography and instant PDF export.',
-    metaDesc: 'Free online resume and CV maker with DocFlow. Build ATS-compliant resumes with modular sections, skills matrices, and instant PDF downloads.',
+    metaDesc: 'Free online resume and CV maker with DocProEditor. Build ATS-compliant resumes with modular sections, skills matrices, and instant PDF downloads.',
     heroBadge: 'ATS Resume Builder',
     templateId: 'modern-tech-resume',
     features: [
@@ -54,13 +54,13 @@ const SEO_TOOLS: Record<string, SeoToolConfig> = {
     ],
     faqs: [
       { q: 'Are resumes downloaded without watermarks?', a: 'Yes, all resumes export cleanly with zero watermarks or subscription prompts.' },
-      { q: 'Is my personal information stored securely?', a: 'DocFlow operates with local browser-first storage. Your personal information is not sold or sent to remote servers.' },
+      { q: 'Is my personal information stored securely?', a: 'DocProEditor operates with local browser-first storage. Your personal information is not sold or sent to remote servers.' },
     ],
   },
   'presentation-maker': {
     title: 'Online Pitch Deck & Slide Presentation Maker',
     subtitle: 'Create 16:9 widescreen PowerPoint-style presentations with built-in themes, charts, diagrams, speaker notes, and fullscreen presenter mode.',
-    metaDesc: 'Design pitch decks and presentations online with DocFlow. Widescreen 16:9 slides, rich themes, live presenter mode, speaker notes, and PDF/PPTX export.',
+    metaDesc: 'Design pitch decks and presentations online with DocProEditor. Widescreen 16:9 slides, rich themes, live presenter mode, speaker notes, and PDF/PPTX export.',
     heroBadge: 'Slide Presentation Studio',
     templateId: 'startup-pitch-deck',
     features: [
@@ -117,7 +117,7 @@ export function SeoToolPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title={`${tool.title} | DocFlow`}
+        title={`${tool.title} | DocProEditor`}
         description={tool.metaDesc}
         canonicalPath={`/tools/${toolKey}`}
         h1={tool.title}
@@ -195,7 +195,7 @@ export function SeoToolPage() {
           <h3 className="text-xl font-bold">Ready to craft your document?</h3>
           <p className="text-xs text-muted-foreground">No account or credit card required. Everything runs locally in your browser.</p>
           <Button size="lg" className="mt-2 gap-2" onClick={handleStartNow}>
-            Launch DocFlow Workspace <ArrowRight className="h-4 w-4" />
+            Launch DocProEditor Workspace <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </div>

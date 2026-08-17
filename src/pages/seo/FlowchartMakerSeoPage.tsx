@@ -12,11 +12,11 @@ import {
 const FLOWCHART_FAQS = [
   {
     question: 'How do I create a flowchart online?',
-    answer: 'Open the DocFlow Flowchart Studio to start with a blank canvas or choose from templates like System Architecture or Process Workflow. Add process, decision, and database nodes, and connect them with intuitive drag or tap-to-connect tools.',
+    answer: 'Open the DocProEditor Flowchart Studio to start with a blank canvas or choose from templates like System Architecture or Process Workflow. Add process, decision, and database nodes, and connect them with intuitive drag or tap-to-connect tools.',
   },
   {
     question: 'How does the 4-directional flexible connector routing work?',
-    answer: 'DocFlow dynamically evaluates the relative positions of connected nodes in real-time and routes connectors from the optimal side (top, bottom, left, or right) with smart loopback avoiding node overlaps.',
+    answer: 'DocProEditor dynamically evaluates the relative positions of connected nodes in real-time and routes connectors from the optimal side (top, bottom, left, or right) with smart loopback avoiding node overlaps.',
   },
   {
     question: 'Can I generate a flowchart automatically from plain text?',
@@ -24,7 +24,7 @@ const FLOWCHART_FAQS = [
   },
   {
     question: 'What export formats are supported for flowcharts?',
-    answer: 'You can download high-resolution vector SVG (.svg) files for infinite scaling, high-DPI PNG images for presentations, or insert your flowchart directly into a DocFlow document with one click.',
+    answer: 'You can download high-resolution vector SVG (.svg) files for infinite scaling, high-DPI PNG images for presentations, or insert your flowchart directly into a DocProEditor document with one click.',
   },
 ];
 
@@ -34,7 +34,7 @@ export function FlowchartMakerSeoPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="Flowchart Maker Online | Create Flowcharts Free | DocFlow"
+        title="Flowchart Maker Online | Create Flowcharts Free | DocProEditor"
         description="Create professional flowcharts online. Add nodes, connect processes with smart 4-directional routing, use automatic layout, analyze workflows, and export diagrams."
         canonicalPath="/flowchart-maker"
         h1="Flowchart Maker Online"

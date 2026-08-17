@@ -23,17 +23,17 @@ export function PublicHeader() {
       <Link
         to="/"
         className="flex items-center gap-2.5 font-bold text-foreground hover:opacity-90 transition-opacity"
-        title="DocFlow Home"
+        title="DocProEditor Home"
       >
         <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center text-white shadow-md shadow-primary/20">
           <Sparkles className="h-5 w-5" />
         </div>
         <div className="flex flex-col">
           <span className="font-extrabold text-lg tracking-tight leading-none text-foreground">
-            DocFlow
+            DocProEditor
           </span>
           <span className="text-[10px] text-muted-foreground font-medium tracking-tight">
-            Document &amp; Design Studio
+            All-in-One Document &amp; Design Workspace
           </span>
         </div>
       </Link>
@@ -43,17 +43,17 @@ export function PublicHeader() {
         {/* Products Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer py-2">
+            <button className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer py-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-md px-1">
               <span>Products</span>
               <ChevronDown className="h-3 w-3 opacity-60" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56 p-1.5 text-xs">
+          <DropdownMenuContent align="start" className="w-56 p-1.5 text-xs bg-card border border-border shadow-xl">
             <DropdownMenuItem asChild>
               <Link to="/document-editor" className="flex items-center gap-2.5 py-2 cursor-pointer">
                 <FileText className="h-4 w-4 text-blue-500" />
                 <div>
-                  <span className="font-semibold block">Document Editor</span>
+                  <span className="font-semibold block text-foreground">Document Editor</span>
                   <span className="text-[10px] text-muted-foreground">Word-style paginated editing</span>
                 </div>
               </Link>
@@ -62,7 +62,7 @@ export function PublicHeader() {
               <Link to="/presentation-maker" className="flex items-center gap-2.5 py-2 cursor-pointer">
                 <Presentation className="h-4 w-4 text-amber-500" />
                 <div>
-                  <span className="font-semibold block">Presentation Maker</span>
+                  <span className="font-semibold block text-foreground">Presentation Maker</span>
                   <span className="text-[10px] text-muted-foreground">16:9 slides &amp; themes</span>
                 </div>
               </Link>
@@ -71,8 +71,8 @@ export function PublicHeader() {
               <Link to="/flowchart-maker" className="flex items-center gap-2.5 py-2 cursor-pointer">
                 <GitFork className="h-4 w-4 text-indigo-500" />
                 <div>
-                  <span className="font-semibold block">Flowchart Maker</span>
-                  <span className="text-[10px] text-muted-foreground">Dynamic process diagrams</span>
+                  <span className="font-semibold block text-foreground">Flowchart Studio</span>
+                  <span className="text-[10px] text-muted-foreground">Process diagrams &amp; workflows</span>
                 </div>
               </Link>
             </DropdownMenuItem>
@@ -80,7 +80,7 @@ export function PublicHeader() {
               <Link to="/resume-builder" className="flex items-center gap-2.5 py-2 cursor-pointer">
                 <FileCheck className="h-4 w-4 text-emerald-500" />
                 <div>
-                  <span className="font-semibold block">Resume Builder</span>
+                  <span className="font-semibold block text-foreground">Resume Builder</span>
                   <span className="text-[10px] text-muted-foreground">ATS-ready professional CVs</span>
                 </div>
               </Link>
@@ -89,48 +89,32 @@ export function PublicHeader() {
               <Link to="/pdf-editor" className="flex items-center gap-2.5 py-2 cursor-pointer">
                 <FileText className="h-4 w-4 text-rose-500" />
                 <div>
-                  <span className="font-semibold block">PDF Tools</span>
-                  <span className="text-[10px] text-muted-foreground">Annotate, edit &amp; merge PDFs</span>
-                </div>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/file-converter" className="flex items-center gap-2.5 py-2 cursor-pointer">
-                <Layers className="h-4 w-4 text-purple-500" />
-                <div>
-                  <span className="font-semibold block">File Converter</span>
-                  <span className="text-[10px] text-muted-foreground">DOCX, PDF &amp; image conversion</span>
+                  <span className="font-semibold block text-foreground">PDF Tools</span>
+                  <span className="text-[10px] text-muted-foreground">Merge, split &amp; edit PDFs</span>
                 </div>
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Link to="/templates" className="hover:text-foreground transition-colors">
+        <Link to="/templates" className="hover:text-foreground transition-colors py-2">
           Templates
         </Link>
-        <Link to="/guides" className="hover:text-foreground transition-colors">
-          Guides &amp; Tutorials
+        <Link to="/guides" className="hover:text-foreground transition-colors py-2">
+          Resources
         </Link>
-        <Link to="/pdf-merger" className="hover:text-foreground transition-colors">
-          Merge PDF
+        <Link to="/import" className="hover:text-foreground transition-colors py-2">
+          PDF Tools
         </Link>
       </nav>
 
-      {/* Desktop Action CTAs */}
+      {/* Desktop Action CTAs - NO Sign In */}
       <div className="hidden md:flex items-center gap-3">
         <Button
-          variant="outline"
           size="sm"
           onClick={() => navigate('/dashboard')}
-          className="text-xs font-semibold"
-        >
-          Open Workspace
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => navigate('/dashboard')}
-          className="text-xs font-bold gap-1.5 shadow-md shadow-primary/20"
+          className="text-xs font-bold gap-1.5 shadow-md shadow-primary/20 h-9 px-4"
+          aria-label="Start Creating Free"
         >
           <Sparkles className="h-3.5 w-3.5" /> Start Creating Free
         </Button>

@@ -11,8 +11,8 @@ import {
 
 const RESUME_FAQS = [
   {
-    question: 'How do I build an ATS-compliant resume with DocFlow?',
-    answer: 'DocFlow uses clean, semantic heading structures and standard bullet points that parse accurately through Applicant Tracking Systems (ATS) used by recruiters and major companies.',
+    question: 'How do I build an ATS-compliant resume with DocProEditor?',
+    answer: 'DocProEditor uses clean, semantic heading structures and standard bullet points that parse accurately through Applicant Tracking Systems (ATS) used by recruiters and major companies.',
   },
   {
     question: 'Can I choose between different resume templates?',
@@ -30,7 +30,7 @@ export function ResumeBuilderSeoPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="Resume Builder | Create a Professional Resume Online | DocFlow"
+        title="Resume Builder | Create a Professional Resume Online | DocProEditor"
         description="Build ATS-compliant resumes with modular sections, skills matrices, live preview, and instant PDF export."
         canonicalPath="/resume-builder"
         h1="Professional Resume Builder"

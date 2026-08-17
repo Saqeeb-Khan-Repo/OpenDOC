@@ -36,7 +36,7 @@ export function ProjectReportGuidePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="How to Make a Project Report: Complete Guide | DocFlow"
+        title="How to Make a Project Report: Complete Guide | DocProEditor"
         description="Comprehensive guide on structuring, writing, formatting, and exporting university and engineering project reports with standard cover pages, citations, and math formulas."
         canonicalPath="/guides/how-to-make-a-project-report"
         h1="How to Make a Project Report: The Complete Step-by-Step Guide"
@@ -69,7 +69,7 @@ export function ProjectReportGuidePage() {
 
           <div className="pt-2 flex items-center gap-3">
             <Button onClick={handleOpenReportTemplate} className="gap-2 font-bold text-xs h-10 shadow-md">
-              <Sparkles className="h-4 w-4" /> Open Report Template in DocFlow
+              <Sparkles className="h-4 w-4" /> Open Report Template in DocProEditor
             </Button>
             <Button variant="outline" onClick={() => navigate('/document-editor')} className="text-xs h-10">
               Open Document Editor
@@ -151,7 +151,7 @@ export function ProjectReportGuidePage() {
                 <tr className="bg-muted/50 border-b border-border">
                   <th className="p-2.5 font-bold">Element</th>
                   <th className="p-2.5 font-bold">Standard Specification</th>
-                  <th className="p-2.5 font-bold">DocFlow Preset</th>
+                  <th className="p-2.5 font-bold">DocProEditor Preset</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -186,12 +186,12 @@ export function ProjectReportGuidePage() {
             <Sparkles className="h-5 w-5" /> Ready to Build Your Project Report?
           </h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            DocFlow comes pre-loaded with complete Academic Project Report templates, Cover Page generators, and live PDF exporters.
+            DocProEditor comes pre-loaded with complete Academic Project Report templates, Cover Page generators, and live PDF exporters.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <Button onClick={handleOpenReportTemplate} className="gap-2 text-xs font-bold h-9">
-              <FileText className="h-3.5 w-3.5" /> Start Report in DocFlow
+              <FileText className="h-3.5 w-3.5" /> Start Report in DocProEditor
             </Button>
             <Link to="/presentation-maker" className="text-xs text-primary font-semibold hover:underline inline-flex items-center gap-1">
               Create Defense Slides <ArrowRight className="h-3.5 w-3.5" />

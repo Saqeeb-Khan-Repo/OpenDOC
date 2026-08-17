@@ -11,16 +11,16 @@ import {
 
 const PDF_EDITOR_FAQS = [
   {
-    question: 'How do I edit PDF files online with DocFlow?',
-    answer: 'Import any PDF into DocFlow to annotate text, draw digital signatures, reorder pages, add page breaks, and export clean print-ready documents.',
+    question: 'How do I edit PDF files online with DocProEditor?',
+    answer: 'Import any PDF into DocProEditor to annotate text, draw digital signatures, reorder pages, add page breaks, and export clean print-ready documents.',
   },
   {
     question: 'Are my uploaded PDF files kept private?',
-    answer: 'Yes. DocFlow processes PDFs client-side in your web browser using WebAssembly. Your files are not uploaded or stored on external servers.',
+    answer: 'Yes. DocProEditor processes PDFs client-side in your web browser using WebAssembly. Your files are not uploaded or stored on external servers.',
   },
   {
     question: 'Can I add digital signatures to PDFs?',
-    answer: 'Yes! DocFlow includes a built-in Signature Modal where you can draw, type cursive signatures, or upload an existing signature asset.',
+    answer: 'Yes! DocProEditor includes a built-in Signature Modal where you can draw, type cursive signatures, or upload an existing signature asset.',
   },
 ];
 
@@ -30,7 +30,7 @@ export function PdfEditorSeoPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="Online PDF Editor | Edit PDF Files Free | DocFlow"
+        title="Online PDF Editor | Edit PDF Files Free | DocProEditor"
         description="Edit, annotate, sign, and reorganize PDF documents directly in your browser without uploading files to third-party servers."
         canonicalPath="/pdf-editor"
         h1="Online PDF Editor"

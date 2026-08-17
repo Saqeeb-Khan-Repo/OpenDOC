@@ -15,7 +15,7 @@ export function FlowchartGuidePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="How to Create a Flowchart: Symbols &amp; Best Practices | DocFlow"
+        title="How to Create a Flowchart: Symbols &amp; Best Practices | DocProEditor"
         description="Learn how to create clear process flowcharts, understand standard ANSI flowchart symbols, construct decision logic trees, and use auto-layout tools."
         canonicalPath="/guides/how-to-create-a-flowchart"
         h1="How to Create a Flowchart: Symbols, Logic &amp; Architecture"
@@ -106,7 +106,7 @@ export function FlowchartGuidePage() {
             <Sparkles className="h-5 w-5" /> Start Building Your Diagram
           </h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            DocFlow Flowchart Studio includes smart 4-directional routing, text-to-diagram auto-generation, and vector SVG exports.
+            DocProEditor Flowchart Studio includes smart 4-directional routing, text-to-diagram auto-generation, and vector SVG exports.
           </p>
 
           <Button onClick={() => navigate('/flowchart')} className="gap-2 text-xs font-bold h-9">

@@ -38,7 +38,7 @@ export function SettingsPage() {
     <div className="max-w-2xl mx-auto px-6 py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage your DocFlow preferences.</p>
+        <p className="text-sm text-muted-foreground mt-1">Manage your DocProEditor preferences.</p>
       </div>
 
       {/* Storage / Stats */}
@@ -114,7 +114,7 @@ export function SettingsPage() {
       <section className="rounded-xl border border-border bg-card p-5">
         <h2 className="font-semibold text-sm mb-4">Data & Storage</h2>
         <div className="text-sm text-muted-foreground mb-4">
-          DocFlow stores all your documents locally in your browser's localStorage. No data is sent to any server.
+          DocProEditor stores all your documents locally in your browser's localStorage. No data is sent to any server.
         </div>
         <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-sm text-amber-800 dark:text-amber-200 mb-4">
           ⚠️ Clearing browser data will permanently delete all your documents.

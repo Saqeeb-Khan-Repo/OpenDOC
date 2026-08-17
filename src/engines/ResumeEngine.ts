@@ -171,7 +171,7 @@ export class ResumeEngine {
       ],
       projects: [
         {
-          name: 'DocFlow Canvas Engine',
+          name: 'DocProEditor Canvas Engine',
           role: 'Creator & Lead Architect',
           techStack: ['React', 'TypeScript', 'TailwindCSS', 'Web Workers'],
           link: 'https://github.com/alexchen/docflow',

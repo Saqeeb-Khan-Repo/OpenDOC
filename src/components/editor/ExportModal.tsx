@@ -98,13 +98,13 @@ export function ExportModal({ open, onClose, document }: ExportModalProps) {
     },
     {
       id: 'docflow',
-      label: 'DocFlow Project Bundle',
+      label: 'DocProEditor Project Bundle',
       desc: 'Complete project bundle preserving slides, canvas & metadata',
       icon: FileArchive,
       color: '#6366F1',
       action: () => {
         ExportEngine.exportOpenDocProject(document);
-        toast.success('Downloaded DocFlow project file');
+        toast.success('Downloaded DocProEditor project file');
       },
     },
     {

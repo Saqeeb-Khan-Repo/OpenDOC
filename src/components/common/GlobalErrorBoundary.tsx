@@ -40,7 +40,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Production-safe diagnostic logging (strips private user text/tokens)
-    console.error('[DocFlow Error Boundary]:', error?.message, {
+    console.error('[DocProEditor Error Boundary]:', error?.message, {
       componentStack: errorInfo.componentStack?.slice(0, 300),
       timestamp: new Date().toISOString(),
     });
@@ -82,8 +82,8 @@ export class GlobalErrorBoundary extends Component<Props, State> {
               </h1>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {isChunk
-                  ? 'A new version of DocFlow has been deployed. Please reload the page to load the latest components.'
-                  : 'DocFlow encountered an unexpected error. Your saved files in local storage are safe.'}
+                  ? 'A new version of DocProEditor has been deployed. Please reload the page to load the latest components.'
+                  : 'DocProEditor encountered an unexpected error. Your saved files in local storage are safe.'}
               </p>
             </div>
 

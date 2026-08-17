@@ -1,4 +1,4 @@
-# DocFlow Production Robots.txt
+# DocProEditor Production Robots.txt
 # https://docflow.app
 
 User-agent: *

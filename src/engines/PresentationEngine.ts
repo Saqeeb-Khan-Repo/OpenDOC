@@ -480,7 +480,7 @@ export class PresentationEngine {
    */
   static createProjectDeck(
     projectTitle: string = 'Autonomous Intelligent Document Studio',
-    teamName: string = 'Team DocFlow',
+    teamName: string = 'Team DocProEditor',
     theme: SlideTheme = PRESENTATION_THEMES[0],
     gradient: string = PRESENTATION_GRADIENTS[0].gradient
   ): Slide[] {

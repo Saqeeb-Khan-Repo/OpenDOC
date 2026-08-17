@@ -239,7 +239,7 @@ export function PresentationCanvas({
   const handleLoadProjectDeck = () => {
     const deck = PresentationEngine.createProjectDeck(
       'Autonomous Intelligent Document Studio',
-      'Team DocFlow',
+      'Team DocProEditor',
       settings.theme || PRESENTATION_THEMES[0],
       PRESENTATION_GRADIENTS[0].gradient
     );

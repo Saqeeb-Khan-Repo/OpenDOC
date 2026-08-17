@@ -209,12 +209,12 @@ export function StudioHeader({
             type="button"
             onClick={() => navigate('/dashboard')}
             className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-foreground hover:text-primary transition-colors cursor-pointer group shrink-0 px-1 py-1 rounded-lg hover:bg-muted/60"
-            title="Go to DocFlow Home / Workspace"
+            title="Go to DocProEditor Home / Workspace"
           >
             <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-2xs">
               <Sparkles className="h-3.5 w-3.5" />
             </div>
-            <span className="font-extrabold tracking-tight">DocFlow</span>
+            <span className="font-extrabold tracking-tight">DocProEditor</span>
           </button>
 
           <span className="text-muted-foreground/40 text-xs font-mono select-none">/</span>

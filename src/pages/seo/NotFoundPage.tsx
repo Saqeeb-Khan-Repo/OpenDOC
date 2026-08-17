@@ -12,8 +12,8 @@ export function NotFoundPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="Page Not Found | DocFlow"
-        description="The requested page could not be found on DocFlow. Explore our document editor, presentation maker, flowchart studio, and resume builder."
+        title="Page Not Found | DocProEditor"
+        description="The requested page could not be found on DocProEditor. Explore our document editor, presentation maker, flowchart studio, and resume builder."
         canonicalPath="/404"
         noindex={true}
       />
@@ -56,7 +56,7 @@ export function NotFoundPage() {
 
           <div className="pt-2">
             <Button onClick={() => navigate('/')} className="gap-2 text-xs font-bold w-full h-10">
-              <ArrowLeft className="h-4 w-4" /> Return to DocFlow Home
+              <ArrowLeft className="h-4 w-4" /> Return to DocProEditor Home
             </Button>
           </div>
         </div>

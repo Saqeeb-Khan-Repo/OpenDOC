@@ -20,7 +20,7 @@ export function PublicFooter() {
               <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center text-white shadow-xs">
                 <Sparkles className="h-4 w-4" />
               </div>
-              <span className="font-extrabold text-base tracking-tight">DocFlow</span>
+              <span className="font-extrabold text-base tracking-tight">DocProEditor</span>
             </Link>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
               Create, edit, convert, and share documents, presentations, flowcharts, resumes, and PDFs in one fast workspace. 100% private, browser-native productivity.
@@ -100,7 +100,7 @@ export function PublicFooter() {
 
         {/* Bottom Copyright & Disclaimer */}
         <div className="mt-12 pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-muted-foreground">
-          <p>© {new Date().getFullYear()} DocFlow. All rights reserved. One workspace for documents, slides, diagrams, and files.</p>
+          <p>© {new Date().getFullYear()} DocProEditor. All rights reserved. One workspace for documents, slides, diagrams, and files.</p>
           <div className="flex items-center gap-4">
             <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
             <Link to="/terms" className="hover:underline">Terms of Service</Link>

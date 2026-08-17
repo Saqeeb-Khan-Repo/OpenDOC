@@ -48,7 +48,7 @@ export function ViewerPage() {
           <p className="text-muted-foreground text-sm mb-6">
             This share link is invalid or the document data could not be decoded. Please ask the sender for a new link.
           </p>
-          <Button onClick={() => navigate('/')}>Go to DocFlow</Button>
+          <Button onClick={() => navigate('/')}>Go to DocProEditor</Button>
         </div>
       </div>
     )
@@ -64,7 +64,7 @@ export function ViewerPage() {
             <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
               <FileText className="h-3.5 w-3.5 text-white" />
             </div>
-            <span className="font-bold text-sm text-foreground hidden sm:inline">DocFlow</span>
+            <span className="font-bold text-sm text-foreground hidden sm:inline">DocProEditor</span>
           </button>
 
           <div className="h-5 w-px bg-border mx-1" />
@@ -130,7 +130,7 @@ export function ViewerPage() {
       {/* ── Footer ───────────────────────────────────────────────── */}
       <footer className="border-t border-border bg-background py-4 px-4 text-center text-xs text-muted-foreground">
         Powered by{' '}
-        <button onClick={() => navigate('/')} className="text-primary hover:underline font-medium">DocFlow</button>
+        <button onClick={() => navigate('/')} className="text-primary hover:underline font-medium">DocProEditor</button>
         {' '}· Your all-in-one document workspace
       </footer>
     </div>

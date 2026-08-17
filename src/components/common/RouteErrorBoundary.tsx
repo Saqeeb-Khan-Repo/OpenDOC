@@ -30,7 +30,7 @@ export class RouteErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error(`[DocFlow ${this.props.name} Boundary]:`, error?.message, {
+    console.error(`[DocProEditor ${this.props.name} Boundary]:`, error?.message, {
       componentStack: errorInfo.componentStack?.slice(0, 200),
     });
   }

@@ -141,8 +141,8 @@ export function ResumeBuilderPage() {
   return (
     <div className="h-screen h-[100dvh] min-h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
       <SEOHead
-        title="Resume Studio | DocFlow"
-        description="DocFlow ATS Resume Studio"
+        title="Resume Studio | DocProEditor"
+        description="DocProEditor ATS Resume Studio"
         canonicalPath="/resume"
         noindex={true}
       />
@@ -157,7 +157,7 @@ export function ResumeBuilderPage() {
             <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-2xs">
               <Sparkles className="h-3.5 w-3.5" />
             </div>
-            <span className="font-extrabold tracking-tight">DocFlow</span>
+            <span className="font-extrabold tracking-tight">DocProEditor</span>
           </button>
 
           <span className="text-muted-foreground/40 text-xs font-mono select-none">/</span>
@@ -200,14 +200,14 @@ export function ResumeBuilderPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Edit in DocFlow */}
+          {/* Edit in DocProEditor */}
           <Button
             variant="outline"
             size="sm"
             onClick={handleOpenInEditor}
             className="h-8 text-xs gap-1.5 hidden md:flex font-medium"
           >
-            <FileText className="h-3.5 w-3.5 text-blue-500" /> Edit in DocFlow
+            <FileText className="h-3.5 w-3.5 text-blue-500" /> Edit in DocProEditor
           </Button>
 
           {/* Print / Download PDF */}

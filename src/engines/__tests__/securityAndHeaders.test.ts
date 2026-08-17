@@ -35,7 +35,7 @@ describe('Security & Vercel Configuration Tests', () => {
     const html = fs.readFileSync(indexPath, 'utf8');
     // Ensure font preconnect exists
     expect(html).toContain('rel="preconnect" href="https://fonts.googleapis.com"');
-    // Ensure KaTeX is loaded asynchronously without blocking first paint
-    expect(html).toContain('rel="preload"');
+    // Ensure fonts use font-display: swap for fast rendering
+    expect(html).toContain('display=swap');
   });
 });

@@ -120,6 +120,18 @@ export function DocumentCanvas({
     return () => observer.disconnect();
   }, []);
 
+  // Dynamically load KaTeX math styling only when Document Editor is active
+  useEffect(() => {
+    const linkId = 'katex-css-loader';
+    if (typeof document !== 'undefined' && !document.getElementById(linkId)) {
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css';
+      document.head.appendChild(link);
+    }
+  }, []);
+
   // Compute calculated scale
   const scale = useMemo(() => {
     if (!responsive.isMobile && zoomMode === 'custom') {

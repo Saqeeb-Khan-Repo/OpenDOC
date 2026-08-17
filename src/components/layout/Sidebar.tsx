@@ -107,7 +107,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </div>
           {(!compactSidebar) && (
             <div className="flex flex-col min-w-0">
-              <span className="font-extrabold text-sm text-sidebar-foreground tracking-tight truncate">DocFlow</span>
+              <span className="font-extrabold text-sm text-sidebar-foreground tracking-tight truncate">DocProEditor</span>
               <span className="text-[10px] text-sidebar-foreground/50 font-mono -mt-0.5">Workspace</span>
             </div>
           )}

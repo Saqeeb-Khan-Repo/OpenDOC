@@ -1,457 +1,618 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useDocumentsStore } from '@/store/documentsStore';
-import { useToastStore } from '@/store/toastStore';
-import { TemplateEngine } from '@/engines/TemplateEngine';
-import { EditorMode } from '@/engines/types';
 import { Button } from '@/components/ui/button';
 import { SEOHead } from '@/components/seo/SEOHead';
 import { PublicHeader } from '@/components/layout/PublicHeader';
 import { PublicFooter } from '@/components/layout/PublicFooter';
 import {
-  FileText, Presentation, Palette, Sparkles, ArrowRight,
-  ShieldCheck, Download, Code2, Calculator, GitFork, Check,
-  Zap, Database, Printer, Layers, Globe, Star, FileCheck,
-  CheckCircle2, ChevronRight, HelpCircle
+  FileText, Presentation, GitFork, UserCheck, Layers,
+  Sparkles, ArrowRight, Check, Zap, Globe, Shield,
+  Laptop, Plus, Star, Folder, CheckCircle2, ChevronRight,
+  MoveRight, FileCheck, MousePointerClick
 } from 'lucide-react';
+import { cn } from '@/utils/cn';
 
 const HOMEPAGE_FAQS = [
   {
-    question: 'What is DocFlow?',
-    answer: 'DocFlow is an all-in-one browser-based document and design workspace that lets you create, edit, convert, and share paginated documents, slide presentations, interactive flowcharts, ATS resumes, and PDFs in one unified interface.',
+    question: 'What is DocProEditor?',
+    answer: 'DocProEditor is an all-in-one browser workspace that brings documents, presentations, flowcharts, resumes, and PDF tools together into one simple interface.',
   },
   {
-    question: 'Is DocFlow free to use?',
-    answer: 'Yes! DocFlow provides core document editing, presentation creation, flowchart diagramming, resume building, and PDF tools free without watermarks or mandatory account creation.',
+    question: 'Is sign-up required to use DocProEditor?',
+    answer: 'No sign-up is required. You can start creating documents, slide decks, flowcharts, resumes, and editing PDFs immediately for free.',
   },
   {
-    question: 'Does DocFlow store my confidential documents on cloud servers?',
-    answer: 'By default, DocFlow processes documents, presentations, flowcharts, and resumes client-side in your browser with private IndexedDB local autosave. Your private content remains under your control.',
+    question: 'How are my files saved?',
+    answer: 'Your files are saved directly in your browser with private local autosave. You can also export your work anytime as PDF, DOCX, SVG, or images.',
   },
   {
-    question: 'Can I export my work to PDF, DOCX, and SVG?',
-    answer: 'Yes! You can export paginated documents to PDF and DOCX, presentations to PDF and slide formats, flowcharts to vector SVG and high-resolution PNG, and resumes to ATS-ready PDFs.',
+    question: 'Can I export to PDF and DOCX?',
+    answer: 'Yes! You can export paginated documents to PDF and DOCX, presentations to PDF, flowcharts to vector SVG and PNG, and resumes to ATS-ready PDFs.',
   },
   {
-    question: 'Does DocFlow work on mobile devices?',
-    answer: 'Yes. DocFlow is designed with touch-friendly responsive interfaces, including proportional slide scaling for presentations and dedicated touch navigation for flowchart editing.',
+    question: 'Does DocProEditor work on mobile?',
+    answer: 'Yes. DocProEditor features a dedicated mobile touch interface with fluid scrolling, safe-area support, and responsive canvas scaling.',
   },
 ];
 
 export function LandingPage() {
   const navigate = useNavigate();
   const { createDocument } = useDocumentsStore();
-  const toast = useToastStore();
   const [activePreviewTab, setActivePreviewTab] = useState<'document' | 'presentation' | 'flowchart' | 'resume'>('document');
 
-  const handleStartMode = (mode: EditorMode = 'document') => {
-    const doc = createDocument({
-      title: mode === 'presentation' ? 'Untitled Presentation' : mode === 'design' ? 'Untitled Visual Design' : 'Untitled Document',
-      mode,
-    });
-    toast.success(`Started new ${mode} project`);
+  const handleStartFree = () => {
+    navigate('/dashboard');
+  };
+
+  const handleCreateDocument = () => {
+    const doc = createDocument({ title: 'Untitled Document', mode: 'document' });
     navigate(`/editor/${doc.id}`);
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-primary/20">
+    <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-primary/20 antialiased">
       <SEOHead
-        title="DocFlow | All-in-One Document & Design Workspace"
-        description="Create and edit documents, presentations, flowcharts, resumes, and PDFs in one fast online workspace. Import, customize, convert, export, and share your work with DocFlow."
-        canonicalPath="/"
-        h1="Create, Edit, Convert, and Share Your Work in One Workspace"
+        title="DocProEditor - Online Document Editor, PDF Tools, Presentations & More"
+        description="DocProEditor is a simple online workspace for creating and editing documents, presentations, flowcharts, resumes, and PDF files."
+        canonicalPath="/landing"
+        h1="Create, Edit, Convert, and Share Your Work All in One Place"
         faqs={HOMEPAGE_FAQS}
         softwareAppSchema={true}
       />
 
       <PublicHeader />
 
-      {/* ── 1. HERO SECTION ─────────────────────────────────────────────────── */}
-      <section className="relative pt-16 pb-20 px-6 overflow-hidden bg-gradient-to-b from-primary/5 via-background to-background border-b border-border/40">
-        <div className="max-w-5xl mx-auto text-center space-y-5">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 shadow-xs">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>DocFlow • All-in-One Document &amp; Design Workspace</span>
-          </div>
+      <main className="flex-1">
+        {/* ── 2. HERO SECTION ─────────────────────────────────────────────────── */}
+        <section className="relative pt-12 pb-16 md:pt-20 md:pb-24 px-4 sm:px-6 lg:px-8 overflow-hidden border-b border-border/60 bg-gradient-to-b from-primary/[0.04] via-background to-background dark:from-blue-950/20 dark:via-background dark:to-background">
+          {/* Subtle Ambient Radial Light */}
+          <div
+            className="absolute top-0 right-0 w-[500px] h-[500px] pointer-events-none opacity-40 dark:opacity-20 blur-3xl -z-10"
+            style={{
+              background: 'radial-gradient(circle at 70% 20%, rgba(59,130,246,0.25), transparent 60%)',
+            }}
+          />
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-foreground leading-[1.12]">
-            Create, Edit, Convert, and Share Your Work in One Workspace
-          </h1>
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+            {/* Left Column: Hero Copy & Actions */}
+            <div className="lg:col-span-6 space-y-6 text-center lg:text-left">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 shadow-xs">
+                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                <span>All-in-One Workspace</span>
+              </div>
 
-          <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            DocFlow brings documents, presentations, flowcharts, resumes, and PDF tools together in one simple, fast online workspace. No bloated software, zero telemetry tracking, and 100% private autosave.
-          </p>
+              {/* Main Headline */}
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground leading-[1.12]">
+                Create, Edit, Convert, <br className="hidden sm:inline" />
+                and Share Your Work <br className="hidden sm:inline" />
+                <span className="text-primary bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                  All in One Place
+                </span>
+              </h1>
 
-          {/* Primary Hero CTAs */}
-          <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button
-              size="lg"
-              onClick={() => navigate('/dashboard')}
-              className="w-full sm:w-auto h-12 px-8 text-sm font-bold gap-2 shadow-lg shadow-primary/25"
-            >
-              <Sparkles className="h-4 w-4" /> Start Creating Free
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate('/templates')}
-              className="w-full sm:w-auto h-12 px-6 text-sm font-semibold gap-2 border-border"
-            >
-              Explore Templates <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
+              {/* Supporting Text */}
+              <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                DocProEditor brings documents, presentations, flowcharts, resumes, and PDF tools together in one simple, fast, and secure workspace.
+              </p>
 
-          {/* Interactive Mode Preview Switcher */}
-          <div className="pt-10">
-            <div className="inline-flex items-center gap-1.5 bg-card border border-border p-1.5 rounded-2xl shadow-sm overflow-x-auto max-w-full">
-              <button
-                type="button"
-                onClick={() => setActivePreviewTab('document')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activePreviewTab === 'document' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                <FileText className="h-4 w-4" /> Document Editor
-              </button>
-              <button
-                type="button"
-                onClick={() => setActivePreviewTab('presentation')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activePreviewTab === 'presentation' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                <Presentation className="h-4 w-4" /> Presentation Maker
-              </button>
-              <button
-                type="button"
-                onClick={() => setActivePreviewTab('flowchart')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activePreviewTab === 'flowchart' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                <GitFork className="h-4 w-4" /> Flowchart Studio
-              </button>
-              <button
-                type="button"
-                onClick={() => setActivePreviewTab('resume')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activePreviewTab === 'resume' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                <FileCheck className="h-4 w-4" /> Resume Builder
-              </button>
+              {/* Primary & Secondary CTAs */}
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3.5">
+                <Button
+                  size="lg"
+                  onClick={handleStartFree}
+                  className="h-12 px-7 text-sm font-bold gap-2 shadow-lg shadow-primary/25 cursor-pointer"
+                  aria-label="Start Creating Free"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>Start Creating Free</span>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => navigate('/templates')}
+                  className="h-12 px-6 text-sm font-semibold gap-2 border-border hover:bg-muted/80 cursor-pointer"
+                  aria-label="Explore Templates"
+                >
+                  <span>Explore Templates</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* 3 Simple Benefits */}
+              <div className="pt-3 flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                  <span>No Sign Up Required</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                  <span>Fast &amp; Simple</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                  <span>Works Anywhere</span>
+                </div>
+              </div>
             </div>
 
-            {/* Interactive Preview Container */}
-            <div className="mt-4 max-w-4xl mx-auto rounded-2xl border border-border bg-card shadow-2xl p-6 relative overflow-hidden text-left">
-              {activePreviewTab === 'document' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border pb-3">
-                    <span className="font-mono text-xs font-semibold text-primary">A4 Paginated Document Mode</span>
-                    <span className="text-xs text-muted-foreground">Times New Roman / Inter • KaTeX Math • TOC</span>
+            {/* Right Column: High-Quality Lightweight Application Mockup */}
+            <div className="lg:col-span-6">
+              <div className="rounded-2xl border border-border/80 bg-card/90 dark:bg-[#111A2B] shadow-2xl overflow-hidden transition-all duration-300 hover:border-primary/30">
+                {/* Mockup Window Header */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60 dark:bg-[#0D1422] border-b border-border/70 select-none">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
                   </div>
-                  <div className="p-6 bg-white dark:bg-zinc-900 rounded-xl border border-border space-y-3 font-serif shadow-xs">
-                    <h2 className="text-lg font-bold text-blue-900 dark:text-blue-400">1. EXECUTIVE SUMMARY &amp; SYSTEM DESIGN</h2>
-                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                      DocFlow eliminates fragmented productivity tools by housing paginated reports, real-time math equations, citations, and diagram figures within one fast browser session.
-                    </p>
-                    <div className="font-mono text-xs bg-slate-100 dark:bg-zinc-800 p-2 rounded border border-slate-200 dark:border-zinc-700 text-slate-800 dark:text-slate-200">
-                      {'\\oint_{\\partial \\Omega} \\mathbf{E} \\cdot d\\mathbf{l} = -\\frac{\\partial}{\\partial t} \\iint_{\\Omega} \\mathbf{B} \\cdot d\\mathbf{A}'}
+                  <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    <span>DocProEditor Workspace • Project Report</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground font-mono bg-background/50 px-2 py-0.5 rounded border border-border/50">
+                    Autosaved
+                  </div>
+                </div>
+
+                {/* Mockup App Interface */}
+                <div className="p-4 sm:p-5 space-y-4 text-left">
+                  {/* Tool Tabs Switcher */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-border/60">
+                    <button
+                      type="button"
+                      onClick={() => setActivePreviewTab('document')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap',
+                        activePreviewTab === 'document'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      <span>Document</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivePreviewTab('presentation')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap',
+                        activePreviewTab === 'presentation'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                    >
+                      <Presentation className="h-3.5 w-3.5" />
+                      <span>Presentation</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivePreviewTab('flowchart')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap',
+                        activePreviewTab === 'flowchart'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                    >
+                      <GitFork className="h-3.5 w-3.5" />
+                      <span>Flowchart</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivePreviewTab('resume')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap',
+                        activePreviewTab === 'resume'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                    >
+                      <UserCheck className="h-3.5 w-3.5" />
+                      <span>Resume</span>
+                    </button>
+                  </div>
+
+                  {/* Active Preview Body */}
+                  {activePreviewTab === 'document' && (
+                    <div className="space-y-3 p-4 rounded-xl bg-background border border-border/70 shadow-inner">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground pb-2 border-b border-border/50">
+                        <span className="font-semibold text-primary">A4 Paginated Sheet • Page 1 of 1</span>
+                        <span>100% Zoom</span>
+                      </div>
+                      <h3 className="text-base font-bold text-foreground">System Architecture &amp; Requirements</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        DocProEditor unifies rich text editing, LaTeX mathematical formulas, dynamic flowchart diagrams, and slide decks in a single browser-native workspace.
+                      </p>
+                      <div className="p-2.5 rounded-lg bg-muted/40 dark:bg-[#162238] border border-border/60 flex items-center justify-between text-[11px]">
+                        <span className="font-medium text-foreground">Formula: f(x) = \sigma(W \cdot x + b)</span>
+                        <span className="text-primary font-semibold">KaTeX Rendered</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-2">
-                    <Link to="/document-editor" className="text-xs text-primary font-semibold hover:underline flex items-center gap-1">
-                      Learn more about Document Editor <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                    <Button size="sm" onClick={() => handleStartMode('document')} className="gap-1.5 text-xs font-bold">
-                      Open Document Editor <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {activePreviewTab === 'presentation' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border pb-3">
-                    <span className="font-mono text-xs font-semibold text-amber-500">16:9 Slide Presentation Mode</span>
-                    <span className="text-xs text-muted-foreground">Proportional Canvas Scaling • Corporate Navy Theme</span>
-                  </div>
-                  <div className="aspect-video max-h-56 bg-slate-900 text-white rounded-xl p-6 flex flex-col justify-between shadow-xs">
-                    <div>
-                      <span className="text-xs text-blue-400 font-mono">SLIDE 01 / 10</span>
-                      <h3 className="text-xl font-bold mt-1 text-white">Engineering Project Architecture</h3>
+                  {activePreviewTab === 'presentation' && (
+                    <div className="p-4 rounded-xl bg-background border border-border/70 space-y-3 aspect-[16/9] flex flex-col justify-center">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Slide 01 • Product Vision</span>
+                      <h3 className="text-lg sm:text-xl font-bold text-foreground">All-in-One Document Workspace</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
+                        Create, format, and present professional slide decks with customizable layouts and responsive navigation.
+                      </p>
+                      <div className="flex gap-2 pt-1">
+                        <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">16:9 Canvas</span>
+                        <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">PDF Export</span>
+                      </div>
                     </div>
-                    <ul className="text-xs text-slate-300 space-y-1">
-                      <li>• Modular client-side canvas rendering</li>
-                      <li>• Automated theme propagation across all slides</li>
-                      <li>• Fullscreen presenter mode with private talking points</li>
-                    </ul>
-                  </div>
-                  <div className="flex items-center justify-between pt-2">
-                    <Link to="/presentation-maker" className="text-xs text-primary font-semibold hover:underline flex items-center gap-1">
-                      Learn more about Presentation Maker <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                    <Button size="sm" onClick={() => handleStartMode('presentation')} className="gap-1.5 text-xs font-bold">
-                      Open Presentation Maker <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {activePreviewTab === 'flowchart' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border pb-3">
-                    <span className="font-mono text-xs font-semibold text-indigo-500">Interactive Flowchart Studio</span>
-                    <span className="text-xs text-muted-foreground">Smart 4-Directional Routing • Auto-Layout</span>
-                  </div>
-                  <div className="p-6 bg-slate-100 dark:bg-zinc-900/80 rounded-xl border border-border flex items-center justify-center gap-4 py-8 shadow-xs">
-                    <div className="px-4 py-2 rounded-full bg-blue-600 text-white text-xs font-bold shadow-sm">Start: Request</div>
-                    <ArrowRight className="h-4 w-4 text-slate-400" />
-                    <div className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-sm">Process Data</div>
-                    <ArrowRight className="h-4 w-4 text-slate-400" />
-                    <div className="px-4 py-2 rounded-lg bg-purple-600 text-white text-xs font-bold shadow-sm">Database Sync</div>
-                  </div>
-                  <div className="flex items-center justify-between pt-2">
-                    <Link to="/flowchart-maker" className="text-xs text-primary font-semibold hover:underline flex items-center gap-1">
-                      Learn more about Flowchart Maker <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                    <Button size="sm" onClick={() => navigate('/flowchart')} className="gap-1.5 text-xs font-bold">
-                      Open Flowchart Studio <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {activePreviewTab === 'resume' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border pb-3">
-                    <span className="font-mono text-xs font-semibold text-emerald-500">ATS Resume Builder</span>
-                    <span className="text-xs text-muted-foreground">Single &amp; Two Column • Clean PDF Export</span>
-                  </div>
-                  <div className="p-6 bg-white dark:bg-zinc-900 rounded-xl border border-border space-y-2 text-xs text-slate-700 dark:text-slate-300 shadow-xs">
-                    <div className="border-b pb-2">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">Alex Morgan — Senior Software Engineer</h3>
-                      <p className="text-[11px] text-muted-foreground">San Francisco, CA • alex@example.com • github.com/alex</p>
+                  {activePreviewTab === 'flowchart' && (
+                    <div className="p-4 rounded-xl bg-background border border-border/70 space-y-3">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="font-semibold text-primary">Interactive Diagram Canvas</span>
+                        <span>SVG Vector</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-3 py-4 text-xs font-semibold">
+                        <div className="px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-xs">
+                          Start Process
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <div className="px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 shadow-xs">
+                          Transform Data
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <div className="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-xs">
+                          Export Result
+                        </div>
+                      </div>
                     </div>
-                    <p className="font-semibold text-slate-900 dark:text-white pt-1">EXPERIENCE</p>
-                    <p className="text-[11px]">Staff Engineer at CloudScale — Built distributed indexing pipeline serving 40M daily active requests.</p>
-                  </div>
-                  <div className="flex items-center justify-between pt-2">
-                    <Link to="/resume-builder" className="text-xs text-primary font-semibold hover:underline flex items-center gap-1">
-                      Learn more about Resume Builder <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                    <Button size="sm" onClick={() => navigate('/resume')} className="gap-1.5 text-xs font-bold">
-                      Open Resume Builder <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
+                  )}
+
+                  {activePreviewTab === 'resume' && (
+                    <div className="p-4 rounded-xl bg-background border border-border/70 space-y-2 text-xs">
+                      <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                        <span className="font-bold text-sm text-foreground">Alex Morgan</span>
+                        <span className="text-muted-foreground">Senior Product Engineer</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Experienced in frontend architecture, design systems, and building high-performance web applications.
+                      </p>
+                      <div className="flex gap-2 pt-1">
+                        <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">ATS Scored: 98%</span>
+                        <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground">1-Page Layout</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mockup Quick Footer */}
+                  <div className="flex items-center justify-between pt-1 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Ready to edit</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleStartFree}
+                      className="text-primary font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Open in Studio</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </button>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── 2. EVERYTHING YOU NEED TO CREATE BETTER DOCUMENTS ────────────────── */}
-      <section className="py-20 px-6 max-w-6xl mx-auto space-y-12">
-        <div className="text-center space-y-3 max-w-2xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Everything You Need to Create Better Documents
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Six dedicated production tools designed to work seamlessly together in one fast browser workspace.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Card 1: Document Editor */}
-          <Link
-            to="/document-editor"
-            className="p-6 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all hover:shadow-lg space-y-3 group"
-          >
-            <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <FileText className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold group-hover:text-primary transition-colors">
-              Online Document Editor
-            </h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Create and format professional documents with true A4 page constraints, auto Table of Contents, KaTeX math formulas, and instant PDF/DOCX export.
+        {/* ── 3. TRUST / VALUE STRIP ──────────────────────────────────────────── */}
+        <section className="py-8 border-b border-border/50 bg-muted/20 dark:bg-[#0D1422]/60 select-none">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+            <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Everything you need to create professional work
             </p>
-            <span className="text-xs text-primary font-semibold inline-flex items-center gap-1">
-              Explore Document Editor <ChevronRight className="h-3.5 w-3.5" />
-            </span>
-          </Link>
-
-          {/* Card 2: Presentation Maker */}
-          <Link
-            to="/presentation-maker"
-            className="p-6 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all hover:shadow-lg space-y-3 group"
-          >
-            <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Presentation className="h-5 w-5" />
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6">
+              {[
+                { label: 'Documents', icon: FileText, to: '/document-editor' },
+                { label: 'Presentations', icon: Presentation, to: '/presentation-maker' },
+                { label: 'Flowcharts', icon: GitFork, to: '/flowchart-maker' },
+                { label: 'PDF Tools', icon: Layers, to: '/pdf-editor' },
+                { label: 'Resume Builder', icon: UserCheck, to: '/resume-builder' },
+              ].map(item => (
+                <Link
+                  key={item.label}
+                  to={item.to}
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-background border border-border hover:border-primary/40 hover:text-primary transition-all shadow-2xs"
+                >
+                  <item.icon className="h-3.5 w-3.5 text-primary" />
+                  <span>{item.label}</span>
+                </Link>
+              ))}
             </div>
-            <h3 className="text-base font-bold group-hover:text-primary transition-colors">
-              Presentation Maker
-            </h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Build high-impact 16:9 slide decks with rich curated themes, apply-to-all formatting, interactive presenter mode, and speaker notes.
-            </p>
-            <span className="text-xs text-primary font-semibold inline-flex items-center gap-1">
-              Explore Presentation Maker <ChevronRight className="h-3.5 w-3.5" />
-            </span>
-          </Link>
+          </div>
+        </section>
 
-          {/* Card 3: Flowchart Maker */}
-          <Link
-            to="/flowchart-maker"
-            className="p-6 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all hover:shadow-lg space-y-3 group"
-          >
-            <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <GitFork className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold group-hover:text-primary transition-colors">
-              Flowchart Studio
-            </h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Map out workflows, decision trees, and software architecture with smart 4-directional flexible connectors and instant auto-layout.
-            </p>
-            <span className="text-xs text-primary font-semibold inline-flex items-center gap-1">
-              Explore Flowchart Maker <ChevronRight className="h-3.5 w-3.5" />
-            </span>
-          </Link>
-
-          {/* Card 4: Resume Builder */}
-          <Link
-            to="/resume-builder"
-            className="p-6 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all hover:shadow-lg space-y-3 group"
-          >
-            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <FileCheck className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold group-hover:text-primary transition-colors">
-              ATS Resume Builder
-            </h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Craft recruiter-ready, ATS-compliant CVs with structured sections, skills chips, and clean vector typography PDF downloads.
-            </p>
-            <span className="text-xs text-primary font-semibold inline-flex items-center gap-1">
-              Explore Resume Builder <ChevronRight className="h-3.5 w-3.5" />
-            </span>
-          </Link>
-
-          {/* Card 5: PDF Tools */}
-          <Link
-            to="/pdf-editor"
-            className="p-6 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all hover:shadow-lg space-y-3 group"
-          >
-            <div className="h-10 w-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <FileText className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold group-hover:text-primary transition-colors">
-              PDF Editor &amp; Annotator
-            </h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Annotate, sign, rearrange pages, and export PDF files directly in your web browser with 100% privacy and zero server uploads.
-            </p>
-            <span className="text-xs text-primary font-semibold inline-flex items-center gap-1">
-              Explore PDF Tools <ChevronRight className="h-3.5 w-3.5" />
-            </span>
-          </Link>
-
-          {/* Card 6: File Converter */}
-          <Link
-            to="/file-converter"
-            className="p-6 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all hover:shadow-lg space-y-3 group"
-          >
-            <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Layers className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold group-hover:text-primary transition-colors">
-              File Converter
-            </h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Convert DOCX to PDF, HTML to Markdown, JSON to CSV, and diagrams to SVG/PNG instantly without third-party converters.
-            </p>
-            <span className="text-xs text-primary font-semibold inline-flex items-center gap-1">
-              Explore File Converter <ChevronRight className="h-3.5 w-3.5" />
-            </span>
-          </Link>
-        </div>
-      </section>
-
-      {/* ── 3. WHY DOCFLOW? ──────────────────────────────────────────────────── */}
-      <section className="py-16 px-6 bg-muted/30 border-y border-border">
-        <div className="max-w-5xl mx-auto space-y-10">
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Why Professionals &amp; Students Choose DocFlow
+        {/* ── 4. POWERFUL TOOLS SECTION ───────────────────────────────────────── */}
+        <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="text-center space-y-4 max-w-2xl mx-auto mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
+              Everything You Need to Get Work Done
             </h2>
-            <p className="text-sm text-muted-foreground">
-              Engineered for maximum speed, clean typography, and browser-first reliability.
+            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+              Create, edit, organize, and export professional work from one simple workspace.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-5 rounded-xl border border-border bg-card space-y-2">
-              <Zap className="h-5 w-5 text-amber-500" />
-              <h3 className="font-bold text-sm">Instant Load Time</h3>
-              <p className="text-xs text-muted-foreground">Zero bloat. Starts up instantly in any modern browser without install.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            {/* Tool 1: Document Editor */}
+            <div className="p-6 rounded-2xl border border-border/80 bg-card dark:bg-[#111A2B] hover:border-primary/40 hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 group">
+              <div className="space-y-3">
+                <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                  Document Editor
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Create polished documents, reports, assignments, and project documentation with real-time formatting.
+                </p>
+              </div>
+              <Link
+                to="/document-editor"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pt-2"
+              >
+                <span>Launch Document Editor</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
-            <div className="p-5 rounded-xl border border-border bg-card space-y-2">
-              <ShieldCheck className="h-5 w-5 text-emerald-500" />
-              <h3 className="font-bold text-sm">100% Private Autosave</h3>
-              <p className="text-xs text-muted-foreground">Data is saved locally in browser IndexedDB. No tracking or telemetry.</p>
+
+            {/* Tool 2: Presentation Maker */}
+            <div className="p-6 rounded-2xl border border-border/80 bg-card dark:bg-[#111A2B] hover:border-primary/40 hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 group">
+              <div className="space-y-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Presentation className="h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                  Presentation Maker
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Build professional presentations with flexible text, layouts, side-by-side navigation, and styling.
+                </p>
+              </div>
+              <Link
+                to="/presentation-maker"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pt-2"
+              >
+                <span>Launch Presentation Maker</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
-            <div className="p-5 rounded-xl border border-border bg-card space-y-2">
-              <Download className="h-5 w-5 text-blue-500" />
-              <h3 className="font-bold text-sm">Multi-Format Exports</h3>
-              <p className="text-xs text-muted-foreground">Export clean PDF, DOCX, SVG, PNG, and JSON files without watermarks.</p>
+
+            {/* Tool 3: Flowchart Studio */}
+            <div className="p-6 rounded-2xl border border-border/80 bg-card dark:bg-[#111A2B] hover:border-primary/40 hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 group">
+              <div className="space-y-3">
+                <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <GitFork className="h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                  Flowchart Studio
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Create clear diagrams and workflows with simple node-based editing and touch-friendly controls.
+                </p>
+              </div>
+              <Link
+                to="/flowchart-maker"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pt-2"
+              >
+                <span>Launch Flowchart Studio</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
-            <div className="p-5 rounded-xl border border-border bg-card space-y-2">
-              <Globe className="h-5 w-5 text-indigo-500" />
-              <h3 className="font-bold text-sm">Mobile &amp; Desktop</h3>
-              <p className="text-xs text-muted-foreground">Fluidly responsive across phones, tablets, laptops, and ultra-wide screens.</p>
+
+            {/* Tool 4: PDF Tools */}
+            <div className="p-6 rounded-2xl border border-border/80 bg-card dark:bg-[#111A2B] hover:border-primary/40 hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 group">
+              <div className="space-y-3">
+                <div className="h-10 w-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                  <Layers className="h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                  PDF Tools
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Merge, convert, organize, annotate, and work with PDF files quickly directly in the browser.
+                </p>
+              </div>
+              <Link
+                to="/pdf-editor"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pt-2"
+              >
+                <span>Explore PDF Tools</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            {/* Tool 5: Resume Builder */}
+            <div className="p-6 rounded-2xl border border-border/80 bg-card dark:bg-[#111A2B] hover:border-primary/40 hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 group">
+              <div className="space-y-3">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <UserCheck className="h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                  Resume Builder
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Build clean, professional, ATS-ready resumes using structured, customizable templates.
+                </p>
+              </div>
+              <Link
+                to="/resume-builder"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pt-2"
+              >
+                <span>Launch Resume Builder</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            {/* Quick Access Card: Templates */}
+            <div className="p-6 rounded-2xl border border-primary/20 bg-primary/[0.03] dark:bg-[#162238] flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground">
+                  Ready-to-Use Templates
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Kickstart your reports, pitch decks, flowcharts, and resumes with pre-built professional designs.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => navigate('/templates')}
+                className="w-fit text-xs font-bold gap-1.5 shadow-sm"
+                aria-label="Browse Templates Library"
+              >
+                <span>Browse All Templates</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── 4. FREQUENTLY ASKED QUESTIONS ────────────────────────────────────── */}
-      <section className="py-20 px-6 max-w-4xl mx-auto space-y-10">
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Frequently Asked Questions
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Clear answers about DocFlow, privacy, exports, and supported workflows.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          {HOMEPAGE_FAQS.map((faq, idx) => (
-            <div key={idx} className="p-5 rounded-xl border border-border bg-card space-y-2">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <HelpCircle className="h-4 w-4 text-primary shrink-0" />
-                <span>{faq.question}</span>
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed pl-6">
-                {faq.answer}
+        {/* ── 5. HOW IT WORKS ─────────────────────────────────────────────────── */}
+        <section className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 border-y border-border/60 bg-muted/20 dark:bg-[#0D1422]">
+          <div className="max-w-7xl mx-auto space-y-12">
+            <div className="text-center space-y-3 max-w-xl mx-auto">
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+                How It Works
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Create and finish your work in three simple steps.
               </p>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* ── 5. FINAL CALL TO ACTION ─────────────────────────────────────────── */}
-      <section className="py-16 px-6 bg-gradient-to-t from-primary/10 via-background to-background border-t border-border text-center">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-            Start Creating Better Documents Today
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-            Join thousands of students, researchers, engineers, and creators who build with DocFlow.
-          </p>
-          <Button
-            size="lg"
-            onClick={() => navigate('/dashboard')}
-            className="h-12 px-8 text-sm font-bold shadow-xl shadow-primary/25"
-          >
-            <Sparkles className="h-4 w-4 mr-2" /> Start Creating Free
-          </Button>
-        </div>
-      </section>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+              {/* Step 1 */}
+              <div className="p-6 rounded-2xl border border-border/80 bg-card dark:bg-[#111A2B] space-y-3">
+                <div className="font-mono text-2xl sm:text-3xl font-extrabold text-primary">01</div>
+                <h3 className="text-base font-bold text-foreground">Choose a tool</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Select Document, Presentation, Flowchart, Resume Builder, or PDF Tools according to your project goal.
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div className="p-6 rounded-2xl border border-border/80 bg-card dark:bg-[#111A2B] space-y-3">
+                <div className="font-mono text-2xl sm:text-3xl font-extrabold text-primary">02</div>
+                <h3 className="text-base font-bold text-foreground">Create and edit</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Customize content, typography, diagrams, and formatting with responsive real-time editing.
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="p-6 rounded-2xl border border-border/80 bg-card dark:bg-[#111A2B] space-y-3">
+                <div className="font-mono text-2xl sm:text-3xl font-extrabold text-primary">03</div>
+                <h3 className="text-base font-bold text-foreground">Export or share</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Download high-resolution PDF, DOCX, SVG, or presentation files ready for submission and publishing.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 6. PRODUCTIVITY SECTION ("One Workspace. Less Switching.") ──────── */}
+        <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            {/* Left: Lightweight Unified Preview */}
+            <div className="lg:col-span-6 order-2 lg:order-1">
+              <div className="p-6 rounded-2xl border border-border/80 bg-card dark:bg-[#111A2B] shadow-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <span>Seamless Studio Switching</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-mono">0 Latency</span>
+                </div>
+
+                <div className="space-y-2.5">
+                  <div className="p-3 rounded-xl bg-muted/40 dark:bg-[#162238] border border-border/60 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      <span className="font-semibold text-foreground">Annual Project Report</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">Document</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-muted/40 dark:bg-[#162238] border border-border/60 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <Presentation className="h-4 w-4 text-amber-500" />
+                      <span className="font-semibold text-foreground">Stakeholder Slide Deck</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">Presentation</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-muted/40 dark:bg-[#162238] border border-border/60 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <GitFork className="h-4 w-4 text-indigo-500" />
+                      <span className="font-semibold text-foreground">System Architecture Diagram</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">Flowchart</span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-muted-foreground pt-1">
+                  All documents and assets remain unified in your workspace without switching between separate browser tabs or desktop applications.
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Heading & Description */}
+            <div className="lg:col-span-6 order-1 lg:order-2 space-y-5 text-center lg:text-left">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
+                One Workspace. <br />
+                <span className="text-primary">Less Switching.</span>
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                Move freely between paginated documents, slide decks, flowcharts, PDF tools, and resumes without needing separate software suites or subscriptions.
+              </p>
+              <div className="pt-2">
+                <Button
+                  onClick={handleStartFree}
+                  className="font-bold text-xs sm:text-sm h-11 px-6 gap-2 shadow-md cursor-pointer"
+                  aria-label="Start Creating Free"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>Start Creating Free</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 7. FINAL CTA ────────────────────────────────────────────────────── */}
+        <section className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 border-t border-border/60 bg-gradient-to-b from-background via-primary/[0.04] to-primary/[0.08] dark:from-background dark:via-blue-950/20 dark:to-blue-950/30 text-center">
+          <div className="max-w-3xl mx-auto space-y-6">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+              Ready to create something?
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed">
+              Start with a document, presentation, flowchart, resume, or PDF tool.
+            </p>
+            <div className="pt-2 flex justify-center">
+              <Button
+                size="lg"
+                onClick={handleStartFree}
+                className="h-12 px-8 text-sm font-bold gap-2 shadow-xl shadow-primary/25 cursor-pointer"
+                aria-label="Start Creating Free"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Start Creating Free</span>
+              </Button>
+            </div>
+          </div>
+        </section>
+      </main>
 
       <PublicFooter />
     </div>

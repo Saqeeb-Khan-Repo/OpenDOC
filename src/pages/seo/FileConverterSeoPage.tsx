@@ -11,8 +11,8 @@ import {
 
 const CONVERTER_FAQS = [
   {
-    question: 'What formats can I convert with DocFlow?',
-    answer: 'DocFlow supports bidirectional conversion between DOCX, PDF, HTML, Markdown (.md), Plain Text (.txt), JSON, CSV, and vector SVG/PNG diagrams.',
+    question: 'What formats can I convert with DocProEditor?',
+    answer: 'DocProEditor supports bidirectional conversion between DOCX, PDF, HTML, Markdown (.md), Plain Text (.txt), JSON, CSV, and vector SVG/PNG diagrams.',
   },
   {
     question: 'How fast is the conversion process?',
@@ -30,7 +30,7 @@ export function FileConverterSeoPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="Online File Converter | Convert Documents & Files | DocFlow"
+        title="Online File Converter | Convert Documents & Files | DocProEditor"
         description="Convert supported documents, presentations, spreadsheets, diagrams, and PDFs online with zero software installation."
         canonicalPath="/file-converter"
         h1="Online File Converter"

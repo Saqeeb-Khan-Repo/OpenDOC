@@ -39,7 +39,7 @@ export function TemplatesPage() {
   return (
     <div className="flex flex-col h-full bg-background">
       <SEOHead
-        title="Document, Slide & Diagram Templates | DocFlow"
+        title="Document, Slide & Diagram Templates | DocProEditor"
         description="Browse free pre-formatted templates for academic project reports, startup pitch decks, ATS resumes, and engineering flowcharts."
         canonicalPath="/templates"
         breadcrumbs={[

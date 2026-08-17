@@ -88,7 +88,7 @@ export class ImportEngine {
       }
     }
 
-    // 3. DocFlow / OpenDoc / JSON Import
+    // 3. DocProEditor / OpenDoc / JSON Import
     if (ext === 'docflow' || ext === 'opendoc' || ext === 'json') {
       try {
         const text = await file.text();

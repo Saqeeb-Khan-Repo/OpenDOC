@@ -35,7 +35,7 @@ describe('Google Deployment, Production Headers & SEO Compliance', () => {
     const llmsPath = path.resolve(__dirname, '../../../public/llms.txt');
     const llms = fs.readFileSync(llmsPath, 'utf8');
 
-    expect(llms.startsWith('# DocFlow')).toBe(true);
+    expect(llms.startsWith('# DocProEditor')).toBe(true);
     expect(llms).toContain('## Core Features');
     expect(llms).toContain('## Important Public URLs');
     expect(llms).toContain('https://docflow.app/document-editor');
@@ -48,7 +48,7 @@ describe('Google Deployment, Production Headers & SEO Compliance', () => {
 
     expect(html).toContain('application/ld+json');
     expect(html).toContain('"@type": "WebApplication"');
-    expect(html).toContain('"name": "DocFlow"');
+    expect(html).toContain('"name": "DocProEditor"');
     expect(html).toContain('display=swap');
     expect(html).toContain('viewport-fit=cover');
   });

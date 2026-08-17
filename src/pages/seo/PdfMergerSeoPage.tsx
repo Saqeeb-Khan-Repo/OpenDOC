@@ -12,7 +12,7 @@ import {
 const PDF_MERGER_FAQS = [
   {
     question: 'How do I merge multiple PDF files together?',
-    answer: 'Upload two or more PDF files in DocFlow, arrange the sequence of documents by dragging, and click "Merge & Download" to combine them into one seamless PDF.',
+    answer: 'Upload two or more PDF files in DocProEditor, arrange the sequence of documents by dragging, and click "Merge & Download" to combine them into one seamless PDF.',
   },
   {
     question: 'Is there a limit on file size or number of PDFs?',
@@ -30,7 +30,7 @@ export function PdfMergerSeoPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="Merge PDF Files Online | Free PDF Merger | DocFlow"
+        title="Merge PDF Files Online | Free PDF Merger | DocProEditor"
         description="Combine multiple PDF files into one clean document online. Reorder pages, remove duplicates, and download merged PDFs in seconds."
         canonicalPath="/pdf-merger"
         h1="Merge PDF Files Online"

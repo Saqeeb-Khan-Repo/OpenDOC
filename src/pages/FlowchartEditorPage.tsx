@@ -564,8 +564,8 @@ Update Inventory DB -> End: Delivery Tracking Active`);
   return (
     <div className="h-screen h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden select-none">
       <SEOHead
-        title={`${diagramName || 'Flowchart Studio'} | DocFlow`}
-        description="DocFlow Interactive Flowchart Studio"
+        title={`${diagramName || 'Flowchart Studio'} | DocProEditor`}
+        description="DocProEditor Interactive Flowchart Studio"
         canonicalPath="/flowchart"
         noindex={true}
       />
@@ -576,12 +576,12 @@ Update Inventory DB -> End: Delivery Tracking Active`);
             type="button"
             onClick={() => navigate('/dashboard')}
             className="flex items-center gap-1 sm:gap-1.5 font-bold text-xs sm:text-sm text-foreground hover:text-primary transition-colors cursor-pointer group shrink-0"
-            title="Go to DocFlow Home / Dashboard"
+            title="Go to DocProEditor Home / Dashboard"
           >
             <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-2xs">
               <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             </div>
-            <span className="font-extrabold tracking-tight hidden xs:inline">DocFlow</span>
+            <span className="font-extrabold tracking-tight hidden xs:inline">DocProEditor</span>
           </button>
 
           <span className="text-muted-foreground/40 text-xs font-mono select-none">/</span>

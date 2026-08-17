@@ -19,11 +19,11 @@ const DOCUMENT_FAQS = [
   },
   {
     question: 'Can I insert KaTeX math equations and code snippets?',
-    answer: 'Yes! DocFlow includes native KaTeX LaTeX mathematical equation rendering and syntax-highlighted code blocks for technical reports, research papers, and computer science assignments.',
+    answer: 'Yes! DocProEditor includes native KaTeX LaTeX mathematical equation rendering and syntax-highlighted code blocks for technical reports, research papers, and computer science assignments.',
   },
   {
-    question: 'Does DocFlow support true A4 page breaks?',
-    answer: 'Yes, DocFlow has a paginated canvas engine that calculates A4 page constraints in real time, with automatic page numbering, headers, footers, and Table of Contents generation.',
+    question: 'Does DocProEditor support true A4 page breaks?',
+    answer: 'Yes, DocProEditor has a paginated canvas engine that calculates A4 page constraints in real time, with automatic page numbering, headers, footers, and Table of Contents generation.',
   },
   {
     question: 'What export formats are available?',
@@ -45,8 +45,8 @@ export function DocumentEditorSeoPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="Online Document Editor | Create & Edit Documents | DocFlow"
-        description="Create, edit, format, and export professional documents directly in your browser with DocFlow. Paginated A4 canvas, KaTeX equations, tables, and instant PDF/DOCX export."
+        title="Online Document Editor | Create & Edit Documents | DocProEditor"
+        description="Create, edit, format, and export professional documents directly in your browser with DocProEditor. Paginated A4 canvas, KaTeX equations, tables, and instant PDF/DOCX export."
         canonicalPath="/document-editor"
         h1="Online Document Editor"
         breadcrumbs={[

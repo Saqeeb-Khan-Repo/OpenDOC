@@ -9,10 +9,10 @@ export function GuidesHubPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="Guides &amp; Tutorials | Document &amp; Diagram Creation | DocFlow"
+        title="Guides &amp; Tutorials | Document &amp; Diagram Creation | DocProEditor"
         description="Comprehensive, step-by-step guides for writing university project reports, designing flowcharts, crafting presentations, and building ATS resumes."
         canonicalPath="/guides"
-        h1="DocFlow Guides &amp; Tutorials"
+        h1="DocProEditor Guides &amp; Tutorials"
         breadcrumbs={[
           { name: 'Home', item: '/' },
           { name: 'Guides', item: '/guides' },
@@ -25,7 +25,7 @@ export function GuidesHubPage() {
         <div className="max-w-4xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
             <BookOpen className="h-3.5 w-3.5" />
-            <span>DocFlow Knowledge Base</span>
+            <span>DocProEditor Knowledge Base</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">

@@ -21,8 +21,8 @@ export function AppLayout() {
   return (
     <div className="flex min-h-screen min-h-[100dvh] h-[100dvh] bg-background overflow-hidden flex-col md:flex-row">
       <SEOHead
-        title="DocFlow Workspace"
-        description="DocFlow Workspace"
+        title="DocProEditor Workspace"
+        description="DocProEditor Workspace"
         canonicalPath="/dashboard"
         noindex={true}
       />

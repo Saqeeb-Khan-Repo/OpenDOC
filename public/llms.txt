@@ -1,16 +1,16 @@
-# DocFlow
+# DocProEditor
 
-> DocFlow is an all-in-one web-based document and design workspace. Create professional documents, slide presentations, flowcharts, resumes, and PDF workflows directly in your browser with real-time editing, local-first privacy, and high-quality exports.
+DocProEditor is an online workspace for creating, editing, converting, and sharing documents, presentations, flowcharts, resumes, and PDF files.
 
 ## Core Features
 - **Document Editor**: Full-featured rich text editing with multi-page paginated sheets, customizable typography, mathematical formulas (LaTeX / KaTeX), tables, borders, and Markdown/HTML/PDF exports.
 - **Presentation Maker**: Slide deck creator with slide layouts, geometric shapes, speaker notes, and presentation mode.
-- **Flowchart & Diagram Studio**: Touch-friendly SVG diagramming canvas with node connectors and workflow modeling.
+- **Flowchart Studio**: Touch-friendly SVG diagramming canvas with node connectors and workflow modeling.
 - **Resume Builder**: Professional ATS-friendly resume creation with real-time formatting.
 - **PDF Tools**: In-browser PDF editing, merging, splitting, OCR text extraction, and document conversion.
 
 ## Important Public URLs
-- [DocFlow Homepage](https://docflow.app/landing)
+- [DocProEditor Homepage](https://docflow.app/landing)
 - [Online Document Editor](https://docflow.app/document-editor)
 - [Free Presentation Maker](https://docflow.app/presentation-maker)
 - [Flowchart Maker & Diagram Studio](https://docflow.app/flowchart-maker)
@@ -22,7 +22,3 @@
 - [Productivity Guides Hub](https://docflow.app/guides)
 - [How to Make a Project Report Guide](https://docflow.app/guides/how-to-make-a-project-report)
 - [How to Create a Flowchart Guide](https://docflow.app/guides/how-to-create-a-flowchart)
-
-## Optional / Context
-- Architecture: Client-side React + TypeScript SPA with local storage persistence and zero telemetry tracking.
-- Formats Supported: DOCX, PDF, HTML, Markdown, TXT, JSON, SVG, PNG, JPEG.

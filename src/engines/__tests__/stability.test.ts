@@ -208,7 +208,7 @@ describe('Production Stability & Crash Prevention Tests', () => {
     });
 
     it('should execute copyToClipboard fallback without throwing', async () => {
-      const result = await copyToClipboard('DocFlow Copy Test');
+      const result = await copyToClipboard('DocProEditor Copy Test');
       expect(typeof result).toBe('boolean');
     });
   });

@@ -168,7 +168,7 @@ export function DashboardPage() {
           <div className="h-20 w-20 rounded-2xl bg-muted flex items-center justify-center mb-6">
             <FileText className="h-10 w-10 text-muted-foreground opacity-40" />
           </div>
-          <h3 className="font-bold text-xl mb-2">Welcome to DocFlow!</h3>
+          <h3 className="font-bold text-xl mb-2">Welcome to DocProEditor!</h3>
           <p className="text-muted-foreground mb-6 max-w-xs">Create your first presentation, flowchart, or resume to get started.</p>
           <div className="flex gap-3">
             <Button onClick={() => { const d = createDocument(); navigate(`/editor/${d.id}`); }} className="gap-2"><Plus className="h-4 w-4" />New Document</Button>

@@ -24,7 +24,7 @@ export interface SEOHeadProps {
 }
 
 const SITE_URL = 'https://docflow.app';
-const SITE_NAME = 'DocFlow';
+const SITE_NAME = 'DocProEditor';
 const DEFAULT_OG_IMAGE = 'https://docflow.app/docflow-og.png';
 
 export function SEOHead({
@@ -84,7 +84,7 @@ export function SEOHead({
     setMetaTag('twitter:image', ogImage);
 
     // 6. JSON-LD Structured Data Management
-    const scriptId = 'docflow-structured-data';
+    const scriptId = 'docproeditor-structured-data';
     let scriptTag = document.getElementById(scriptId) as HTMLScriptElement | null;
     if (!scriptTag) {
       scriptTag = document.createElement('script');
@@ -99,8 +99,8 @@ export function SEOHead({
     schemas.push({
       '@context': 'https://schema.org',
       '@type': 'WebSite',
-      name: 'DocFlow',
-      alternateName: 'DocFlow Editor',
+      name: 'DocProEditor',
+      alternateName: 'DocProEditor Editor',
       url: SITE_URL,
       potentialAction: {
         '@type': 'SearchAction',
@@ -113,7 +113,7 @@ export function SEOHead({
     schemas.push({
       '@context': 'https://schema.org',
       '@type': 'Organization',
-      name: 'DocFlow',
+      name: 'DocProEditor',
       url: SITE_URL,
       logo: `${SITE_URL}/docflow-icon.svg`,
       description: 'All-in-One Document, Presentation, Flowchart, Resume, and PDF Workspace.',
@@ -124,7 +124,7 @@ export function SEOHead({
       schemas.push({
         '@context': 'https://schema.org',
         '@type': 'WebApplication',
-        name: 'DocFlow',
+        name: 'DocProEditor',
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'All (Web Browser)',
         url: canonicalUrl,

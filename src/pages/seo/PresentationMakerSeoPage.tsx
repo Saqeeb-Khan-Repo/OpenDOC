@@ -13,12 +13,12 @@ import {
 
 const PRESENTATION_FAQS = [
   {
-    question: 'How do I create a presentation online with DocFlow?',
+    question: 'How do I create a presentation online with DocProEditor?',
     answer: 'Simply click "Create a Presentation" to start with a clean 16:9 canvas or choose from our curated startup pitch, academic, or corporate themes. Add text, shapes, images, charts, and presenter notes directly in your browser.',
   },
   {
     question: 'Can I present directly from my browser?',
-    answer: 'Yes! DocFlow includes a full-screen Presenter Mode with a live slide preview, presentation timer, and private speaker talking points.',
+    answer: 'Yes! DocProEditor includes a full-screen Presenter Mode with a live slide preview, presentation timer, and private speaker talking points.',
   },
   {
     question: 'How does the "Apply to All" theme feature work?',
@@ -26,7 +26,7 @@ const PRESENTATION_FAQS = [
   },
   {
     question: 'Does the presentation canvas scale properly on mobile devices?',
-    answer: 'Yes. DocFlow uses canonical 960x540 proportional transform scaling so your slides and typography look balanced and crisp on small screens without giant overflowing fonts.',
+    answer: 'Yes. DocProEditor uses canonical 960x540 proportional transform scaling so your slides and typography look balanced and crisp on small screens without giant overflowing fonts.',
   },
 ];
 
@@ -44,7 +44,7 @@ export function PresentationMakerSeoPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <SEOHead
-        title="Online Presentation Maker | Create Slides Free | DocFlow"
+        title="Online Presentation Maker | Create Slides Free | DocProEditor"
         description="Create professional presentations online with editable text, images, shapes, layouts, and presentation tools."
         canonicalPath="/presentation-maker"
         h1="Online Presentation Maker"

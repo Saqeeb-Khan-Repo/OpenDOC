@@ -1,6 +1,6 @@
 import { StudioDocument } from './types';
 
-const DB_NAME = 'DocFlowStudioDB';
+const DB_NAME = 'DocProEditorStudioDB';
 const OLD_DB_NAME = 'OpenDocStudioDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'documents';
