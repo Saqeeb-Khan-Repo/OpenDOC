@@ -49,8 +49,8 @@ export default function App() {
     <GlobalErrorBoundary>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* ── Direct Workspace Entry Route (Redirects to Dashboard) ── */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* ── Official Public Landing Page (Root '/') ── */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/landing" element={<LandingPage />} />
           <Route path="/document-editor" element={<DocumentEditorSeoPage />} />
           <Route path="/presentation-maker" element={<PresentationMakerSeoPage />} />

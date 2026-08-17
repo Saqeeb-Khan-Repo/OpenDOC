@@ -55,7 +55,7 @@ export function LandingPage() {
       <SEOHead
         title="DocProEditor - Online Document Editor, PDF Tools, Presentations & More"
         description="DocProEditor is a simple online workspace for creating and editing documents, presentations, flowcharts, resumes, and PDF files."
-        canonicalPath="/landing"
+        canonicalPath="/"
         h1="Create, Edit, Convert, and Share Your Work All in One Place"
         faqs={HOMEPAGE_FAQS}
         softwareAppSchema={true}

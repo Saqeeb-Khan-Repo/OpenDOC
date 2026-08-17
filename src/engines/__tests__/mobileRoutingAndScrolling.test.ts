@@ -16,11 +16,11 @@ describe('Mobile Scrolling & Root Entry Routing Verification', () => {
     expect(html).not.toContain('maximum-scale=1"');
   });
 
-  it('should redirect root route / directly to /dashboard in App.tsx', () => {
+  it('should render LandingPage directly at root route / in App.tsx', () => {
     const appPath = path.resolve(__dirname, '../../App.tsx');
     const appCode = fs.readFileSync(appPath, 'utf8');
 
-    expect(appCode).toContain('<Route path="/" element={<Navigate to="/dashboard" replace />} />');
+    expect(appCode).toContain('<Route path="/" element={<LandingPage />} />');
   });
 
   it('should use dynamic viewport height 100dvh and safe area insets in AppLayout', () => {
