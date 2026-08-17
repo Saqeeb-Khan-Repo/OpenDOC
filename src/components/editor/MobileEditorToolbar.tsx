@@ -58,6 +58,7 @@ interface MobileEditorToolbarProps {
   onOpenVersionHistoryModal?: () => void;
   onDownload?: () => void;
   onPrint?: () => void;
+  onAddPage?: () => void;
 }
 
 export function MobileEditorToolbar({
@@ -79,6 +80,7 @@ export function MobileEditorToolbar({
   onOpenVersionHistoryModal,
   onDownload,
   onPrint,
+  onAddPage,
 }: MobileEditorToolbarProps) {
   const responsive = useResponsiveEditor();
   // Bottom Sheet Navigation State
@@ -418,6 +420,19 @@ export function MobileEditorToolbar({
                 <ListOrdered className="h-4 w-4" />
               </button>
             </div>
+
+            {/* Quick Add Page Button on Mobile Toolbar */}
+            {onAddPage && (
+              <button
+                type="button"
+                onClick={onAddPage}
+                className="h-8 px-2.5 rounded-lg bg-primary/10 border border-primary/30 text-primary font-bold text-xs flex items-center gap-1 shrink-0 active:scale-95 transition-transform"
+                title="Add New Document Page (+ Page)"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>+ Page</span>
+              </button>
+            )}
           </>
         )}
       </div>
@@ -659,6 +674,26 @@ export function MobileEditorToolbar({
         title="Insert Elements"
       >
         <div className="grid grid-cols-2 gap-2">
+          {/* Add New Page Sheet */}
+          {onAddPage && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSheet(null);
+                onAddPage();
+              }}
+              className="h-14 px-3 rounded-2xl border-2 border-dashed border-primary/50 bg-primary/10 hover:border-primary flex items-center gap-2.5 text-left active:scale-98 transition-all col-span-2"
+            >
+              <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-xs">
+                <Plus className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-bold text-xs text-primary">+ Add New Blank Page</p>
+                <p className="text-[10px] text-muted-foreground">Appends a fresh editable page to this document</p>
+              </div>
+            </button>
+          )}
+
           {/* Table */}
           <button
             type="button"
@@ -812,6 +847,20 @@ export function MobileEditorToolbar({
         title="Page Settings & Layout"
       >
         <div className="space-y-4">
+          {/* Quick Add Page Action */}
+          {onAddPage && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSheet(null);
+                onAddPage();
+              }}
+              className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center gap-2 shadow-xs active:scale-98 transition-all"
+            >
+              <Plus className="h-4 w-4" /> Add New Page Sheet
+            </button>
+          )}
+
           {/* Orientation */}
           <div>
             <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">

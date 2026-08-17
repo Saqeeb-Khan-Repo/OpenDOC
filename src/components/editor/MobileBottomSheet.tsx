@@ -31,16 +31,15 @@ export function MobileBottomSheet({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
 
-  // Lock body scroll when sheet is open
+  // Lock body scroll only while sheet is open and strictly restore previous overflow on close
   useEffect(() => {
-    if (open) {
+    if (open && typeof document !== 'undefined') {
+      const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
   }, [open]);
 
   if (!open) return null;

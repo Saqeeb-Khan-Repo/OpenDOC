@@ -161,6 +161,11 @@ export class PageEngine {
       return ['<p></p>'];
     }
 
+    if (typeof DOMParser === 'undefined') {
+      const parts = htmlContent.split(/<div\s+data-type="page-break"[^>]*><\/div>|<div\s+class="page-break"[^>]*><\/div>/i);
+      return parts.map(p => p.trim() || '<p></p>');
+    }
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(`<div>${htmlContent}</div>`, 'text/html');
     const root = doc.body.firstElementChild;

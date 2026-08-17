@@ -58,12 +58,25 @@ export function DashboardPage() {
 
   return (
     <div className="px-3.5 sm:px-6 py-6 sm:py-8 max-w-6xl mx-auto space-y-6 sm:space-y-8">
-      {/* Greeting */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{greeting} 👋</h1>
-        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-          You have {allDocs.length} document{allDocs.length !== 1 ? 's' : ''} in your workspace
-        </p>
+      {/* Greeting & Single Primary Action */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{greeting} 👋</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            You have {allDocs.length} document{allDocs.length !== 1 ? 's' : ''} in your workspace
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            const doc = createDocument({ title: 'Untitled Document', mode: 'document' });
+            navigate(`/editor/${doc.id}`);
+          }}
+          className="gap-2 shadow-sm font-semibold h-10 px-4"
+          aria-label="Create Document"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Create Document</span>
+        </Button>
       </div>
 
       {/* Quick actions */}

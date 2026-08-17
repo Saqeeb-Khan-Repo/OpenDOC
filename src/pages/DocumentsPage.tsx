@@ -318,7 +318,7 @@ export function DocumentsPage() {
       </div>
 
       {/* Document list */}
-      <div className="flex-1 overflow-auto px-3.5 sm:px-6 py-4">
+      <div className="flex-1 overflow-y-auto overscroll-y-contain touch-pan-y px-3.5 sm:px-6 py-4" style={{ WebkitOverflowScrolling: 'touch' }}>
         {documents.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">

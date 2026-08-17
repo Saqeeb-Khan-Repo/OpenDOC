@@ -33,6 +33,7 @@ import {
   Plus, Minus as MinusIcon, Rows, Columns, Trash, Sparkles
 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
@@ -275,7 +276,7 @@ function FontSizeSelector({ editor }: { editor: Editor }) {
 }
 
 // ── Fixed Top Canva-Style Ribbon Toolbar Component ────────────────────────────
-export function TiptapToolbar({ editor }: { editor: Editor | null }) {
+export function TiptapToolbar({ editor, onAddPage }: { editor: Editor | null; onAddPage?: () => void }) {
   const [linkUrl, setLinkUrl] = useState('')
   const [showLinkInput, setShowLinkInput] = useState(false)
   const [imageModalOpen, setImageModalOpen] = useState(false)
@@ -445,6 +446,12 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48 text-xs">
+              {onAddPage && (
+                <>
+                  <DropdownMenuItem onClick={onAddPage} className="font-semibold text-primary"><Plus className="h-3.5 w-3.5 mr-2" /> Add New Page</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={addImage}><ImageIcon className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Image (Upload / Photo)</DropdownMenuItem>
               <DropdownMenuItem onClick={insertTable}><TableIcon className="h-3.5 w-3.5 mr-2 text-blue-500" /> Table (3x3)</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowLinkInput(true)}><LinkIcon className="h-3.5 w-3.5 mr-2 text-indigo-500" /> Web Link (Ctrl+K)</DropdownMenuItem>
@@ -453,6 +460,20 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
               <DropdownMenuItem onClick={() => editor.chain().focus().setHorizontalRule().run()}><Minus className="h-3.5 w-3.5 mr-2" /> Horizontal Divider</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Add Page Button directly in Toolbar */}
+          {onAddPage && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onAddPage}
+              className="h-7 px-2.5 text-xs gap-1.5 bg-primary/10 text-primary border-primary/30 font-semibold hover:bg-primary/20 shadow-2xs"
+              title="Add a new blank page to this document"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>+ Page</span>
+            </Button>
+          )}
 
           {/* More Formatting Dropdown */}
           <DropdownMenu>

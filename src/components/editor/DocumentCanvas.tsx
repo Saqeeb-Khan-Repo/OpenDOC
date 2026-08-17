@@ -237,6 +237,8 @@ export function DocumentCanvas({
     }
   }, [content, usableHeightPx, printableWidthPx]);
 
+  const [activePageIndex, setActivePageIndex] = useState<number>(0);
+
   const handlePageContentChange = (pageIdx: number, newHtml: string) => {
     const updatedPages = [...pages];
     updatedPages[pageIdx] = newHtml;
@@ -246,14 +248,33 @@ export function DocumentCanvas({
 
   const handleAddNewPage = () => {
     const updated = [...pages, '<p></p>'];
+    const newIdx = updated.length - 1;
     setPages(updated);
+    setActivePageIndex(newIdx);
     onChangeContent(updated.join('\n<div data-type="page-break"></div>\n'));
+    // Smooth scroll to the newly created blank page
+    setTimeout(() => {
+      const pageEls = containerRef.current?.querySelectorAll('[data-page-index]');
+      if (pageEls && pageEls[newIdx]) {
+        pageEls[newIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 80);
+  };
+
+  const handleSelectPage = (pageIdx: number) => {
+    setActivePageIndex(pageIdx);
+    const pageEls = containerRef.current?.querySelectorAll('[data-page-index]');
+    if (pageEls && pageEls[pageIdx]) {
+      pageEls[pageIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   const handleDeletePage = (pageIdx: number) => {
     if (pages.length <= 1) return;
     const updated = pages.filter((_, idx) => idx !== pageIdx);
+    const nextActive = Math.min(updated.length - 1, activePageIndex);
     setPages(updated);
+    setActivePageIndex(nextActive);
     onChangeContent(updated.join('\n<div data-type="page-break"></div>\n'));
   };
 
@@ -378,7 +399,7 @@ export function DocumentCanvas({
       {/* ── Fixed Top Editing Ribbon Toolbar (Row 1 - Desktop Only) ──────────── */}
       <div className="hidden md:block">
         {editable && (
-          <TiptapToolbar editor={activeEditor} />
+          <TiptapToolbar editor={activeEditor} onAddPage={handleAddNewPage} />
         )}
       </div>
 
@@ -738,6 +759,8 @@ export function DocumentCanvas({
           content={content}
           pages={pages}
           pageSettings={pageSettings}
+          activePageIndex={activePageIndex}
+          onSelectPage={handleSelectPage}
           onAddPage={handleAddNewPage}
           onDeletePage={handleDeletePage}
           onOpenImageUploadModal={onOpenImageUploadModal}
@@ -758,11 +781,16 @@ export function DocumentCanvas({
           onDragOver={handleCanvasDragOver}
           onDragLeave={handleCanvasDragLeave}
           onDrop={e => handleCanvasDrop(e, 0)}
-          className={`flex-1 overflow-auto p-3 sm:p-6 md:p-10 flex flex-col items-center touch-pan-x touch-pan-y transition-colors select-text ${
+          className={`flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:p-10 flex flex-col items-center touch-pan-y overscroll-y-contain transition-colors select-text ${
             isDragOverCanvas ? 'bg-primary/5 ring-4 ring-primary/20 ring-inset' : ''
           }`}
           style={{
-            paddingBottom: responsive.isMobile ? (responsive.isKeyboardOpen ? `${responsive.keyboardHeight + 64}px` : '120px') : '40px',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: responsive.isMobile
+              ? (responsive.isKeyboardOpen
+                  ? `${responsive.keyboardHeight + 80}px`
+                  : 'calc(130px + env(safe-area-inset-bottom, 0px))')
+              : '40px',
           }}
         >
           {/* Outer Scaled Wrapper for Centered Document and Precise Scroll Bounds */}
@@ -795,21 +823,29 @@ export function DocumentCanvas({
                   (pageBorder.applyTo === 'except-first-page' && pageIndex !== 0)
                 );
 
+                const isSelected = activePageIndex === pageIndex;
+
                 return (
                   <div
                     key={pageIndex}
-                    className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 rounded-[2px] border border-black/10 dark:border-white/10 flex flex-col relative w-full overflow-hidden select-text group"
+                    data-page-index={pageIndex}
+                    className={cn(
+                      "bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 rounded-[2px] border transition-all duration-150 flex flex-col relative w-full overflow-hidden select-text group",
+                      isSelected ? "border-primary/50 ring-2 ring-primary/20 shadow-xl" : "border-black/10 dark:border-white/10"
+                    )}
                     style={{
                       width: `${baseDims.width}px`,
                       height: `${baseDims.height}px`, // Strict Fixed Height (e.g. 1123px for A4)
                       minHeight: `${baseDims.height}px`,
                       maxHeight: `${baseDims.height}px`,
                       marginBottom: '32px', // 32px CLEAR VISUAL PAGE GAP
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.08)',
+                      boxShadow: isSelected
+                        ? '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+                        : '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.08)',
                       direction: pageSettings.textDirection || 'ltr',
                     }}
                     onClick={() => {
-                      // Click focuses this page's editor
+                      setActivePageIndex(pageIndex);
                     }}
                   >
                     {/* Decorative Page Border Frame Overlay */}
@@ -925,6 +961,19 @@ export function DocumentCanvas({
                   </div>
                 );
               })}
+
+              {/* Bottom "+ Add Page" document action card */}
+              <div className="w-full flex items-center justify-center pt-2 pb-8">
+                <button
+                  type="button"
+                  onClick={handleAddNewPage}
+                  className="gap-2 px-6 py-2.5 text-xs font-bold border-2 border-dashed border-primary/40 bg-card hover:bg-primary/10 hover:border-primary text-primary rounded-2xl shadow-xs transition-all active:scale-98 flex items-center cursor-pointer select-none"
+                  title="Add a fresh blank page to this document"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>+ Add Page (Page {pages.length + 1})</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -986,6 +1035,7 @@ export function DocumentCanvas({
           onOpenVersionHistoryModal={onOpenVersionHistoryModal}
           onDownload={onDownload}
           onPrint={onPrint}
+          onAddPage={handleAddNewPage}
         />
       )}
     </div>

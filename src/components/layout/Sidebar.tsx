@@ -4,7 +4,7 @@ import {
   FileText, Folder, Star, Clock, Trash2, Settings, Plus, Upload,
   LayoutDashboard, FileSearch, Layers, ChevronRight, ChevronDown,
   Briefcase, User, FolderOpen, X, PanelLeftClose, PanelLeft,
-  Presentation, Palette, Sparkles
+  Presentation, Palette, Sparkles, GitFork, UserCheck
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
@@ -141,8 +141,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <div className="space-y-1">
             <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" compact={compactSidebar} />
             <NavItem to="/documents" icon={FileText} label="All Documents" count={totalDocs} compact={compactSidebar} />
-            <NavItem to="/templates" icon={Sparkles} label="Templates" compact={compactSidebar} />
+            <NavItem to="/flowchart" icon={GitFork} label="Flowchart Studio" compact={compactSidebar} />
+            <NavItem to="/resume" icon={UserCheck} label="Resume Builder" compact={compactSidebar} />
             <NavItem to="/import" icon={Layers} label="PDF &amp; Doc Tools" compact={compactSidebar} />
+            <NavItem to="/templates" icon={Sparkles} label="Templates" compact={compactSidebar} />
             <NavItem to="/search" icon={FileSearch} label="Search" compact={compactSidebar} />
           </div>
 

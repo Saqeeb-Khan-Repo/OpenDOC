@@ -49,8 +49,9 @@ export default function App() {
     <GlobalErrorBoundary>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* ── Public Indexable SEO Marketing Pages ────────────────── */}
-          <Route path="/" element={<LandingPage />} />
+          {/* ── Direct Workspace Entry Route (Redirects to Dashboard) ── */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/landing" element={<LandingPage />} />
           <Route path="/document-editor" element={<DocumentEditorSeoPage />} />
           <Route path="/presentation-maker" element={<PresentationMakerSeoPage />} />
           <Route path="/flowchart-maker" element={<FlowchartMakerSeoPage />} />

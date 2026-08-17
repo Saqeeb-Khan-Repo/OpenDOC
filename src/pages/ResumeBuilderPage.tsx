@@ -139,7 +139,7 @@ export function ResumeBuilderPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
+    <div className="h-screen h-[100dvh] min-h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
       <SEOHead
         title="Resume Studio | DocFlow"
         description="DocFlow ATS Resume Studio"
@@ -250,9 +250,10 @@ export function ResumeBuilderPage() {
         {/* ── LEFT: STRUCTURED FORM EDITOR ──────────────────────────────────── */}
         <div
           className={cn(
-            'w-full md:w-[480px] lg:w-[540px] border-r border-border overflow-y-auto p-4 space-y-4 shrink-0 bg-card/40',
+            'w-full md:w-[480px] lg:w-[540px] border-r border-border overflow-y-auto p-4 space-y-4 shrink-0 bg-card/40 touch-pan-y overscroll-y-contain pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-4',
             activeTab === 'preview' ? 'hidden md:block' : 'block'
           )}
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {/* Section 1: Personal Information */}
           <div className="border border-border rounded-xl bg-background p-4 space-y-3">
@@ -488,9 +489,10 @@ export function ResumeBuilderPage() {
         {/* ── RIGHT: LIVE INSTANT A4 RESUME PREVIEW ─────────────────────────── */}
         <div
           className={cn(
-            'flex-1 bg-[#0f172a]/5 dark:bg-[#020617]/50 overflow-y-auto p-4 sm:p-8 flex justify-center items-start',
+            'flex-1 bg-[#0f172a]/5 dark:bg-[#020617]/50 overflow-y-auto p-4 sm:p-8 flex justify-center items-start touch-pan-y overscroll-y-contain pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-8',
             activeTab === 'editor' ? 'hidden md:flex' : 'flex'
           )}
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <div
             className="w-full max-w-[794px] min-h-[1123px] bg-white text-[#0f172a] shadow-xl rounded-sm p-8 sm:p-12 transition-all"

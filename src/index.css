@@ -274,6 +274,18 @@
   touch-action: pan-x;
 }
 
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+.overscroll-y-contain {
+  overscroll-behavior-y: contain;
+}
+
+.scrolling-touch {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Print styles */
 @media print {
   body {

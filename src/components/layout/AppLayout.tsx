@@ -19,7 +19,7 @@ export function AppLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden flex-col md:flex-row">
+    <div className="flex min-h-screen min-h-[100dvh] h-[100dvh] bg-background overflow-hidden flex-col md:flex-row">
       <SEOHead
         title="DocFlow Workspace"
         description="DocFlow Workspace"
@@ -27,15 +27,15 @@ export function AppLayout() {
         noindex={true}
       />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 pb-16 md:pb-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
         <TopBar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-y-auto overscroll-y-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
           <Outlet />
         </main>
       </div>
 
       {/* ── Mobile Bottom Navigation Bar (< 768px) ───────────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-background/95 backdrop-blur border-t border-border z-40 flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom,0px)] shadow-lg select-none">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(3.5rem+env(safe-area-inset-bottom,0px))] bg-background/95 backdrop-blur border-t border-border z-40 flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom,0px)] shadow-lg select-none">
         <NavLink
           to="/dashboard"
           className={({ isActive }) =>
@@ -66,7 +66,8 @@ export function AppLayout() {
         <button
           type="button"
           onClick={handleQuickNewDoc}
-          className="flex flex-col items-center justify-center -mt-4 bg-primary text-white h-11 w-11 rounded-full shadow-md hover:scale-105 active:scale-95 transition-transform"
+          aria-label="Create New Document"
+          className="flex flex-col items-center justify-center -mt-4 bg-primary text-white h-11 w-11 rounded-full shadow-md hover:scale-105 active:scale-95 transition-transform cursor-pointer"
           title="Create New Document"
         >
           <Plus className="h-5 w-5" />

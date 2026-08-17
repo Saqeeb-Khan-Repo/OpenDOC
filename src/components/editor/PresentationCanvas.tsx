@@ -21,7 +21,7 @@ import {
   Image as ImageIcon, BarChart3, GitFork, QrCode, FileText, ChevronDown,
   ArrowUp, ArrowDown, Sparkles, Undo2, Redo2, Layers, Check,
   Move, RotateCcw, Crop, RefreshCw, RotateCw, Sliders, ArrowUpSquare,
-  ArrowDownSquare, ChevronUp, ChevronRight, Minus
+  ArrowDownSquare, ChevronUp, ChevronRight, ChevronLeft, Minus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/cn';
@@ -125,13 +125,60 @@ export function PresentationCanvas({
 
   const SLIDE_CANONICAL_WIDTH = 960;
   const SLIDE_CANONICAL_HEIGHT = 540;
-  const stagePadding = responsive.isMobile ? 12 : 32;
-  const availWidth = Math.max(120, containerSize.width - stagePadding * 2);
+  const stagePadding = responsive.isMobile ? 8 : 24;
+  const navButtonsWidth = responsive.isMobile ? 64 : 110;
+  const availWidth = Math.max(120, containerSize.width - stagePadding * 2 - navButtonsWidth);
   const availHeight = Math.max(120, containerSize.height - stagePadding * 2);
   const computedScale = Math.min(
     availWidth / SLIDE_CANONICAL_WIDTH,
     availHeight / SLIDE_CANONICAL_HEIGHT
   );
+
+  // ── Slide Navigation Boundaries & Handlers ──────────────────────────────────
+  const hasPrev = safeActiveIndex > 0;
+  const hasNext = safeActiveIndex < validSlides.length - 1;
+
+  const handlePrevSlide = useCallback(() => {
+    if (safeActiveIndex > 0) {
+      setSelectedElementId(null);
+      onChangeActiveSlideIndex(safeActiveIndex - 1);
+    }
+  }, [safeActiveIndex, onChangeActiveSlideIndex]);
+
+  const handleNextSlide = useCallback(() => {
+    if (safeActiveIndex < validSlides.length - 1) {
+      setSelectedElementId(null);
+      onChangeActiveSlideIndex(safeActiveIndex + 1);
+    }
+  }, [safeActiveIndex, validSlides.length, onChangeActiveSlideIndex]);
+
+  // Keyboard navigation (ArrowLeft/ArrowRight/PageUp/PageDown)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isTyping = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.getAttribute('contenteditable') === 'true'
+      );
+      if (isTyping) return;
+
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        if (safeActiveIndex > 0) {
+          e.preventDefault();
+          handlePrevSlide();
+        }
+      } else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        if (safeActiveIndex < validSlides.length - 1) {
+          e.preventDefault();
+          handleNextSlide();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [safeActiveIndex, validSlides.length, handlePrevSlide, handleNextSlide]);
 
   // ── Update Helper ───────────────────────────────────────────────────────────
   const updateActiveSlide = (newSlide: Slide) => {
@@ -435,168 +482,212 @@ export function PresentationCanvas({
           {/* Main Slide Canvas Viewport with Canonical Proportional Scaling */}
           <div
             ref={stageContainerRef}
-            className="flex-1 flex items-center justify-center p-2 sm:p-6 overflow-hidden relative"
+            className="flex-1 flex items-center justify-center p-2 sm:p-6 overflow-y-auto overflow-x-hidden relative touch-pan-y overscroll-y-contain pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-6"
+            style={{ WebkitOverflowScrolling: 'touch' }}
             onClick={() => setSelectedElementId(null)}
           >
-            {/* Canonical 960x540 Slide Canvas with Uniform Transform Scale */}
-            <div
-              style={{
-                width: '960px',
-                height: '540px',
-                transform: `scale(${computedScale})`,
-                transformOrigin: 'center center',
-                background: currentSlideBackground,
-              }}
-              className="rounded-xl shadow-2xl border border-black/10 dark:border-white/10 relative shrink-0 transition-transform duration-75 group/stage select-text"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedElementId(null);
-              }}
-            >
-              {activeSlide.elements.map(el => {
-                const isSelected = selectedElementId === el.id;
+            {/* ── Slide Stage Row with Left & Right Navigation Buttons ──────── */}
+            <div className="flex items-center justify-center gap-1.5 sm:gap-3 md:gap-5 w-full max-w-full relative select-none">
+              {/* ◀ Left: Previous Slide Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrevSlide();
+                }}
+                disabled={!hasPrev}
+                aria-label="Previous slide"
+                title={hasPrev ? `Previous Slide (Slide ${safeActiveIndex} of ${validSlides.length})` : 'First Slide'}
+                className={cn(
+                  "h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12 rounded-full border border-border bg-background/90 backdrop-blur-md shadow-md flex items-center justify-center transition-all z-20 shrink-0 select-none",
+                  hasPrev
+                    ? "text-foreground hover:bg-primary hover:text-white hover:border-primary active:scale-95 cursor-pointer hover:shadow-lg"
+                    : "text-muted-foreground/30 border-border/40 bg-background/40 cursor-not-allowed opacity-30 pointer-events-none"
+                )}
+              >
+                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </button>
 
-                return (
-                  <div
-                    key={el.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedElementId(el.id);
-                    }}
-                    style={{
-                      position: 'absolute',
-                      left: `${el.transform.x}px`,
-                      top: `${el.transform.y}px`,
-                      width: `${el.transform.width}px`,
-                      height: `${el.transform.height}px`,
-                      transform: el.transform.rotation ? `rotate(${el.transform.rotation}deg)` : undefined,
-                      border: isSelected ? '2px solid #2563EB' : '1px solid transparent',
-                      ...el.style,
-                    }}
-                    className={`group/el relative ${isSelected ? 'shadow-lg ring-2 ring-primary/40' : ''}`}
-                  >
-                    {/* Element Type Rendering */}
-                    {el.type === 'image' ? (
-                      <div className="w-full h-full overflow-hidden flex items-center justify-center pointer-events-none">
-                        <img
-                          src={el.content || ''}
-                          alt="Slide Image"
+              {/* Canonical 960x540 Slide Canvas with Uniform Transform Scale */}
+              <div
+                style={{
+                  width: '960px',
+                  height: '540px',
+                  transform: `scale(${computedScale})`,
+                  transformOrigin: 'center center',
+                  background: currentSlideBackground,
+                }}
+                className="rounded-xl shadow-2xl border border-black/10 dark:border-white/10 relative shrink-0 transition-transform duration-75 group/stage select-text"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedElementId(null);
+                }}
+              >
+                {activeSlide.elements.map(el => {
+                  const isSelected = selectedElementId === el.id;
+
+                  return (
+                    <div
+                      key={el.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedElementId(el.id);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        left: `${el.transform.x}px`,
+                        top: `${el.transform.y}px`,
+                        width: `${el.transform.width}px`,
+                        height: `${el.transform.height}px`,
+                        transform: el.transform.rotation ? `rotate(${el.transform.rotation}deg)` : undefined,
+                        border: isSelected ? '2px solid #2563EB' : '1px solid transparent',
+                        ...el.style,
+                      }}
+                      className={`group/el relative ${isSelected ? 'shadow-lg ring-2 ring-primary/40' : ''}`}
+                    >
+                      {/* Element Type Rendering */}
+                      {el.type === 'image' ? (
+                        <div className="w-full h-full overflow-hidden flex items-center justify-center pointer-events-none">
+                          <img
+                            src={el.content || ''}
+                            alt="Slide Image"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              borderRadius: el.style?.cornerRadius || 8,
+                              opacity: el.style?.opacity ?? 1,
+                            }}
+                          />
+                        </div>
+                      ) : el.type === 'shape' ? (
+                        <div
+                          className="w-full h-full flex items-center justify-center p-2 text-center"
                           style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
+                            backgroundColor: el.style?.fill || '#2563eb',
                             borderRadius: el.style?.cornerRadius || 8,
+                            border: el.style?.stroke ? `${el.style.strokeWidth || 1}px solid ${el.style.stroke}` : undefined,
                             opacity: el.style?.opacity ?? 1,
                           }}
-                        />
-                      </div>
-                    ) : el.type === 'shape' ? (
-                      <div
-                        className="w-full h-full flex items-center justify-center p-2 text-center"
-                        style={{
-                          backgroundColor: el.style?.fill || '#2563eb',
-                          borderRadius: el.style?.cornerRadius || 8,
-                          border: el.style?.stroke ? `${el.style.strokeWidth || 1}px solid ${el.style.stroke}` : undefined,
-                          opacity: el.style?.opacity ?? 1,
-                        }}
-                      >
-                        {el.content ? (
-                          <div
-                            contentEditable
-                            suppressContentEditableWarning
-                            onBlur={e => {
-                              const nextEls = activeSlide.elements.map(item =>
-                                item.id === el.id ? { ...item, content: e.currentTarget.innerHTML } : item
-                              );
-                              updateActiveSlide({ ...activeSlide, elements: nextEls });
-                            }}
-                            dangerouslySetInnerHTML={{ __html: el.content }}
-                            className="w-full h-full outline-none select-text"
-                          />
-                        ) : null}
-                      </div>
-                    ) : (
-                      /* Rich Text Box / Table / KaTeX */
-                      <div
-                        contentEditable
-                        suppressContentEditableWarning
-                        onBlur={e => {
-                          const nextEls = activeSlide.elements.map(item =>
-                            item.id === el.id ? { ...item, content: e.currentTarget.innerHTML } : item
-                          );
-                          updateActiveSlide({ ...activeSlide, elements: nextEls });
-                        }}
-                        dangerouslySetInnerHTML={{ __html: el.content || '' }}
-                        className="w-full h-full outline-none select-text"
-                      />
-                    )}
-
-                    {/* Transform Handles when selected */}
-                    {isSelected && (
-                      <>
-                        <div className="absolute -top-1.5 -left-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
-                        <div className="absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
-                        <div className="absolute -bottom-1.5 -left-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
-                        <div className="absolute -bottom-1.5 -right-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
-
-                        {/* Contextual Action Bar Floating Above Element */}
-                        <div
-                          className="absolute -top-9 left-0 bg-background/95 backdrop-blur border border-border shadow-lg rounded-md px-1.5 py-0.5 flex items-center gap-1 z-30 select-none"
-                          onClick={e => e.stopPropagation()}
                         >
-                          {el.type === 'image' && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => setCropTarget(el)}
-                                className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
-                                title="Crop Image"
-                              >
-                                <Crop className="h-3 w-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => replaceFileInputRef.current?.click()}
-                                className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
-                                title="Replace Image"
-                              >
-                                <RefreshCw className="h-3 w-3" />
-                              </button>
-                            </>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const nextRot = ((el.transform.rotation || 0) + 90) % 360;
-                              handleUpdateSelectedElement({ transform: { ...el.transform, rotation: nextRot } });
-                            }}
-                            className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
-                            title="Rotate 90°"
-                          >
-                            <RotateCw className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleDuplicateSelectedElement}
-                            className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
-                            title="Duplicate (Ctrl+D)"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleDeleteSelectedElement}
-                            className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive text-xs"
-                            title="Delete Element"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                          {el.content ? (
+                            <div
+                              contentEditable
+                              suppressContentEditableWarning
+                              onBlur={e => {
+                                const nextEls = activeSlide.elements.map(item =>
+                                  item.id === el.id ? { ...item, content: e.currentTarget.innerHTML } : item
+                                );
+                                updateActiveSlide({ ...activeSlide, elements: nextEls });
+                              }}
+                              dangerouslySetInnerHTML={{ __html: el.content }}
+                              className="w-full h-full outline-none select-text"
+                            />
+                          ) : null}
                         </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+                      ) : (
+                        /* Rich Text Box / Table / KaTeX */
+                        <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          onBlur={e => {
+                            const nextEls = activeSlide.elements.map(item =>
+                              item.id === el.id ? { ...item, content: e.currentTarget.innerHTML } : item
+                            );
+                            updateActiveSlide({ ...activeSlide, elements: nextEls });
+                          }}
+                          dangerouslySetInnerHTML={{ __html: el.content || '' }}
+                          className="w-full h-full outline-none select-text"
+                        />
+                      )}
+
+                      {/* Transform Handles when selected */}
+                      {isSelected && (
+                        <>
+                          <div className="absolute -top-1.5 -left-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
+                          <div className="absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
+                          <div className="absolute -bottom-1.5 -left-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
+                          <div className="absolute -bottom-1.5 -right-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
+
+                          {/* Contextual Action Bar Floating Above Element */}
+                          <div
+                            className="absolute -top-9 left-0 bg-background/95 backdrop-blur border border-border shadow-lg rounded-md px-1.5 py-0.5 flex items-center gap-1 z-30 select-none"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            {el.type === 'image' && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setCropTarget(el)}
+                                  className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
+                                  title="Crop Image"
+                                >
+                                  <Crop className="h-3 w-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => replaceFileInputRef.current?.click()}
+                                  className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
+                                  title="Replace Image"
+                                >
+                                  <RefreshCw className="h-3 w-3" />
+                                </button>
+                              </>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextRot = ((el.transform.rotation || 0) + 90) % 360;
+                                handleUpdateSelectedElement({ transform: { ...el.transform, rotation: nextRot } });
+                              }}
+                              className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
+                              title="Rotate 90°"
+                            >
+                              <RotateCw className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDuplicateSelectedElement}
+                              className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
+                              title="Duplicate (Ctrl+D)"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDeleteSelectedElement}
+                              className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive text-xs"
+                              title="Delete Element"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ▶ Right: Next Slide Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNextSlide();
+                }}
+                disabled={!hasNext}
+                aria-label="Next slide"
+                title={hasNext ? `Next Slide (Slide ${safeActiveIndex + 2} of ${validSlides.length})` : 'Last Slide'}
+                className={cn(
+                  "h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12 rounded-full border border-border bg-background/90 backdrop-blur-md shadow-md flex items-center justify-center transition-all z-20 shrink-0 select-none",
+                  hasNext
+                    ? "text-foreground hover:bg-primary hover:text-white hover:border-primary active:scale-95 cursor-pointer hover:shadow-lg"
+                    : "text-muted-foreground/30 border-border/40 bg-background/40 cursor-not-allowed opacity-30 pointer-events-none"
+                )}
+              >
+                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </button>
             </div>
           </div>
 

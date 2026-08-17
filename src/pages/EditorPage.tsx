@@ -447,7 +447,7 @@ export function EditorPage() {
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-background overflow-hidden">
+    <div className="flex flex-col h-[100dvh] min-h-[100dvh] bg-background overflow-hidden">
       <SEOHead
         title={`${doc.title || 'Untitled Document'} | DocFlow`}
         description="DocFlow Document Editor"

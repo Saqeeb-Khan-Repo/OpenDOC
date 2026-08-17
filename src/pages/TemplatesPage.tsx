@@ -76,7 +76,7 @@ export function TemplatesPage() {
       </div>
 
       {/* Templates Grid */}
-      <div className="flex-1 overflow-auto p-3.5 sm:p-6">
+      <div className="flex-1 overflow-y-auto overscroll-y-contain touch-pan-y p-3.5 sm:p-6" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
           {filtered.map(tmpl => {
             return (

@@ -151,7 +151,7 @@ export function FolderPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-6 py-4 space-y-6">
+      <div className="flex-1 overflow-y-auto overscroll-y-contain touch-pan-y px-3.5 sm:px-6 py-4 space-y-6" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* Subfolders */}
         {subfolders.length > 0 && (
           <div>
