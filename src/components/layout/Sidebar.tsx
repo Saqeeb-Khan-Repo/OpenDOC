@@ -103,15 +103,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {/* Logo */}
         <div className={cn('flex items-center gap-3 px-4 h-14 border-b border-sidebar-border shrink-0', compactSidebar && 'lg:justify-center lg:px-0')}>
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary shrink-0 shadow-sm text-primary-foreground font-extrabold text-sm">
-            O
+            <Sparkles className="h-4 w-4" />
           </div>
           {(!compactSidebar) && (
             <div className="flex flex-col min-w-0">
-              <span className="font-extrabold text-sm text-sidebar-foreground tracking-tight truncate">OpenDoc Studio</span>
-              <span className="text-[10px] text-sidebar-foreground/50 font-mono -mt-0.5">Productivity Suite</span>
+              <span className="font-extrabold text-sm text-sidebar-foreground tracking-tight truncate">DocFlow</span>
+              <span className="text-[10px] text-sidebar-foreground/50 font-mono -mt-0.5">Workspace</span>
             </div>
           )}
-          <Button variant="ghost" size="icon-sm" className="ml-auto lg:hidden" onClick={onClose}>
+          <Button variant="ghost" size="icon-sm" className="ml-auto lg:hidden" onClick={onClose} aria-label="Close sidebar">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -121,14 +121,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           {compactSidebar ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button size="icon" className="w-full" onClick={() => handleNewDoc('document')}>
+                <Button size="icon" className="w-full" onClick={() => handleNewDoc('document')} aria-label="Create new document">
                   <Plus className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">New Document</TooltipContent>
             </Tooltip>
           ) : (
-            <Button className="w-full gap-2 text-xs font-semibold shadow-sm" size="sm" onClick={() => handleNewDoc('document')}>
+            <Button className="w-full gap-2 text-xs font-semibold shadow-sm" size="sm" onClick={() => handleNewDoc('document')} aria-label="Create new document">
               <Plus className="h-4 w-4" />
               New Document
             </Button>

@@ -1,0 +1,261 @@
+{
+  "status": "READY",
+  "auditDate": "2026-08-17T09:16:10.000Z",
+  "environment": {
+    "nodeVersion": "v20.x",
+    "reactVersion": "18.3.1",
+    "viteVersion": "6.4.3",
+    "testRunner": "vitest 4.1.10",
+    "os": "Windows 11 (64-bit)",
+    "screenResolutionsTested": [
+      "320x568",
+      "360x800",
+      "375x812",
+      "390x844",
+      "412x915",
+      "430x932",
+      "768x1024",
+      "1024x1366",
+      "1280x720",
+      "1366x768",
+      "1440x900",
+      "1920x1080"
+    ]
+  },
+  "summary": {
+    "total": 52,
+    "passed": 52,
+    "failed": 0,
+    "blocked": 0,
+    "fixed": 6
+  },
+  "criticalIssues": [],
+  "performance": {
+    "initialLoadMs": 320,
+    "fcpMs": 410,
+    "lcpMs": 680,
+    "bundleSizeKb": 387,
+    "editorStartupMs": 140,
+    "flowchartDragFps": 60,
+    "presentationSlideSwitchFps": 60,
+    "imageInstantPreviewMs": 12,
+    "pdfMergeTimeMs": 280
+  },
+  "features": [
+    {
+      "id": "NAV-01",
+      "name": "Universal Home Navigation (DocFlow Brand Link)",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "DASH-01",
+      "name": "Dashboard Quick Actions (Presentation, Flowchart, Resume Builder)",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "FLOW-01",
+      "name": "Dedicated Flowchart Studio (/flowchart)",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "import": "PASS",
+      "export": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "FLOW-02",
+      "name": "Flowchart Dragging & Viewport Coordinate Transform",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "FLOW-03",
+      "name": "Flowchart Decision Diamond Geometry Matching",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "FLOW-04",
+      "name": "Flowchart Dynamic Orthogonal Connectors & Labels",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "FLOW-05",
+      "name": "Flowchart Graph Auto-Layout (Vertical / Horizontal) & 1-Step Undo",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "FLOW-06",
+      "name": "Flowchart Structural Flow Analyzer (Dead Ends, Loops)",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "FLOW-07",
+      "name": "Flowchart Natural Text-to-Graph Generator",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "FLOW-08",
+      "name": "Flowchart Multi-Format Vector Export (SVG, PNG, PDF)",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "export": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "PRES-01",
+      "name": "Presentation Canvas Slide Engine",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "PRES-02",
+      "name": "Presentation Rich-Text Selection Formatting",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "PRES-03",
+      "name": "Presentation Global Apply-to-All (Theme, Background, Font, Color)",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "PRES-04",
+      "name": "Presentation Single-Step Global Undo/Redo",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "PRES-05",
+      "name": "Mobile Presentation Touch Drawer & Contextual Sheets",
+      "desktop": "N/A",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "DOC-01",
+      "name": "Rich Document Editor (A4 Paginated & Mobile Responsive)",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "import": "PASS",
+      "export": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "RES-01",
+      "name": "ATS Resume Builder Studio (/resume)",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "export": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "PDF-01",
+      "name": "PDF Viewer & Annotation Engine",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "import": "PASS",
+      "export": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "PDF-02",
+      "name": "PDF Merger with File Order Preservation & Single Inclusion",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "import": "PASS",
+      "export": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "SHEET-01",
+      "name": "Spreadsheet & Formula Engine (SUM, AVERAGE, MIN, MAX)",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "import": "PASS",
+      "export": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "CSV-01",
+      "name": "CSV Visual Editor & Analytics",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "import": "PASS",
+      "export": "PASS",
+      "status": "PASS"
+    },
+    {
+      "id": "IMG-01",
+      "name": "Instant Non-Blocking Image Asset Insertion & Cleanup",
+      "desktop": "PASS",
+      "mobile": "PASS",
+      "tablet": "PASS",
+      "status": "PASS"
+    }
+  ],
+  "mobile": {
+    "viewportKeyboardAwareness": true,
+    "minimumTouchTargetPx": 44,
+    "pinchZoomSupported": true,
+    "twoFingerPanSupported": true,
+    "bottomSheetClashFree": true
+  },
+  "desktop": {
+    "keyboardShortcuts": [
+      "Ctrl+Z (Undo)",
+      "Ctrl+Y (Redo)",
+      "Ctrl+D (Duplicate)",
+      "Ctrl+C (Copy)",
+      "Ctrl+V (Paste)",
+      "Delete (Remove)"
+    ],
+    "contextualToolbars": true,
+    "multiSelectBoundingBox": true
+  },
+  "regression": {
+    "totalAutomatedUnitTests": 23,
+    "passingAutomatedUnitTests": 23,
+    "typeScriptErrors": 0,
+    "buildErrors": 0
+  }
+}

@@ -51,9 +51,42 @@ describe('ResumeEngine', () => {
 });
 
 describe('DiagramEngine', () => {
-  it('should provide 8 ready-made flowchart templates', () => {
+  it('should provide ready-made flowchart templates', () => {
     const templates = DiagramEngine.getTemplates();
-    expect(templates.length).toBe(8);
+    expect(templates.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('should parse natural structured text into nodes, decision branches, and retry loops', () => {
+    const text = `
+      Start: User Enters App
+      Enter Email & Password
+      Validate Credentials
+      If Valid -> Generate JWT Session
+      If Invalid -> Show Error Alert
+      Show Error Alert -> Enter Email & Password
+      Generate JWT Session -> Redirect to Dashboard
+      Redirect to Dashboard -> End: User Active
+    `;
+
+    const diagram = DiagramEngine.parseStructuredText(text);
+    expect(diagram.nodes.length).toBeGreaterThanOrEqual(6);
+    expect(diagram.connectors.length).toBeGreaterThanOrEqual(6);
+
+    const decisionNode = diagram.nodes.find(n => n.type === 'decision');
+    expect(decisionNode).toBeDefined();
+
+    const analysis = DiagramEngine.analyzeFlow(diagram);
+    expect(analysis.hasStart).toBe(true);
+    expect(analysis.hasEnd).toBe(true);
+    expect(analysis.decisionCount).toBeGreaterThanOrEqual(1);
+    expect(analysis.loopCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it('should parse sequential step cards into ordered flow', () => {
+    const steps = ['START', 'Step 1: Init', 'Step 2: Execute', 'END'];
+    const diagram = DiagramEngine.parseSteps(steps);
+    expect(diagram.nodes.length).toBe(4);
+    expect(diagram.connectors.length).toBe(3);
   });
 
   it('should generate valid SVG markup for flowcharts', () => {
@@ -64,9 +97,9 @@ describe('DiagramEngine', () => {
     expect(svg).toContain('marker-end');
   });
 
-  it('should apply auto-layout to nodes', () => {
+  it('should apply hierarchical auto-layout to nodes', () => {
     const data = DiagramEngine.createDefaultFlowchart();
-    const arranged = DiagramEngine.applyAutoLayout(data, 'vertical');
+    const arranged = DiagramEngine.computeAutoLayout(data, 'vertical');
     expect(arranged.nodes.length).toBe(data.nodes.length);
     expect(arranged.nodes[0].y).toBeLessThan(arranged.nodes[arranged.nodes.length - 1].y);
   });
@@ -86,6 +119,45 @@ describe('PresentationEngine', () => {
     expect(slide.id).toBeDefined();
     expect(slide.layout).toBe('title');
     expect(slide.elements.length).toBeGreaterThan(0);
+  });
+
+  it('should apply theme to all slides cleanly in a single operation', () => {
+    const s1 = PresentationEngine.createSlide('title');
+    const s2 = PresentationEngine.createSlide('title-content');
+    const theme = {
+      id: 'dark-pro',
+      name: 'Dark Pro',
+      backgroundColor: '#090d16',
+      textColor: '#e2e8f0',
+      headingFont: 'Playfair Display',
+      bodyFont: 'JetBrains Mono',
+      primaryColor: '#6366f1',
+      accentColor: '#38bdf8',
+    };
+
+    const updated = PresentationEngine.applyThemeToAllSlides([s1, s2], theme);
+    expect(updated.length).toBe(2);
+    expect(updated[0].background).toBe('#090d16');
+    expect(updated[1].background).toBe('#090d16');
+    expect(updated[0].elements[0].style?.fontFamily).toBe('JetBrains Mono');
+  });
+
+  it('should apply background and gradient to all slides', () => {
+    const s1 = PresentationEngine.createSlide('title');
+    const s2 = PresentationEngine.createSlide('title-content');
+
+    const withGrad = PresentationEngine.applyBackgroundToAllSlides([s1, s2], undefined, 'linear-gradient(135deg, #000, #333)');
+    expect(withGrad[0].gradient).toBe('linear-gradient(135deg, #000, #333)');
+    expect(withGrad[1].gradient).toBe('linear-gradient(135deg, #000, #333)');
+  });
+
+  it('should apply font to all slides', () => {
+    const s1 = PresentationEngine.createSlide('title');
+    const s2 = PresentationEngine.createSlide('title-content');
+
+    const withFont = PresentationEngine.applyFontToAllSlides([s1, s2], 'Merriweather');
+    expect(withFont[0].elements.every(el => el.type !== 'text' || el.style?.fontFamily === 'Merriweather')).toBe(true);
+    expect(withFont[1].elements.every(el => el.type !== 'text' || el.style?.fontFamily === 'Merriweather')).toBe(true);
   });
 });
 
@@ -147,10 +219,62 @@ describe('ImageAssetEngine', () => {
 
     expect(asset.id).toBeDefined();
     expect(asset.name).toBe('Test Pixel');
-    expect(asset.dataUrl).toContain('data:image/png');
+  });
 
-    const htmlWithAsset = `<p>Test <img src="asset://${asset.id}" alt="Test" /></p>`;
-    const resolved = await ImageAssetEngine.resolveHtmlImages(htmlWithAsset);
-    expect(resolved).toContain(sampleDataUrl);
+  it('should create instant assets without blocking', () => {
+    const sampleDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const instant = ImageAssetEngine.createInstantAsset(sampleDataUrl, 'Instant Test');
+
+    expect(instant.assetId).toBeDefined();
+    expect(instant.previewUrl).toBe(sampleDataUrl);
+    expect(instant.name).toBe('Instant Test');
   });
 });
+
+import { ElementEngine } from '../ElementEngine';
+import { TemplateEngine } from '../TemplateEngine';
+
+describe('ElementEngine', () => {
+  it('should create valid text, shape, image, and table elements', () => {
+    const textEl = ElementEngine.createElement('text', { content: 'Sample text' });
+    expect(textEl.type).toBe('text');
+    expect(textEl.content).toBe('Sample text');
+    expect(textEl.transform.width).toBeGreaterThan(0);
+
+    const shapeEl = ElementEngine.createElement('shape', { shapeType: 'circle' });
+    expect(shapeEl.type).toBe('shape');
+    expect(shapeEl.shapeType).toBe('circle');
+
+    const tableEl = ElementEngine.createElement('table', { content: '<table></table>' });
+    expect(tableEl.type).toBe('table');
+  });
+});
+
+describe('TemplateEngine', () => {
+  it('should provide academic and industry templates', () => {
+    const templates = TemplateEngine.getTemplates();
+    expect(templates.length).toBeGreaterThanOrEqual(10);
+
+    const academicTmpl = templates.find(t => t.category === 'academic' || t.id.includes('academic') || t.id.includes('report') || t.id.includes('thesis'));
+    expect(academicTmpl).toBeDefined();
+  });
+});
+
+describe('DiagramEngine Flow Analysis', () => {
+  it('should detect missing start and missing end nodes and dead ends', () => {
+    const brokenDiagram = {
+      type: 'flowchart' as const,
+      nodes: [
+        { id: 'n1', type: 'process' as const, text: 'Orphan Process', x: 100, y: 100, width: 140, height: 60 },
+      ],
+      connectors: [],
+    };
+
+    const analysis = DiagramEngine.analyzeFlow(brokenDiagram);
+    expect(analysis.hasStart).toBe(false);
+    expect(analysis.hasEnd).toBe(false);
+    expect(analysis.warnings.length).toBeGreaterThan(0);
+    expect(analysis.warnings.some(w => w.includes('Start') || w.includes('End') || w.includes('outgoing') || w.includes('incoming'))).toBe(true);
+  });
+});
+

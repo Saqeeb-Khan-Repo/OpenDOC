@@ -61,7 +61,7 @@ export function PresenterModal({ open, onClose, slides, initialSlideIndex = 0, s
       <div className="h-14 border-b border-white/10 px-6 flex items-center justify-between bg-zinc-950/80 backdrop-blur">
         <div className="flex items-center gap-4">
           <span className="font-semibold text-sm tracking-wide text-zinc-300">
-            OpenDoc Presenter Mode
+            DocFlow Presenter Mode
           </span>
           <div className="h-4 w-px bg-white/20" />
           <span className="text-xs font-mono bg-white/10 px-2.5 py-1 rounded-full text-zinc-300">

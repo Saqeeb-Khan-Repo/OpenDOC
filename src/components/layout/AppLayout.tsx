@@ -6,6 +6,7 @@ import { ToastContainer } from '@/components/common/ToastContainer';
 import { useDocumentsStore } from '@/store/documentsStore';
 import { LayoutDashboard, FileText, Plus, Sparkles, Upload, Home } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { SEOHead } from '@/components/seo/SEOHead';
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -19,6 +20,12 @@ export function AppLayout() {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden flex-col md:flex-row">
+      <SEOHead
+        title="DocFlow Workspace"
+        description="DocFlow Workspace"
+        canonicalPath="/dashboard"
+        noindex={true}
+      />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 pb-16 md:pb-0">
         <TopBar onMenuClick={() => setSidebarOpen(true)} />

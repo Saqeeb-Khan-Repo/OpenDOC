@@ -45,23 +45,38 @@ export function ImportPage() {
     setSearchParams({ tab });
   };
 
+  const isMountedRef = React.useRef(true);
+
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const processFile = async (file: File) => {
+    if (!file) return;
     const id = Math.random().toString(36).slice(2);
-    setFiles(prev => [
-      {
-        id,
-        name: file.name,
-        status: 'reading',
-        stepMessage: 'Parsing document XML and styles...',
-        progressPercent: 20,
-        isOcr: false,
-      },
-      ...prev,
-    ]);
+
+    if (isMountedRef.current) {
+      setFiles(prev => [
+        {
+          id,
+          name: file.name,
+          status: 'reading',
+          stepMessage: 'Parsing document XML and styles...',
+          progressPercent: 20,
+          isOcr: false,
+        },
+        ...prev,
+      ]);
+    }
 
     try {
       let result: ImportResult;
-      setFiles(prev => prev.map(f => f.id === id ? { ...f, stepMessage: 'Reading document structure & tables...', progressPercent: 60 } : f));
+      if (isMountedRef.current) {
+        setFiles(prev => prev.map(f => f.id === id ? { ...f, stepMessage: 'Reading document structure & tables...', progressPercent: 60 } : f));
+      }
       result = await ImportEngine.parseFile(file);
 
       // Create interactive studio document
@@ -72,12 +87,16 @@ export function ImportPage() {
         initialData: result.parsedDoc as any,
       });
 
-      setFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'done', docId: doc.id, stepMessage: 'Ready to edit', progressPercent: 100 } : f));
-      toast.success(`Successfully imported "${result.title}"`);
+      if (isMountedRef.current) {
+        setFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'done', docId: doc.id, stepMessage: 'Ready to edit', progressPercent: 100 } : f));
+        toast.success(`Successfully imported "${result.title}"`);
+      }
     } catch (err: any) {
       console.error('Import failure:', err);
-      setFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error', error: err?.message || 'Failed to parse file format' } : f));
-      toast.error(`Failed to import "${file.name}"`);
+      if (isMountedRef.current) {
+        setFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error', error: err?.message || 'Failed to parse file format' } : f));
+        toast.error(`Failed to import "${file.name}": ${err?.message || 'Unsupported format'}`);
+      }
     }
   };
 

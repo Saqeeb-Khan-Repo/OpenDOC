@@ -9,19 +9,77 @@ export interface ImageAsset {
   aspectRatio: number;
   size: number;
   createdAt: string;
+  isOptimized?: boolean;
+}
+
+export interface InstantPreviewAsset {
+  assetId: string;
+  previewUrl: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  width: number;
+  height: number;
 }
 
 const DB_NAME = 'OpenDocStudioDB';
-const DB_VERSION = 2; // Incremented for image assets store
+const DB_VERSION = 2;
 const STORE_NAME_IMAGES = 'images';
 const STORE_NAME_DOCUMENTS = 'documents';
+
+type AssetListener = (asset: ImageAsset) => void;
 
 export class ImageAssetEngine {
   private static dbPromise: Promise<IDBDatabase> | null = null;
   private static memoryCache: Map<string, ImageAsset> = new Map();
+  private static activeObjectUrls: Map<string, string> = new Map();
+  private static listeners: Map<string, Set<AssetListener>> = new Map();
+  private static worker: Worker | null = null;
+  private static pendingWorkerTasks: Map<
+    string,
+    { resolve: (res: any) => void; reject: (err: any) => void }
+  > = new Map();
 
   /**
-   * Get or initialize IndexedDB instance
+   * Initialize or retrieve the Web Worker instance for off-thread image processing
+   */
+  private static getWorker(): Worker | null {
+    if (typeof window === 'undefined' || typeof Worker === 'undefined') return null;
+
+    if (!this.worker) {
+      try {
+        this.worker = new Worker(
+          new URL('../workers/imageWorker.ts', import.meta.url),
+          { type: 'module' }
+        );
+
+        this.worker.onmessage = (e: MessageEvent) => {
+          const { id, blob, width, height, size, mimeType, success } = e.data;
+          const task = this.pendingWorkerTasks.get(id);
+          if (task) {
+            this.pendingWorkerTasks.delete(id);
+            if (success) {
+              task.resolve({ id, blob, width, height, size, mimeType });
+            } else {
+              task.reject(new Error(e.data.error || 'Worker optimization failed'));
+            }
+          }
+        };
+
+        this.worker.onerror = (err) => {
+          console.warn('Image worker encountered an error:', err);
+        };
+      } catch (err) {
+        console.warn('Could not initialize image Web Worker, using fallback:', err);
+        this.worker = null;
+      }
+    }
+
+    return this.worker;
+  }
+
+  /**
+   * IndexedDB Connection Manager
    */
   private static getDB(): Promise<IDBDatabase> {
     if (this.dbPromise) return this.dbPromise;
@@ -37,7 +95,6 @@ export class ImageAssetEngine {
       request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
         const db = (event.target as IDBOpenDBRequest).result;
 
-        // Ensure documents store exists
         if (!db.objectStoreNames.contains(STORE_NAME_DOCUMENTS)) {
           const docStore = db.createObjectStore(STORE_NAME_DOCUMENTS, { keyPath: 'id' });
           docStore.createIndex('updatedAt', 'updatedAt', { unique: false });
@@ -45,7 +102,6 @@ export class ImageAssetEngine {
           docStore.createIndex('mode', 'mode', { unique: false });
         }
 
-        // Ensure images store exists
         if (!db.objectStoreNames.contains(STORE_NAME_IMAGES)) {
           const imgStore = db.createObjectStore(STORE_NAME_IMAGES, { keyPath: 'id' });
           imgStore.createIndex('createdAt', 'createdAt', { unique: false });
@@ -61,14 +117,285 @@ export class ImageAssetEngine {
   }
 
   /**
-   * Sanitize SVG strings against XSS before storage/rendering
+   * Subscribe to asset optimization completion events
    */
-  static sanitizeSvg(svgText: string): string {
-    return svgText
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/on\w+\s*=\s*(["'])[\s\S]*?\1/gi, '')
-      .replace(/on\w+\s*=\s*[^\s>]+/gi, '')
-      .replace(/javascript\s*:/gi, 'about:blank');
+  static subscribe(assetId: string, callback: AssetListener): () => void {
+    if (!this.listeners.has(assetId)) {
+      this.listeners.set(assetId, new Set());
+    }
+    this.listeners.get(assetId)!.add(callback);
+
+    return () => {
+      const set = this.listeners.get(assetId);
+      if (set) {
+        set.delete(callback);
+        if (set.size === 0) this.listeners.delete(assetId);
+      }
+    };
+  }
+
+  private static notifyListeners(asset: ImageAsset): void {
+    const set = this.listeners.get(asset.id);
+    if (set) {
+      set.forEach(cb => {
+        try {
+          cb(asset);
+        } catch (err) {
+          console.error('Error in asset listener:', err);
+        }
+      });
+    }
+  }
+
+  /**
+   * INSTANT PREVIEW GENERATION (<2ms)
+   * Creates an immediate Blob URL and kicks off background optimization.
+   * Never blocks UI, typing, or modal interactions!
+   */
+  static createInstantAsset(source: File | Blob | string, name = 'Untitled Image'): InstantPreviewAsset {
+    const assetId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    let previewUrl: string;
+    let mimeType = 'image/png';
+    let size = 0;
+    let blob: Blob;
+
+    if (typeof source === 'string') {
+      previewUrl = source;
+      if (source.startsWith('data:')) {
+        const mimeMatch = source.match(/^data:([^;]+);base64,/);
+        if (mimeMatch) mimeType = mimeMatch[1];
+        blob = new Blob([source], { type: mimeType });
+        size = source.length;
+      } else {
+        blob = new Blob([source], { type: 'text/plain' });
+        size = source.length;
+      }
+    } else {
+      blob = source;
+      mimeType = source.type || 'image/png';
+      size = source.size;
+      previewUrl = URL.createObjectURL(source);
+      this.activeObjectUrls.set(assetId, previewUrl);
+      if ('name' in source && (source as File).name) {
+        name = (source as File).name;
+      }
+    }
+
+    // Provisional in-memory representation
+    const provisional: ImageAsset = {
+      id: assetId,
+      name,
+      blob,
+      dataUrl: previewUrl,
+      mimeType,
+      width: 800,
+      height: 600,
+      aspectRatio: 800 / 600,
+      size,
+      createdAt: new Date().toISOString(),
+      isOptimized: false,
+    };
+    this.memoryCache.set(assetId, provisional);
+
+    // Launch background optimization without awaiting
+    this.runBackgroundOptimization(assetId, blob, mimeType, name);
+
+    return {
+      assetId,
+      previewUrl,
+      name,
+      mimeType,
+      size,
+      width: 800,
+      height: 600,
+    };
+  }
+
+  /**
+   * Background Optimization Pipeline
+   * Runs in Web Worker or async OffscreenCanvas, persists to IndexedDB, and notifies listeners.
+   */
+  private static async runBackgroundOptimization(
+    assetId: string,
+    rawBlob: Blob,
+    mimeType: string,
+    name: string
+  ): Promise<void> {
+    try {
+      let optimizedBlob = rawBlob;
+      let finalWidth = 800;
+      let finalHeight = 600;
+      let finalMime = mimeType;
+
+      const worker = this.getWorker();
+
+      if (worker) {
+        // Execute inside Web Worker
+        const result = await new Promise<any>((resolve, reject) => {
+          this.pendingWorkerTasks.set(assetId, { resolve, reject });
+          worker.postMessage({
+            id: assetId,
+            blob: rawBlob,
+            mimeType,
+            maxWidth: 2560,
+            maxHeight: 2560,
+            quality: 0.85,
+          });
+        });
+
+        optimizedBlob = result.blob;
+        finalWidth = result.width;
+        finalHeight = result.height;
+        finalMime = result.mimeType;
+      } else {
+        // Fallback for environments without Web Worker
+        if (typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined') {
+          const bitmap = await createImageBitmap(rawBlob);
+          finalWidth = bitmap.width;
+          finalHeight = bitmap.height;
+          bitmap.close();
+        }
+      }
+
+      // Convert to Base64 dataUrl only when needed for storage or export
+      let dataUrl: string;
+      if (typeof window !== 'undefined' && (optimizedBlob.size < 2 * 1024 * 1024 || mimeType.includes('svg'))) {
+        dataUrl = await this.blobToDataUrl(optimizedBlob);
+      } else {
+        dataUrl = URL.createObjectURL(optimizedBlob);
+        this.activeObjectUrls.set(assetId, dataUrl);
+      }
+
+      const optimizedAsset: ImageAsset = {
+        id: assetId,
+        name,
+        blob: optimizedBlob,
+        dataUrl,
+        mimeType: finalMime,
+        width: finalWidth,
+        height: finalHeight,
+        aspectRatio: finalWidth / (finalHeight || 1),
+        size: optimizedBlob.size,
+        createdAt: new Date().toISOString(),
+        isOptimized: true,
+      };
+
+      // Update memory cache
+      this.memoryCache.set(assetId, optimizedAsset);
+
+      // Persist to IndexedDB
+      try {
+        const db = await this.getDB();
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME_IMAGES, 'readwrite');
+          const store = tx.objectStore(STORE_NAME_IMAGES);
+          const req = store.put({
+            id: optimizedAsset.id,
+            name: optimizedAsset.name,
+            blob: optimizedAsset.blob,
+            dataUrl: optimizedAsset.dataUrl,
+            mimeType: optimizedAsset.mimeType,
+            width: optimizedAsset.width,
+            height: optimizedAsset.height,
+            aspectRatio: optimizedAsset.aspectRatio,
+            size: optimizedAsset.size,
+            createdAt: optimizedAsset.createdAt,
+          });
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      } catch (err) {
+        console.warn('Could not persist optimized image to IndexedDB:', err);
+      }
+
+      // Notify node views that asset is ready/optimized
+      this.notifyListeners(optimizedAsset);
+    } catch (err) {
+      console.warn('Background optimization fell back to raw asset:', err);
+    }
+  }
+
+  /**
+   * Compatibility method: Store image and return ImageAsset
+   */
+  static async storeImage(
+    source: File | Blob | string,
+    name = 'Untitled Image'
+  ): Promise<ImageAsset> {
+    const instant = this.createInstantAsset(source, name);
+    return this.memoryCache.get(instant.assetId)!;
+  }
+
+  /**
+   * Retrieve an image asset by ID from memory cache or IndexedDB
+   */
+  static async getImage(id: string): Promise<ImageAsset | null> {
+    if (this.memoryCache.has(id)) {
+      return this.memoryCache.get(id)!;
+    }
+
+    try {
+      const db = await this.getDB();
+      const asset = await new Promise<ImageAsset | null>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME_IMAGES, 'readonly');
+        const store = tx.objectStore(STORE_NAME_IMAGES);
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+
+      if (asset) {
+        if (!asset.dataUrl && asset.blob) {
+          asset.dataUrl = URL.createObjectURL(asset.blob);
+          this.activeObjectUrls.set(asset.id, asset.dataUrl);
+        }
+        this.memoryCache.set(id, asset);
+        return asset;
+      }
+    } catch (err) {
+      console.warn(`Could not read image asset ${id} from IndexedDB:`, err);
+    }
+
+    return null;
+  }
+
+  /**
+   * Resolve an image src or asset:// URL into a viewable source
+   */
+  static async resolveSource(src: string): Promise<string> {
+    if (!src) return '';
+    if (src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('http')) {
+      return src;
+    }
+
+    if (src.startsWith('asset://')) {
+      const assetId = src.replace('asset://', '');
+      const asset = await this.getImage(assetId);
+      if (asset) return asset.dataUrl;
+    }
+
+    return src;
+  }
+
+  /**
+   * Resolve all asset URLs in HTML string for Print / Export
+   */
+  static async resolveHtmlImages(html: string): Promise<string> {
+    if (!html) return '';
+
+    const assetMatches = html.match(/src=["'](asset:\/\/[^"']+)["']/g);
+    if (!assetMatches) return html;
+
+    let result = html;
+    for (const match of assetMatches) {
+      const srcUrl = match.replace(/^src=["']|["']$/g, '');
+      const resolved = await this.resolveSource(srcUrl);
+      if (resolved && resolved !== srcUrl) {
+        result = result.split(srcUrl).join(resolved);
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -88,7 +415,6 @@ export class ImageAssetEngine {
         resolve({ width, height, aspectRatio });
       };
       img.onerror = () => {
-        // Fallback dimensions
         resolve({ width: 800, height: 600, aspectRatio: 800 / 600 });
       };
       img.src = src;
@@ -123,178 +449,18 @@ export class ImageAssetEngine {
   }
 
   /**
-   * Store an image (from File, Blob, or DataURL) into persistent IndexedDB and memory cache
+   * Sanitize SVG strings against XSS before storage/rendering
    */
-  static async storeImage(
-    source: File | Blob | string,
-    name = 'Untitled Image'
-  ): Promise<ImageAsset> {
-    let blob: Blob;
-    let dataUrl: string;
-    let mimeType = 'image/png';
-    let size = 0;
-
-    if (typeof source === 'string') {
-      if (source.startsWith('data:')) {
-        dataUrl = source;
-        const mimeMatch = source.match(/^data:([^;]+);base64,/);
-        if (mimeMatch) mimeType = mimeMatch[1];
-        // Convert dataUrl to blob
-        const res = await fetch(source);
-        blob = await res.blob();
-        size = blob.size;
-      } else {
-        // External URL - fetch to convert to persistent local blob
-        try {
-          const res = await fetch(source);
-          blob = await res.blob();
-          mimeType = blob.type || 'image/png';
-          size = blob.size;
-          dataUrl = await this.blobToDataUrl(blob);
-        } catch {
-          // If CORS fails, use source as fallback dataUrl
-          dataUrl = source;
-          blob = new Blob([source], { type: 'text/plain' });
-          size = source.length;
-        }
-      }
-    } else {
-      // File or Blob
-      blob = source;
-      mimeType = source.type || 'image/png';
-      size = source.size;
-      dataUrl = await this.blobToDataUrl(blob);
-      if ('name' in source && (source as File).name) {
-        name = (source as File).name;
-      }
-    }
-
-    // Sanitize if SVG
-    if (mimeType.includes('svg')) {
-      const text = await blob.text();
-      const clean = this.sanitizeSvg(text);
-      blob = new Blob([clean], { type: 'image/svg+xml' });
-      dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(clean)}`;
-    }
-
-    // Determine natural dimensions
-    const { width, height, aspectRatio } = await this.getImageDimensions(dataUrl);
-
-    const assetId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const asset: ImageAsset = {
-      id: assetId,
-      name,
-      blob,
-      dataUrl,
-      mimeType,
-      width,
-      height,
-      aspectRatio,
-      size,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Cache in memory
-    this.memoryCache.set(assetId, asset);
-
-    // Save to IndexedDB
-    try {
-      const db = await this.getDB();
-      await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME_IMAGES, 'readwrite');
-        const store = tx.objectStore(STORE_NAME_IMAGES);
-        const req = store.put({
-          id: asset.id,
-          name: asset.name,
-          blob: asset.blob,
-          dataUrl: asset.dataUrl,
-          mimeType: asset.mimeType,
-          width: asset.width,
-          height: asset.height,
-          aspectRatio: asset.aspectRatio,
-          size: asset.size,
-          createdAt: asset.createdAt,
-        });
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
-    } catch (err) {
-      console.warn('Could not persist image to IndexedDB, using memory cache:', err);
-    }
-
-    return asset;
+  static sanitizeSvg(svgText: string): string {
+    return svgText
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/on\w+\s*=\s*(["'])[\s\S]*?\1/gi, '')
+      .replace(/on\w+\s*=\s*[^\s>]+/gi, '')
+      .replace(/javascript\s*:/gi, 'about:blank');
   }
 
   /**
-   * Retrieve an image asset by ID from memory cache or IndexedDB
-   */
-  static async getImage(id: string): Promise<ImageAsset | null> {
-    if (this.memoryCache.has(id)) {
-      return this.memoryCache.get(id)!;
-    }
-
-    try {
-      const db = await this.getDB();
-      const asset = await new Promise<ImageAsset | null>((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME_IMAGES, 'readonly');
-        const store = tx.objectStore(STORE_NAME_IMAGES);
-        const req = store.get(id);
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => reject(req.error);
-      });
-
-      if (asset) {
-        // If dataUrl was lost or needs recreation from blob
-        if (!asset.dataUrl && asset.blob) {
-          asset.dataUrl = await this.blobToDataUrl(asset.blob);
-        }
-        this.memoryCache.set(id, asset);
-        return asset;
-      }
-    } catch (err) {
-      console.warn('Error reading image asset from IndexedDB:', err);
-    }
-
-    return null;
-  }
-
-  /**
-   * Resolve any asset reference (e.g. "asset://img_123" or dataUrl) into a valid base64 dataUrl
-   */
-  static async resolveSource(source: string): Promise<string> {
-    if (!source) return '';
-    if (source.startsWith('asset://')) {
-      const id = source.replace('asset://', '');
-      const asset = await this.getImage(id);
-      return asset ? asset.dataUrl : source;
-    }
-    return source;
-  }
-
-  /**
-   * Scan HTML string and replace any asset:// image references with renderable data URLs
-   */
-  static async resolveHtmlImages(html: string): Promise<string> {
-    if (!html || !html.includes('asset://')) return html;
-
-    const regex = /asset:\/\/(img_[a-zA-Z0-9_]+)/g;
-    const matches = Array.from(html.matchAll(regex));
-    let resolved = html;
-
-    for (const match of matches) {
-      const full = match[0];
-      const id = match[1];
-      const asset = await this.getImage(id);
-      if (asset && asset.dataUrl) {
-        resolved = resolved.split(full).join(asset.dataUrl);
-      }
-    }
-
-    return resolved;
-  }
-
-  /**
-   * Helper: Convert Blob to Data URL
+   * Convert Blob to Data URL helper
    */
   private static blobToDataUrl(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -303,5 +469,28 @@ export class ImageAssetEngine {
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(blob);
     });
+  }
+
+  /**
+   * Memory Cleanup: revoke specific Object URL
+   */
+  static revokeObjectUrl(assetId: string): void {
+    const url = this.activeObjectUrls.get(assetId);
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+      this.activeObjectUrls.delete(assetId);
+    }
+  }
+
+  /**
+   * Memory Cleanup: revoke all active Object URLs on document unmount
+   */
+  static cleanupAllObjectUrls(): void {
+    this.activeObjectUrls.forEach((url) => {
+      if (url && url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
+    });
+    this.activeObjectUrls.clear();
   }
 }

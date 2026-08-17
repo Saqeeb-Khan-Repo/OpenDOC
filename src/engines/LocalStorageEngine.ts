@@ -1,6 +1,7 @@
 import { StudioDocument } from './types';
 
-const DB_NAME = 'OpenDocStudioDB';
+const DB_NAME = 'DocFlowStudioDB';
+const OLD_DB_NAME = 'OpenDocStudioDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'documents';
 
@@ -33,7 +34,7 @@ export class LocalStorageEngine {
       };
 
       request.onerror = () => {
-        reject(request.error);
+        reject(request.error || new Error('IndexedDB open error'));
       };
     });
 
@@ -41,9 +42,11 @@ export class LocalStorageEngine {
   }
 
   /**
-   * Save or update document in IndexedDB
+   * Save or update document in IndexedDB with safe fallback to localStorage
    */
   static async saveDocument(doc: StudioDocument): Promise<void> {
+    if (!doc || !doc.id) return;
+
     try {
       const db = await this.getDB();
       return new Promise((resolve, reject) => {
@@ -51,22 +54,26 @@ export class LocalStorageEngine {
         const store = tx.objectStore(STORE_NAME);
         const req = store.put(doc);
         req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
+        req.onerror = () => reject(req.error || new Error('IndexedDB put error'));
       });
-    } catch (e) {
-      // Fallback to localStorage
+    } catch {
+      // Fallback to localStorage with quota overflow protection
       try {
-        localStorage.setItem(`opendoc_${doc.id}`, JSON.stringify(doc));
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem(`docflow_${doc.id}`, JSON.stringify(doc));
+        }
       } catch (err) {
-        console.error('Failed to save to localStorage fallback:', err);
+        console.warn('LocalStorage save quota exceeded or unavailable:', err);
       }
     }
   }
 
   /**
-   * Load single document by ID
+   * Load single document by ID with fallback & corruption recovery
    */
   static async getDocument(id: string): Promise<StudioDocument | null> {
+    if (!id) return null;
+
     try {
       const db = await this.getDB();
       return new Promise((resolve, reject) => {
@@ -74,17 +81,26 @@ export class LocalStorageEngine {
         const store = tx.objectStore(STORE_NAME);
         const req = store.get(id);
         req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => reject(req.error);
+        req.onerror = () => reject(req.error || new Error('IndexedDB get error'));
       });
-    } catch (e) {
-      // Fallback
-      const raw = localStorage.getItem(`opendoc_${id}`);
-      return raw ? JSON.parse(raw) : null;
+    } catch {
+      // Fallback to localStorage (check both new and legacy prefixes)
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const raw = localStorage.getItem(`docflow_${id}`) || localStorage.getItem(`opendoc_${id}`);
+          if (raw) {
+            return JSON.parse(raw);
+          }
+        } catch (e) {
+          console.warn('Failed to parse corrupted document from localStorage:', e);
+        }
+      }
+      return null;
     }
   }
 
   /**
-   * Load all saved documents
+   * Load all saved documents across IndexedDB and localStorage
    */
   static async getAllDocuments(): Promise<StudioDocument[]> {
     try {
@@ -94,16 +110,26 @@ export class LocalStorageEngine {
         const store = tx.objectStore(STORE_NAME);
         const req = store.getAll();
         req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
+        req.onerror = () => reject(req.error || new Error('IndexedDB getAll error'));
       });
-    } catch (e) {
+    } catch {
       const docs: StudioDocument[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('opendoc_')) {
-          try {
-            docs.push(JSON.parse(localStorage.getItem(key) || ''));
-          } catch (err) {}
+      if (typeof window !== 'undefined' && window.localStorage) {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('docflow_') || key.startsWith('opendoc_'))) {
+            try {
+              const item = localStorage.getItem(key);
+              if (item) {
+                const parsed = JSON.parse(item);
+                if (parsed && typeof parsed === 'object' && parsed.id) {
+                  docs.push(parsed);
+                }
+              }
+            } catch (err) {
+              console.warn('Skipping corrupted item in localStorage:', key, err);
+            }
+          }
         }
       }
       return docs;
@@ -114,6 +140,8 @@ export class LocalStorageEngine {
    * Delete document by ID
    */
   static async deleteDocument(id: string): Promise<void> {
+    if (!id) return;
+
     try {
       const db = await this.getDB();
       return new Promise((resolve, reject) => {
@@ -121,10 +149,15 @@ export class LocalStorageEngine {
         const store = tx.objectStore(STORE_NAME);
         const req = store.delete(id);
         req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
+        req.onerror = () => reject(req.error || new Error('IndexedDB delete error'));
       });
-    } catch (e) {
-      localStorage.removeItem(`opendoc_${id}`);
+    } catch {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.removeItem(`docflow_${id}`);
+          localStorage.removeItem(`opendoc_${id}`);
+        } catch {}
+      }
     }
   }
 }

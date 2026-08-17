@@ -97,14 +97,14 @@ export function ExportModal({ open, onClose, document }: ExportModalProps) {
       },
     },
     {
-      id: 'opendoc',
-      label: 'OpenDoc Project Bundle',
+      id: 'docflow',
+      label: 'DocFlow Project Bundle',
       desc: 'Complete project bundle preserving slides, canvas & metadata',
       icon: FileArchive,
       color: '#6366F1',
       action: () => {
         ExportEngine.exportOpenDocProject(document);
-        toast.success('Downloaded OpenDoc project file');
+        toast.success('Downloaded DocFlow project file');
       },
     },
     {
@@ -149,10 +149,16 @@ export function ExportModal({ open, onClose, document }: ExportModalProps) {
             <button
               key={fmt.id}
               onClick={() => {
-                fmt.action();
-                onClose();
+                try {
+                  fmt.action();
+                } catch (err: any) {
+                  console.error('Export failure:', err);
+                  toast.error(`Export failed: ${err?.message || 'Unexpected error'}`);
+                } finally {
+                  onClose();
+                }
               }}
-              className="flex items-start gap-3 p-3.5 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-muted/50 transition-all text-left group shadow-sm hover:shadow"
+              className="flex items-start gap-3 p-3.5 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-muted/50 transition-all text-left group shadow-xs hover:shadow-sm"
             >
               <div
                 className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"

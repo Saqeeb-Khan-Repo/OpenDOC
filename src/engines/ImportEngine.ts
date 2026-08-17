@@ -12,13 +12,33 @@ export interface ImportResult {
 }
 
 export class ImportEngine {
+  /** Maximum safe client-side parsing size: 50 MB */
+  public static readonly MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+
   /**
    * Parse uploaded file to HTML and document metadata
    */
   static async parseFile(file: File): Promise<ImportResult> {
-    const filename = file.name;
+    if (!file) {
+      throw new Error('No file provided');
+    }
+
+    const filename = file.name || 'document';
     const ext = filename.split('.').pop()?.toLowerCase() || '';
-    const title = filename.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+    const title = filename.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ') || 'Untitled Document';
+
+    // 0. Safety Checks: Size & Empty File
+    if (file.size === 0) {
+      return {
+        title,
+        content: '<p></p>',
+        fileType: ext || 'txt',
+      };
+    }
+
+    if (file.size > this.MAX_FILE_SIZE_BYTES) {
+      throw new Error(`File is too large (${Math.round(file.size / (1024 * 1024))} MB). Maximum supported file size is 50 MB.`);
+    }
 
     // 1. DOCX Import (Zip XML Unpack & Semantic Extraction)
     if (ext === 'docx') {
@@ -32,29 +52,46 @@ export class ImportEngine {
         };
       } catch (err) {
         console.warn('DOCX zip parse failed, falling back to text stream:', err);
-        const text = await file.text();
+        try {
+          const text = await file.text();
+          return {
+            title,
+            content: `<p>${this.escapeHtml(text.replace(/\0/g, ''))}</p>`,
+            fileType: 'docx',
+          };
+        } catch {
+          return {
+            title,
+            content: '<p>Document imported with unsupported binary structure.</p>',
+            fileType: 'docx',
+          };
+        }
+      }
+    }
+
+    // 2. OCR Image Scanner (.png, .jpg, .jpeg, .webp, .tiff, .bmp)
+    if (['png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'].includes(ext)) {
+      try {
+        const ocr = await OCREngine.scanDocument(file);
+        return {
+          title: ocr.title || title,
+          content: ocr.htmlContent || '<p></p>',
+          fileType: ext,
+        };
+      } catch (ocrErr) {
+        console.warn('OCR scanning fallback:', ocrErr);
         return {
           title,
-          content: `<p>${this.escapeHtml(text.replace(/\0/g, ''))}</p>`,
-          fileType: 'docx',
+          content: `<p><img src="${URL.createObjectURL(file)}" alt="${this.escapeHtml(title)}" style="max-width: 100%;" /></p>`,
+          fileType: ext,
         };
       }
     }
 
-    // 2. OCR Image Scanner (.png, .jpg, .jpeg, .webp, .tiff)
-    if (['png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'].includes(ext)) {
-      const ocr = await OCREngine.scanDocument(file);
-      return {
-        title: ocr.title || title,
-        content: ocr.htmlContent,
-        fileType: ext,
-      };
-    }
-
-    // 3. OpenDoc / JSON Import
-    if (ext === 'opendoc' || ext === 'json') {
-      const text = await file.text();
+    // 3. DocFlow / OpenDoc / JSON Import
+    if (ext === 'docflow' || ext === 'opendoc' || ext === 'json') {
       try {
+        const text = await file.text();
         const parsed = JSON.parse(text);
         if (parsed && typeof parsed === 'object') {
           return {
@@ -65,52 +102,76 @@ export class ImportEngine {
           };
         }
       } catch (e) {
-        console.error('Failed to parse OpenDoc JSON', e);
+        console.warn('Failed to parse JSON file:', e);
       }
     }
 
     // 4. Markdown Import (.md, .markdown)
     if (ext === 'md' || ext === 'markdown') {
-      const text = await file.text();
-      const content = this.markdownToHtml(text);
-      return { title, content, fileType: 'md' };
+      try {
+        const text = await file.text();
+        const content = this.markdownToHtml(text);
+        return { title, content, fileType: 'md' };
+      } catch (e) {
+        console.warn('Markdown parsing fallback:', e);
+      }
     }
 
     // 5. HTML Import (.html, .htm)
     if (ext === 'html' || ext === 'htm') {
-      const text = await file.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, 'text/html');
-      const bodyHtml = doc.body.innerHTML || text;
-      return { title, content: bodyHtml, fileType: 'html' };
+      try {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        const bodyHtml = doc.body.innerHTML || text;
+        return { title, content: bodyHtml, fileType: 'html' };
+      } catch (e) {
+        console.warn('HTML parsing fallback:', e);
+      }
     }
 
     // 6. RTF Import (.rtf)
     if (ext === 'rtf') {
-      const text = await file.text();
-      const content = this.parseRtf(text);
-      return { title, content, fileType: 'rtf' };
+      try {
+        const text = await file.text();
+        const content = this.parseRtf(text);
+        return { title, content, fileType: 'rtf' };
+      } catch (e) {
+        console.warn('RTF parsing fallback:', e);
+      }
     }
 
     // 7. CSV Import (.csv)
     if (ext === 'csv') {
-      const text = await file.text();
-      const content = this.csvToHtmlTable(text);
-      return { title, content, fileType: 'csv' };
+      try {
+        const text = await file.text();
+        const content = this.csvToHtmlTable(text);
+        return { title, content, fileType: 'csv' };
+      } catch (e) {
+        console.warn('CSV parsing fallback:', e);
+      }
     }
 
     // 8. Plain Text & Source Code (.txt, .js, .ts, etc.)
-    const text = await file.text();
-    const paragraphs = text
-      .split(/\n\n+/)
-      .map(p => `<p>${this.escapeHtml(p).replace(/\n/g, '<br/>')}</p>`)
-      .join('\n');
+    try {
+      const text = await file.text();
+      const paragraphs = text
+        .split(/\n\n+/)
+        .map(p => `<p>${this.escapeHtml(p).replace(/\n/g, '<br/>')}</p>`)
+        .join('\n');
 
-    return {
-      title,
-      content: paragraphs || '<p></p>',
-      fileType: 'txt',
-    };
+      return {
+        title,
+        content: paragraphs || '<p></p>',
+        fileType: 'txt',
+      };
+    } catch {
+      return {
+        title,
+        content: '<p></p>',
+        fileType: 'txt',
+      };
+    }
   }
 
   /**
@@ -149,90 +210,81 @@ export class ImportEngine {
     return html || '<p>Imported document contains no text.</p>';
   }
 
+  /**
+   * Parse a single <w:p> paragraph node
+   */
   private static parseDocxParagraph(pNode: Element): string {
     let pText = '';
     let isHeading = false;
     let headingLevel = 1;
-    let align = 'left';
+    let isBullet = false;
 
-    // Check paragraph style
-    const pPr = pNode.getElementsByTagName('w:pPr')[0];
-    if (pPr) {
-      const pStyle = pPr.getElementsByTagName('w:pStyle')[0];
-      if (pStyle) {
-        const val = pStyle.getAttribute('w:val') || '';
-        if (/Heading1|Title/i.test(val)) {
-          isHeading = true;
-          headingLevel = 1;
-        } else if (/Heading2/i.test(val)) {
-          isHeading = true;
-          headingLevel = 2;
-        } else if (/Heading3/i.test(val)) {
-          isHeading = true;
-          headingLevel = 3;
-        }
-      }
-      const jc = pPr.getElementsByTagName('w:jc')[0];
-      if (jc) {
-        align = jc.getAttribute('w:val') || 'left';
+    // Check paragraph style / outline
+    const pStyle = pNode.getElementsByTagName('w:pStyle')[0];
+    if (pStyle) {
+      const val = pStyle.getAttribute('w:val') || '';
+      if (/^Heading(\d)/i.test(val)) {
+        isHeading = true;
+        headingLevel = Math.min(4, parseInt(val.match(/\d/)?.[0] || '1', 10));
+      } else if (/ListBullet|ListParagraph/i.test(val)) {
+        isBullet = true;
       }
     }
 
-    // Extract text runs
+    // Iterate child runs <w:r>
     const runs = pNode.getElementsByTagName('w:r');
     for (let j = 0; j < runs.length; j++) {
-      const r = runs[j];
-      const rPr = r.getElementsByTagName('w:rPr')[0];
-      let isBold = false;
-      let isItalic = false;
-      let isUnderline = false;
-
-      if (rPr) {
-        if (rPr.getElementsByTagName('w:b').length > 0) isBold = true;
-        if (rPr.getElementsByTagName('w:i').length > 0) isItalic = true;
-        if (rPr.getElementsByTagName('w:u').length > 0) isUnderline = true;
+      const run = runs[j];
+      let runText = '';
+      const textNodes = run.getElementsByTagName('w:t');
+      for (let k = 0; k < textNodes.length; k++) {
+        runText += textNodes[k].textContent || '';
       }
 
-      const tElements = r.getElementsByTagName('w:t');
-      for (let k = 0; k < tElements.length; k++) {
-        let text = tElements[k].textContent || '';
-        text = this.escapeHtml(text);
-        if (isBold) text = `<strong>${text}</strong>`;
-        if (isItalic) text = `<em>${text}</em>`;
-        if (isUnderline) text = `<u>${text}</u>`;
-        pText += text;
-      }
+      if (!runText) continue;
+
+      let formatted = this.escapeHtml(runText);
+      const isBold = run.getElementsByTagName('w:b').length > 0;
+      const isItalic = run.getElementsByTagName('w:i').length > 0;
+      const isUnderline = run.getElementsByTagName('w:u').length > 0;
+
+      if (isBold) formatted = `<strong>${formatted}</strong>`;
+      if (isItalic) formatted = `<em>${formatted}</em>`;
+      if (isUnderline) formatted = `<u>${formatted}</u>`;
+
+      pText += formatted;
     }
 
     if (!pText.trim()) return '';
 
-    const alignStyle = align !== 'left' ? ` style="text-align: ${align};"` : '';
-
     if (isHeading) {
-      return `<h${headingLevel}${alignStyle}>${pText}</h${headingLevel}>\n`;
+      return `<h${headingLevel}>${pText}</h${headingLevel}>\n`;
     }
-    return `<p${alignStyle}>${pText}</p>\n`;
+    if (isBullet) {
+      return `<li>${pText}</li>\n`;
+    }
+    return `<p>${pText}</p>\n`;
   }
 
+  /**
+   * Parse a single <w:tbl> table node
+   */
   private static parseDocxTable(tblNode: Element): string {
     let tableHtml = '<table style="width: 100%; border-collapse: collapse; margin: 16px 0;">\n<tbody>\n';
     const rows = tblNode.getElementsByTagName('w:tr');
 
     for (let r = 0; r < rows.length; r++) {
-      const row = rows[r];
       tableHtml += '  <tr style="border-bottom: 1px solid #e2e8f0;">\n';
-      const cells = row.getElementsByTagName('w:tc');
-
+      const cells = rows[r].getElementsByTagName('w:tc');
       for (let c = 0; c < cells.length; c++) {
-        const cell = cells[c];
-        const paragraphs = cell.getElementsByTagName('w:p');
-        let cellContent = '';
+        let cellText = '';
+        const paragraphs = cells[c].getElementsByTagName('w:p');
         for (let p = 0; p < paragraphs.length; p++) {
-          cellContent += this.parseDocxParagraph(paragraphs[p]);
+          cellText += this.parseDocxParagraph(paragraphs[p]);
         }
         const tag = r === 0 ? 'th' : 'td';
         const bg = r === 0 ? 'background: #f8fafc; font-weight: bold;' : '';
-        tableHtml += `    <${tag} style="border: 1px solid #cbd5e1; padding: 8px 12px; ${bg}">${cellContent || '&nbsp;'}</${tag}>\n`;
+        tableHtml += `    <${tag} style="border: 1px solid #cbd5e1; padding: 8px 12px; ${bg}">${cellText || '&nbsp;'}</${tag}>\n`;
       }
       tableHtml += '  </tr>\n';
     }
@@ -242,10 +294,10 @@ export class ImportEngine {
   }
 
   /**
-   * Parse Rich Text Format (.rtf)
+   * Basic RTF Parser
    */
   private static parseRtf(rtf: string): string {
-    let stripped = rtf
+    const stripped = rtf
       .replace(/\{\\fonttbl[\s\S]*?\}/g, '')
       .replace(/\{\\colortbl[\s\S]*?\}/g, '')
       .replace(/\{\\\*[\s\S]*?\}/g, '')
@@ -266,7 +318,7 @@ export class ImportEngine {
   }
 
   private static csvToHtmlTable(csv: string): string {
-    const lines = csv.trim().split('\n');
+    const lines = csv.trim().split(/\r?\n/).filter(Boolean);
     if (!lines.length) return '<p></p>';
     let html = '<table style="width: 100%; border-collapse: collapse; margin: 16px 0;">\n<tbody>\n';
     lines.forEach((line, rowIndex) => {

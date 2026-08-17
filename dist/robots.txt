@@ -1,0 +1,29 @@
+# DocFlow Production Robots.txt
+# https://docflow.app
+
+User-agent: *
+Allow: /
+Allow: /document-editor
+Allow: /presentation-maker
+Allow: /flowchart-maker
+Allow: /resume-builder
+Allow: /pdf-editor
+Allow: /pdf-merger
+Allow: /file-converter
+Allow: /guides
+Allow: /guides/*
+Allow: /templates
+Allow: /tools/*
+
+# Disallow Private User & Application Shell Routes
+Disallow: /dashboard
+Disallow: /editor/
+Disallow: /workspace/
+Disallow: /account/
+Disallow: /settings
+Disallow: /trash
+Disallow: /view
+Disallow: /search
+
+# Sitemap
+Sitemap: https://docflow.app/sitemap.xml

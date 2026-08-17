@@ -4,18 +4,23 @@ import { PageEngine, MM_TO_PX } from '@/engines/PageEngine';
 import { PageSettings, PageSize, PageOrientation, PageBorderSettings } from '@/engines/types';
 import { HorizontalRuler } from './Ruler';
 import { TiptapEditor, TiptapToolbar } from './TiptapEditor';
+import { MobileEditorToolbar } from './MobileEditorToolbar';
+import { DesktopSidebar } from './DesktopSidebar';
+import { DesktopPropertiesPanel } from './DesktopPropertiesPanel';
 import { ImageAssetEngine } from '@/engines/ImageAssetEngine';
+import { useResponsiveEditor } from '@/hooks/useResponsiveEditor';
 import {
   ZoomIn, ZoomOut, Layout,
   ChevronDown, Ruler, Check, AlignCenter,
   AlignLeft, AlignRight, Grid, SplitSquareVertical, Plus, Trash2,
-  Square, Frame
+  Square, Frame, Minus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/utils/cn';
 
 interface DocumentCanvasProps {
   content: string;
@@ -23,6 +28,21 @@ interface DocumentCanvasProps {
   pageSettings: PageSettings;
   onChangePageSettings: (settings: PageSettings) => void;
   editable?: boolean;
+  onOpenImageUploadModal?: () => void;
+  onOpenEquationModal?: () => void;
+  onOpenDiagramModal?: () => void;
+  onOpenChartModal?: () => void;
+  onOpenQRCodeModal?: () => void;
+  onOpenSignatureModal?: () => void;
+  onOpenAcademicCoverModal?: () => void;
+  onOpenFindReplaceModal?: () => void;
+  onOpenWordCountModal?: () => void;
+  onOpenAIWritingModal?: () => void;
+  onOpenQualityCheckerModal?: () => void;
+  onOpenDocumentOutlineModal?: () => void;
+  onOpenVersionHistoryModal?: () => void;
+  onDownload?: () => void;
+  onPrint?: () => void;
 }
 
 const BORDER_PRESET_COLORS = [
@@ -44,11 +64,34 @@ export function DocumentCanvas({
   pageSettings,
   onChangePageSettings,
   editable = true,
+  onOpenImageUploadModal,
+  onOpenEquationModal,
+  onOpenDiagramModal,
+  onOpenChartModal,
+  onOpenQRCodeModal,
+  onOpenSignatureModal,
+  onOpenAcademicCoverModal,
+  onOpenFindReplaceModal,
+  onOpenWordCountModal,
+  onOpenAIWritingModal,
+  onOpenQualityCheckerModal,
+  onOpenDocumentOutlineModal,
+  onOpenVersionHistoryModal,
+  onDownload,
+  onPrint,
 }: DocumentCanvasProps) {
+  const responsive = useResponsiveEditor();
   const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
-  const [zoom, setZoom] = useState(pageSettings.zoom || 100);
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const touchStartDist = React.useRef<number | null>(null);
-  const initialZoomRef = React.useRef<number>(zoom);
+  const initialZoomRef = React.useRef<number>(100);
+
+  // Zoom Mode: 'fit-width' | 'fit-page' | 'custom'
+  const [zoomMode, setZoomMode] = useState<'fit-width' | 'fit-page' | 'custom'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return 'fit-width';
+    return 'custom';
+  });
+  const [customZoom, setCustomZoom] = useState<number>(pageSettings.zoom || 100);
 
   // Standard Base Dimensions at 100% scale (e.g. A4 = 794px x 1123px)
   const baseDims = PageEngine.getPagePixelDimensions(
@@ -57,14 +100,76 @@ export function DocumentCanvas({
     100
   );
 
-  // Auto-Fit to Mobile Screen Width on initial load if screen is small
+  // Container dimensions via ResizeObserver
+  const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number }>({
+    width: typeof window !== 'undefined' ? window.innerWidth : 800,
+    height: typeof window !== 'undefined' ? window.innerHeight : 600,
+  });
+
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      const mobileFit = Math.min(100, Math.max(40, Math.floor((window.innerWidth - 24) / baseDims.width * 100)));
-      setZoom(mobileFit);
-      onChangePageSettings({ ...pageSettings, zoom: mobileFit });
-    }
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setContainerDimensions({ width: Math.round(width), height: Math.round(height) });
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
   }, []);
+
+  // Compute calculated scale
+  const scale = useMemo(() => {
+    if (!responsive.isMobile && zoomMode === 'custom') {
+      return (pageSettings.zoom || customZoom || 100) / 100;
+    }
+
+    const containerWidth = containerDimensions.width || responsive.viewportWidth;
+    const containerHeight = containerDimensions.height || responsive.viewportHeight;
+
+    if (zoomMode === 'fit-width' || (responsive.isMobile && zoomMode !== 'custom' && zoomMode !== 'fit-page')) {
+      const horizontalPadding = responsive.isMobile ? 24 : 48;
+      const availableWidth = Math.max(260, containerWidth - horizontalPadding);
+      return Math.min(1.25, Math.max(0.25, availableWidth / baseDims.width));
+    }
+
+    if (zoomMode === 'fit-page') {
+      const horizontalPadding = responsive.isMobile ? 24 : 48;
+      const verticalPadding = responsive.isMobile ? (responsive.isKeyboardOpen ? 60 : 130) : 70;
+      const availableWidth = Math.max(260, containerWidth - horizontalPadding);
+      const availableHeight = Math.max(260, containerHeight - verticalPadding);
+      return Math.min(1.0, Math.max(0.25, Math.min(availableWidth / baseDims.width, availableHeight / baseDims.height)));
+    }
+
+    return (customZoom || 100) / 100;
+  }, [
+    zoomMode,
+    customZoom,
+    pageSettings.zoom,
+    responsive.isMobile,
+    responsive.viewportWidth,
+    responsive.viewportHeight,
+    responsive.isKeyboardOpen,
+    containerDimensions,
+    baseDims.width,
+    baseDims.height,
+  ]);
+
+  const zoomPercent = Math.round(scale * 100);
+
+  // Auto-scroll active cursor/selection into view when keyboard appears
+  useEffect(() => {
+    if (responsive.isKeyboardOpen && containerRef.current) {
+      const activeEl = document.activeElement;
+      if (activeEl && containerRef.current.contains(activeEl)) {
+        setTimeout(() => {
+          activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+      }
+    }
+  }, [responsive.isKeyboardOpen]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
@@ -73,7 +178,7 @@ export function DocumentCanvas({
         e.touches[0].clientY - e.touches[1].clientY
       );
       touchStartDist.current = dist;
-      initialZoomRef.current = zoom;
+      initialZoomRef.current = zoomPercent;
     }
   };
 
@@ -84,8 +189,9 @@ export function DocumentCanvas({
         e.touches[0].clientY - e.touches[1].clientY
       );
       const factor = currentDist / touchStartDist.current;
-      const nextZoom = Math.min(200, Math.max(35, Math.round(initialZoomRef.current * factor)));
-      setZoom(nextZoom);
+      const nextZoom = Math.min(250, Math.max(30, Math.round(initialZoomRef.current * factor)));
+      setZoomMode('custom');
+      setCustomZoom(nextZoom);
     }
   };
 
@@ -152,20 +258,18 @@ export function DocumentCanvas({
   };
 
   const handleZoomChange = (delta: number) => {
-    const next = Math.min(200, Math.max(35, zoom + delta));
-    setZoom(next);
+    setZoomMode('custom');
+    const next = Math.min(250, Math.max(35, zoomPercent + delta));
+    setCustomZoom(next);
     onChangePageSettings({ ...pageSettings, zoom: next });
   };
 
   const handleFitWidth = () => {
-    if (typeof window !== 'undefined') {
-      const fit = Math.min(120, Math.max(40, Math.floor((window.innerWidth - 32) / baseDims.width * 100)));
-      setZoom(fit);
-      onChangePageSettings({ ...pageSettings, zoom: fit });
-    } else {
-      setZoom(100);
-      onChangePageSettings({ ...pageSettings, zoom: 100 });
-    }
+    setZoomMode('fit-width');
+  };
+
+  const handleFitPage = () => {
+    setZoomMode('fit-page');
   };
 
   const handleSetSize = (size: PageSize) => {
@@ -199,13 +303,13 @@ export function DocumentCanvas({
     setIsDragOverCanvas(false);
   };
 
-  const handleCanvasDrop = async (e: React.DragEvent, pageIdx = 0) => {
+  const handleCanvasDrop = (e: React.DragEvent, pageIdx = 0) => {
     e.preventDefault();
     setIsDragOverCanvas(false);
     const file = e.dataTransfer.files?.[0];
     if (file && (file.type.startsWith('image/') || file.name.endsWith('.svg'))) {
-      const asset = await ImageAssetEngine.storeImage(file);
-      const imgTag = `<p><img src="${asset.dataUrl}" alt="${file.name}" data-image-id="${asset.id}" data-align="center" style="width: 100%; max-width: 100%; border-radius: 8px; margin: 12px 0;" /></p>`;
+      const instant = ImageAssetEngine.createInstantAsset(file);
+      const imgTag = `<p><img src="${instant.previewUrl}" alt="${file.name}" data-image-id="${instant.assetId}" data-align="center" style="width: 100%; max-width: 100%; border-radius: 8px; margin: 12px 0;" /></p>`;
       const updated = [...pages];
       updated[pageIdx] = (updated[pageIdx] || '<p></p>') + `\n${imgTag}`;
       setPages(updated);
@@ -213,9 +317,9 @@ export function DocumentCanvas({
     }
   };
 
-  // Clipboard Paste Support (Ctrl+V / Cmd+V for images)
+  // Clipboard Paste Support (Ctrl+V / Cmd+V for images - instant preview)
   useEffect(() => {
-    const handlePaste = async (e: ClipboardEvent) => {
+    const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
 
@@ -225,8 +329,8 @@ export function DocumentCanvas({
           const file = item.getAsFile();
           if (file) {
             e.preventDefault();
-            const asset = await ImageAssetEngine.storeImage(file, 'Pasted Image');
-            const imgTag = `<p><img src="${asset.dataUrl}" alt="Pasted Image" data-image-id="${asset.id}" data-align="center" style="width: 100%; max-width: 100%; border-radius: 8px; margin: 12px 0;" /></p>`;
+            const instant = ImageAssetEngine.createInstantAsset(file, 'Pasted Image');
+            const imgTag = `<p><img src="${instant.previewUrl}" alt="Pasted Image" data-image-id="${instant.assetId}" data-align="center" style="width: 100%; max-width: 100%; border-radius: 8px; margin: 12px 0;" /></p>`;
             const updated = [...pages];
             updated[0] = (updated[0] || '<p></p>') + `\n${imgTag}`;
             setPages(updated);
@@ -267,18 +371,19 @@ export function DocumentCanvas({
   };
 
   const pageAlignment = pageSettings.pageAlignment || 'center';
-  const scale = zoom / 100;
   const pageBorder = pageSettings.border;
 
   return (
     <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-[#090d16] overflow-hidden relative select-none">
-      {/* ── Fixed Top Editing Ribbon Toolbar (Row 1) ────────────────────────── */}
-      {editable && (
-        <TiptapToolbar editor={activeEditor} />
-      )}
+      {/* ── Fixed Top Editing Ribbon Toolbar (Row 1 - Desktop Only) ──────────── */}
+      <div className="hidden md:block">
+        {editable && (
+          <TiptapToolbar editor={activeEditor} />
+        )}
+      </div>
 
-      {/* ── Fixed Page Control & Alignment Bar (Row 2) ──────────────────────── */}
-      <div className="h-9 bg-background/90 backdrop-blur border-b border-border px-3 sm:px-4 flex items-center justify-between shrink-0 text-xs select-none z-10 overflow-x-auto no-scrollbar gap-2">
+      {/* ── Fixed Page Control & Alignment Bar (Row 2 - Desktop Only) ────────── */}
+      <div className="hidden md:flex h-9 bg-background/90 backdrop-blur border-b border-border px-3 sm:px-4 items-center justify-between shrink-0 text-xs select-none z-10 overflow-x-auto no-scrollbar gap-2">
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Page Size & Layout Dropdown */}
           <DropdownMenu>
@@ -550,213 +655,291 @@ export function DocumentCanvas({
           <Button variant="ghost" size="icon-sm" className="h-6 w-6" onClick={() => handleZoomChange(-15)} title="Zoom Out">
             <ZoomOut className="h-3 w-3" />
           </Button>
-          <span className="font-mono text-xs w-10 text-center text-foreground font-semibold">{zoom}%</span>
+          <span className="font-mono text-xs w-10 text-center text-foreground font-semibold">{zoomPercent}%</span>
           <Button variant="ghost" size="icon-sm" className="h-6 w-6" onClick={() => handleZoomChange(15)} title="Zoom In">
             <ZoomIn className="h-3 w-3" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={handleFitWidth}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn("h-6 px-2 text-[11px]", zoomMode === 'fit-width' ? "text-primary font-bold bg-primary/10" : "")}
+            onClick={handleFitWidth}
+          >
             Fit Width
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn("h-6 px-2 text-[11px]", zoomMode === 'fit-page' ? "text-primary font-bold bg-primary/10" : "")}
+            onClick={handleFitPage}
+          >
+            Fit Page
           </Button>
         </div>
       </div>
 
-      {/* ── Fixed Horizontal Ruler (Row 3) ──────────────────────────────────── */}
+      {/* ── Fixed Horizontal Ruler (Row 3 - Desktop Only) ──────────────────── */}
       {pageSettings.showRulers && (
-        <div className="shrink-0 bg-background/50 border-b border-border/60 z-10 flex justify-center overflow-hidden">
+        <div className="hidden md:flex shrink-0 bg-background/50 border-b border-border/60 z-10 justify-center overflow-hidden">
           <div style={{ width: `${baseDims.width * scale}px` }}>
             <HorizontalRuler widthPx={baseDims.width * scale} margins={pageSettings.margins} />
           </div>
         </div>
       )}
 
-      {/* ── Paginated Scrollable Canvas Viewport ────────────────────────────── */}
+      {/* ── Mobile Floating Canva Zoom Pill (Dynamic Keyboard Offset) ───────── */}
       <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onDragOver={handleCanvasDragOver}
-        onDragLeave={handleCanvasDragLeave}
-        onDrop={e => handleCanvasDrop(e, 0)}
-        className={`flex-1 overflow-auto p-3 sm:p-6 md:p-10 flex flex-col touch-pan-x touch-pan-y transition-colors ${
-          isDragOverCanvas ? 'bg-primary/5 ring-4 ring-primary/20 ring-inset' : ''
-        }`}
+        className="md:hidden fixed z-30 flex items-center gap-1 bg-background/95 backdrop-blur-md border border-border px-2 py-1 rounded-full shadow-lg text-xs font-semibold transition-all duration-150"
         style={{
-          alignItems: pageAlignment === 'left' ? 'flex-start' : pageAlignment === 'right' ? 'flex-end' : 'center',
-          paddingLeft: pageAlignment === 'left' ? '40px' : undefined,
-          paddingRight: pageAlignment === 'right' ? '40px' : undefined,
+          bottom: `${responsive.isKeyboardOpen ? responsive.keyboardHeight + 58 : 68}px`,
+          right: '12px',
         }}
       >
-        {/* Outer Scaled Wrapper for Precise Scroll Bounds */}
-        <div
-          style={{
-            width: `${baseDims.width * scale}px`,
-            minHeight: `${baseDims.height * scale}px`,
-            display: 'flex',
-            justifyContent: pageAlignment === 'left' ? 'flex-start' : pageAlignment === 'right' ? 'flex-end' : 'center',
-          }}
+        <button
+          type="button"
+          onClick={() => handleZoomChange(-10)}
+          className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95"
+          title="Zoom Out"
         >
-          {/* Multi-Page Stack with Optical Zoom (Never causes text reflow) */}
-          <div
-            className="flex flex-col items-center pb-24 transition-transform duration-100 ease-out origin-top"
-            style={{
-              width: `${baseDims.width}px`,
-              transform: `scale(${scale})`,
-              transformOrigin: pageAlignment === 'left' ? 'top left' : pageAlignment === 'right' ? 'top right' : 'top center',
-            }}
-          >
-            {/* Render Each Independent Page Sheet with Strict Boundaries and 32px Page Gap */}
-            {pages.map((pageHtml, pageIndex) => {
-              const pageNumber = pageIndex + 1;
-              const isCover = pageIndex === 0 && pageSettings.hideNumberOnCover;
-
-              const shouldRenderBorder = pageBorder?.enabled && (
-                pageBorder.applyTo === 'all' ||
-                (pageBorder.applyTo === 'first-page-only' && pageIndex === 0) ||
-                (pageBorder.applyTo === 'except-first-page' && pageIndex !== 0)
-              );
-
-              return (
-                <div
-                  key={pageIndex}
-                  className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 rounded-[2px] border border-black/10 dark:border-white/10 flex flex-col relative w-full overflow-hidden select-text group"
-                  style={{
-                    width: `${baseDims.width}px`,
-                    height: `${baseDims.height}px`, // Strict Fixed Height (e.g. 1123px for A4)
-                    minHeight: `${baseDims.height}px`,
-                    maxHeight: `${baseDims.height}px`,
-                    marginBottom: '32px', // 32px CLEAR VISUAL PAGE GAP
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.08)',
-                    direction: pageSettings.textDirection || 'ltr',
-                  }}
-                  onClick={() => {
-                    // Click focuses this page's editor
-                  }}
-                >
-                  {/* Decorative Page Border Frame Overlay */}
-                  {shouldRenderBorder && (
-                    <div
-                      className="absolute pointer-events-none z-10"
-                      style={{
-                        top: `${pageBorder?.inset || 16}px`,
-                        right: `${pageBorder?.inset || 16}px`,
-                        bottom: `${pageBorder?.inset || 16}px`,
-                        left: `${pageBorder?.inset || 16}px`,
-                        borderStyle: pageBorder?.style || 'solid',
-                        borderWidth: `${pageBorder?.width || 2}px`,
-                        borderColor: pageBorder?.color || '#1e3a8a',
-                      }}
-                    />
-                  )}
-
-                  {/* Visual Margin Guidelines Overlay */}
-                  {pageSettings.showMarginGuides !== false && (
-                    <div
-                      className="absolute pointer-events-none border border-dashed border-blue-400/30 dark:border-blue-400/20 z-0"
-                      style={{
-                        top: `${baseMarginsPx.top}px`,
-                        right: `${baseMarginsPx.right}px`,
-                        bottom: `${baseMarginsPx.bottom}px`,
-                        left: `${baseMarginsPx.left}px`,
-                      }}
-                    />
-                  )}
-
-                  {/* ── HEADER REGION (Fixed Height: 36px) ──────────────────── */}
-                  <div
-                    className="h-9 pt-2 pb-1 border-b border-dashed border-border/40 text-[11px] text-muted-foreground flex items-center justify-between select-none relative z-10 shrink-0"
-                    style={{
-                      paddingLeft: `${baseMarginsPx.left}px`,
-                      paddingRight: `${baseMarginsPx.right}px`,
-                    }}
-                  >
-                    <input
-                      type="text"
-                      value={pageSettings.headerText || ''}
-                      onChange={(e) => onChangePageSettings({ ...pageSettings, headerText: e.target.value })}
-                      placeholder="Type document header..."
-                      className="font-serif italic text-muted-foreground hover:text-foreground bg-transparent border-b border-transparent hover:border-border/60 focus:border-primary focus:bg-accent/40 rounded px-1.5 py-0.5 text-[11px] outline-none max-w-sm transition-all"
-                      title="Click to edit document header"
-                    />
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-semibold text-muted-foreground">
-                        {!isCover && pageSettings.showPageNumbers && PageEngine.formatPageNumber(pageNumber, pageSettings.pageNumberFormat, pages.length)}
-                      </span>
-                      {pages.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeletePage(pageIndex);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity p-0.5 rounded"
-                          title="Delete this page"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ── MAIN CONTENT REGION (Strict Usable Height, Contained) ─── */}
-                  <div
-                    className="flex-1 overflow-hidden relative z-10"
-                    style={{
-                      paddingLeft: `${baseMarginsPx.left}px`,
-                      paddingRight: `${baseMarginsPx.right}px`,
-                      paddingTop: `${baseMarginsPx.top / 2}px`,
-                      paddingBottom: `${baseMarginsPx.bottom / 2}px`,
-                      height: `${usableHeightPx}px`,
-                      maxHeight: `${usableHeightPx}px`,
-                      columnCount: pageSettings.columns,
-                      columnGap: '32px',
-                      columnRule: pageSettings.columns > 1 ? '1px solid #e2e8f0' : 'none',
-                    }}
-                  >
-                    <TiptapEditor
-                      content={pageHtml}
-                      onChange={(newHtml) => handlePageContentChange(pageIndex, newHtml)}
-                      editable={editable}
-                      onEditorReady={(ed) => {
-                        // Set as active editor when ready or focused
-                        if (pageIndex === 0 && !activeEditor) {
-                          setActiveEditor(ed);
-                        }
-                        ed.on('focus', () => {
-                          setActiveEditor(ed);
-                        });
-                      }}
-                    />
-                  </div>
-
-                  {/* ── FOOTER REGION (Fixed Height: 36px) ──────────────────── */}
-                  <div
-                    className="h-9 pb-2 pt-1 border-t border-dashed border-border/40 text-[11px] text-muted-foreground flex items-center justify-between select-none mt-auto relative z-10 shrink-0"
-                    style={{
-                      paddingLeft: `${baseMarginsPx.left}px`,
-                      paddingRight: `${baseMarginsPx.right}px`,
-                    }}
-                  >
-                    <input
-                      type="text"
-                      value={pageSettings.footerText || ''}
-                      onChange={(e) => onChangePageSettings({ ...pageSettings, footerText: e.target.value })}
-                      placeholder="Type confidentiality or footer tag..."
-                      className="font-serif text-muted-foreground hover:text-foreground bg-transparent border-b border-transparent hover:border-border/60 focus:border-primary focus:bg-accent/40 rounded px-1.5 py-0.5 text-[11px] outline-none max-w-sm transition-all"
-                      title="Click to edit document footer"
-                    />
-                    <span className="font-mono font-semibold text-xs text-foreground">
-                      {!isCover && pageSettings.showPageNumbers && PageEngine.formatPageNumber(pageNumber, pageSettings.pageNumberFormat, pages.length)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+          <Minus className="h-3 w-3" />
+        </button>
+        <span className="font-mono text-[11px] font-bold w-8 text-center text-foreground">{zoomPercent}%</span>
+        <button
+          type="button"
+          onClick={() => handleZoomChange(10)}
+          className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95"
+          title="Zoom In"
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+        <div className="h-3.5 w-px bg-border mx-0.5" />
+        <button
+          type="button"
+          onClick={() => {
+            if (zoomMode === 'fit-width') setZoomMode('fit-page');
+            else if (zoomMode === 'fit-page') setZoomMode('fit-width');
+            else setZoomMode('fit-width');
+          }}
+          className={cn(
+            "h-5 px-2 rounded-full text-[10px] font-bold transition-colors",
+            zoomMode === 'fit-width' || zoomMode === 'fit-page' ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent text-foreground"
+          )}
+          title="Toggle Auto Fit"
+        >
+          {zoomMode === 'fit-page' ? 'Fit Page' : 'Fit Width'}
+        </button>
       </div>
 
-      {/* ── Bottom Page Stats & Status Bar ─────────────────────────────────── */}
-      <div className="h-7 bg-background/95 backdrop-blur border-t border-border px-4 flex items-center justify-between shrink-0 text-[11px] text-muted-foreground select-none z-10">
+      {/* ── Main Workspace Body: Left Sidebar + Paginated Canvas + Right Properties Panel ── */}
+      <div className="flex-1 flex overflow-hidden relative w-full">
+        {/* Desktop Left Collapsible Sidebar */}
+        <DesktopSidebar
+          editor={activeEditor}
+          content={content}
+          pages={pages}
+          pageSettings={pageSettings}
+          onAddPage={handleAddNewPage}
+          onDeletePage={handleDeletePage}
+          onOpenImageUploadModal={onOpenImageUploadModal}
+          onOpenEquationModal={onOpenEquationModal}
+          onOpenDiagramModal={onOpenDiagramModal}
+          onOpenChartModal={onOpenChartModal}
+          onOpenQRCodeModal={onOpenQRCodeModal}
+          onOpenSignatureModal={onOpenSignatureModal}
+          onOpenAcademicCoverModal={onOpenAcademicCoverModal}
+        />
+
+        {/* Center Paginated Scrollable Canvas Viewport */}
+        <div
+          ref={containerRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onDragOver={handleCanvasDragOver}
+          onDragLeave={handleCanvasDragLeave}
+          onDrop={e => handleCanvasDrop(e, 0)}
+          className={`flex-1 overflow-auto p-3 sm:p-6 md:p-10 flex flex-col items-center touch-pan-x touch-pan-y transition-colors select-text ${
+            isDragOverCanvas ? 'bg-primary/5 ring-4 ring-primary/20 ring-inset' : ''
+          }`}
+          style={{
+            paddingBottom: responsive.isMobile ? (responsive.isKeyboardOpen ? `${responsive.keyboardHeight + 64}px` : '120px') : '40px',
+          }}
+        >
+          {/* Outer Scaled Wrapper for Centered Document and Precise Scroll Bounds */}
+          <div
+            style={{
+              width: `${Math.round(baseDims.width * scale)}px`,
+              minHeight: `${Math.round(baseDims.height * scale)}px`,
+              margin: '0 auto',
+              display: 'flex',
+              justifyContent: pageAlignment === 'left' ? 'flex-start' : pageAlignment === 'right' ? 'flex-end' : 'center',
+            }}
+          >
+            {/* Multi-Page Stack with Optical Scale (Never causes text reflow) */}
+            <div
+              className="flex flex-col items-center pb-12 transition-transform duration-100 ease-out origin-top"
+              style={{
+                width: `${baseDims.width}px`,
+                transform: `scale(${scale})`,
+                transformOrigin: pageAlignment === 'left' ? 'top left' : pageAlignment === 'right' ? 'top right' : 'top center',
+              }}
+            >
+              {/* Render Each Independent Page Sheet with Strict Boundaries and 32px Page Gap */}
+              {pages.map((pageHtml, pageIndex) => {
+                const pageNumber = pageIndex + 1;
+                const isCover = pageIndex === 0 && pageSettings.hideNumberOnCover;
+
+                const shouldRenderBorder = pageBorder?.enabled && (
+                  pageBorder.applyTo === 'all' ||
+                  (pageBorder.applyTo === 'first-page-only' && pageIndex === 0) ||
+                  (pageBorder.applyTo === 'except-first-page' && pageIndex !== 0)
+                );
+
+                return (
+                  <div
+                    key={pageIndex}
+                    className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 rounded-[2px] border border-black/10 dark:border-white/10 flex flex-col relative w-full overflow-hidden select-text group"
+                    style={{
+                      width: `${baseDims.width}px`,
+                      height: `${baseDims.height}px`, // Strict Fixed Height (e.g. 1123px for A4)
+                      minHeight: `${baseDims.height}px`,
+                      maxHeight: `${baseDims.height}px`,
+                      marginBottom: '32px', // 32px CLEAR VISUAL PAGE GAP
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.08)',
+                      direction: pageSettings.textDirection || 'ltr',
+                    }}
+                    onClick={() => {
+                      // Click focuses this page's editor
+                    }}
+                  >
+                    {/* Decorative Page Border Frame Overlay */}
+                    {shouldRenderBorder && (
+                      <div
+                        className="absolute pointer-events-none z-10"
+                        style={{
+                          top: `${pageBorder?.inset || 16}px`,
+                          right: `${pageBorder?.inset || 16}px`,
+                          bottom: `${pageBorder?.inset || 16}px`,
+                          left: `${pageBorder?.inset || 16}px`,
+                          borderStyle: pageBorder?.style || 'solid',
+                          borderWidth: `${pageBorder?.width || 2}px`,
+                          borderColor: pageBorder?.color || '#1e3a8a',
+                        }}
+                      />
+                    )}
+
+                    {/* Visual Margin Guidelines Overlay */}
+                    {pageSettings.showMarginGuides !== false && (
+                      <div
+                        className="absolute pointer-events-none border border-dashed border-blue-400/30 dark:border-blue-400/20 z-0"
+                        style={{
+                          top: `${baseMarginsPx.top}px`,
+                          right: `${baseMarginsPx.right}px`,
+                          bottom: `${baseMarginsPx.bottom}px`,
+                          left: `${baseMarginsPx.left}px`,
+                        }}
+                      />
+                    )}
+
+                    {/* ── HEADER REGION (Fixed Height: 36px) ──────────────────── */}
+                    <div
+                      className="h-9 pt-2 pb-1 border-b border-dashed border-border/40 text-[11px] text-muted-foreground flex items-center justify-between select-none relative z-10 shrink-0"
+                      style={{
+                        paddingLeft: `${baseMarginsPx.left}px`,
+                        paddingRight: `${baseMarginsPx.right}px`,
+                      }}
+                    >
+                      <input
+                        type="text"
+                        value={pageSettings.headerText || ''}
+                        onChange={(e) => onChangePageSettings({ ...pageSettings, headerText: e.target.value })}
+                        placeholder="Type document header..."
+                        className="font-serif italic text-muted-foreground hover:text-foreground bg-transparent border-b border-transparent hover:border-border/60 focus:border-primary focus:bg-accent/40 rounded px-1.5 py-0.5 text-[11px] outline-none max-w-sm transition-all"
+                        title="Click to edit document header"
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-semibold text-muted-foreground">
+                          {!isCover && pageSettings.showPageNumbers && PageEngine.formatPageNumber(pageNumber, pageSettings.pageNumberFormat, pages.length)}
+                        </span>
+                        {pages.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePage(pageIndex);
+                            }}
+                            className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded hover:bg-destructive/10"
+                            title="Delete this page sheet"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ── USABLE PAGE CONTENT REGION (Tiptap Instance) ────────── */}
+                    <div
+                      className="flex-1 relative overflow-hidden"
+                      style={{
+                        paddingTop: `${baseMarginsPx.top}px`,
+                        paddingRight: `${baseMarginsPx.right}px`,
+                        paddingBottom: `${baseMarginsPx.bottom}px`,
+                        paddingLeft: `${baseMarginsPx.left}px`,
+                      }}
+                    >
+                      <TiptapEditor
+                        content={pageHtml}
+                        editable={editable}
+                        onChange={(html) => handlePageContentChange(pageIndex, html)}
+                        onEditorReady={(ed) => {
+                          if (pageIndex === 0 && !activeEditor) {
+                            setActiveEditor(ed);
+                          }
+                          ed.on('focus', () => {
+                            setActiveEditor(ed);
+                          });
+                        }}
+                      />
+                    </div>
+
+                    {/* ── FOOTER REGION (Fixed Height: 36px) ──────────────────── */}
+                    <div
+                      className="h-9 pb-2 pt-1 border-t border-dashed border-border/40 text-[11px] text-muted-foreground flex items-center justify-between select-none mt-auto relative z-10 shrink-0"
+                      style={{
+                        paddingLeft: `${baseMarginsPx.left}px`,
+                        paddingRight: `${baseMarginsPx.right}px`,
+                      }}
+                    >
+                      <input
+                        type="text"
+                        value={pageSettings.footerText || ''}
+                        onChange={(e) => onChangePageSettings({ ...pageSettings, footerText: e.target.value })}
+                        placeholder="Type confidentiality or footer tag..."
+                        className="font-serif text-muted-foreground hover:text-foreground bg-transparent border-b border-transparent hover:border-border/60 focus:border-primary focus:bg-accent/40 rounded px-1.5 py-0.5 text-[11px] outline-none max-w-sm transition-all"
+                        title="Click to edit document footer"
+                      />
+                      <span className="font-mono font-semibold text-xs text-foreground">
+                        {!isCover && pageSettings.showPageNumbers && PageEngine.formatPageNumber(pageNumber, pageSettings.pageNumberFormat, pages.length)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Right Contextual Properties Panel */}
+        <DesktopPropertiesPanel
+          editor={activeEditor}
+          pageSettings={pageSettings}
+          onChangePageSettings={onChangePageSettings}
+          onOpenImageUploadModal={onOpenImageUploadModal}
+        />
+      </div>
+
+      {/* ── Bottom Page Stats & Status Bar (Desktop Only) ─────────────────── */}
+      <div className="hidden md:flex h-7 bg-background/95 backdrop-blur border-t border-border px-4 items-center justify-between shrink-0 text-[11px] text-muted-foreground select-none z-10">
         <div className="flex items-center gap-3">
           <span className="font-medium text-foreground">Total: {pages.length} {pages.length === 1 ? 'Page' : 'Pages'}</span>
           <span>•</span>
@@ -781,6 +964,30 @@ export function DocumentCanvas({
           </button>
         </div>
       </div>
+
+      {/* ── Dedicated Mobile Canva-Style Bottom Toolbar & Sheets (Mobile Only) ─ */}
+      {editable && (
+        <MobileEditorToolbar
+          editor={activeEditor}
+          pageSettings={pageSettings}
+          onChangePageSettings={onChangePageSettings}
+          onOpenImageUploadModal={onOpenImageUploadModal}
+          onOpenEquationModal={onOpenEquationModal}
+          onOpenDiagramModal={onOpenDiagramModal}
+          onOpenChartModal={onOpenChartModal}
+          onOpenQRCodeModal={onOpenQRCodeModal}
+          onOpenSignatureModal={onOpenSignatureModal}
+          onOpenAcademicCoverModal={onOpenAcademicCoverModal}
+          onOpenFindReplaceModal={onOpenFindReplaceModal}
+          onOpenWordCountModal={onOpenWordCountModal}
+          onOpenAIWritingModal={onOpenAIWritingModal}
+          onOpenQualityCheckerModal={onOpenQualityCheckerModal}
+          onOpenDocumentOutlineModal={onOpenDocumentOutlineModal}
+          onOpenVersionHistoryModal={onOpenVersionHistoryModal}
+          onDownload={onDownload}
+          onPrint={onPrint}
+        />
+      )}
     </div>
   );
 }

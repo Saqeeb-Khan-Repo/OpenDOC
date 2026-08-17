@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { NodeViewWrapper, NodeViewProps } from '@tiptap/react';
 import {
   Crop, RefreshCw, RotateCw, Trash2, Copy, AlignLeft, AlignCenter,
@@ -19,12 +19,16 @@ export function ResizableImageNode({ node, updateAttributes, deleteNode, selecte
   const [activeCorner, setActiveCorner] = useState<'nw' | 'ne' | 'se' | 'sw' | null>(null);
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [displaySrc, setDisplaySrc] = useState(src);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const imageRef = useRef<HTMLImageElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Resolve persistent asset if needed
+  // Synchronize and subscribe to background asset optimization
   useEffect(() => {
     let isMounted = true;
+
+    // Resolve initial source
     if (src && src.startsWith('asset://')) {
       ImageAssetEngine.resolveSource(src).then(resolved => {
         if (isMounted && resolved) setDisplaySrc(resolved);
@@ -32,10 +36,25 @@ export function ResizableImageNode({ node, updateAttributes, deleteNode, selecte
     } else {
       setDisplaySrc(src);
     }
-    return () => { isMounted = false; };
-  }, [src]);
 
-  // Handle Corner Resize Drag
+    // Subscribe to background optimization completion
+    if (imageId) {
+      const unsubscribe = ImageAssetEngine.subscribe(imageId, (updatedAsset) => {
+        if (isMounted && updatedAsset.dataUrl) {
+          setDisplaySrc(updatedAsset.dataUrl);
+          setIsOptimizing(false);
+        }
+      });
+      return () => {
+        isMounted = false;
+        unsubscribe();
+      };
+    }
+
+    return () => { isMounted = false; };
+  }, [src, imageId]);
+
+  // Handle Corner Resize Drag (Visual transforms only during drag; commits on release)
   const handleResizeStart = (corner: 'nw' | 'ne' | 'se' | 'sw', e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -44,20 +63,24 @@ export function ResizableImageNode({ node, updateAttributes, deleteNode, selecte
 
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const initialWidth = imageRef.current ? imageRef.current.offsetWidth : 400;
+    let latestWidth = initialWidth;
 
     const onMove = (moveEvent: MouseEvent | TouchEvent) => {
       const currentX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
       const deltaX = corner === 'se' || corner === 'ne' ? currentX - clientX : clientX - currentX;
-      const newWidth = Math.max(120, Math.min(800, initialWidth + deltaX));
-      setCurrentWidth(`${Math.round(newWidth)}px`);
+      latestWidth = Math.max(120, Math.min(800, initialWidth + deltaX));
+      // Pure visual DOM update during pointer movement - 0 document serialization lag!
+      if (imageRef.current) {
+        imageRef.current.style.width = `${Math.round(latestWidth)}px`;
+      }
+      setCurrentWidth(`${Math.round(latestWidth)}px`);
     };
 
     const onEnd = () => {
       setIsResizing(false);
       setActiveCorner(null);
-      if (imageRef.current) {
-        updateAttributes({ width: `${imageRef.current.offsetWidth}px` });
-      }
+      updateAttributes({ width: `${Math.round(latestWidth)}px` });
+
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onEnd);
       window.removeEventListener('touchmove', onMove);
@@ -70,18 +93,18 @@ export function ResizableImageNode({ node, updateAttributes, deleteNode, selecte
     window.addEventListener('touchend', onEnd);
   };
 
-  // Replace image from device
-  const handleReplaceFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Instant replacement from device
+  const handleReplaceFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const asset = await ImageAssetEngine.storeImage(file);
+    const instant = ImageAssetEngine.createInstantAsset(file);
     updateAttributes({
-      src: asset.dataUrl,
-      imageId: asset.id,
+      src: instant.previewUrl,
+      imageId: instant.assetId,
       alt: file.name,
     });
-    setDisplaySrc(asset.dataUrl);
+    setDisplaySrc(instant.previewUrl);
     e.target.value = '';
   };
 
@@ -101,51 +124,55 @@ export function ResizableImageNode({ node, updateAttributes, deleteNode, selecte
     updateAttributes({ rotate: nextRotate });
   };
 
-  // Apply Crop
-  const handleApplyCrop = async (croppedDataUrl: string) => {
-    const asset = await ImageAssetEngine.storeImage(croppedDataUrl, `${alt || 'Cropped'} (Crop)`);
-    updateAttributes({
-      src: asset.dataUrl,
-      imageId: asset.id,
-    });
-    setDisplaySrc(asset.dataUrl);
+  // Opacity cycle (1.0 -> 0.8 -> 0.6 -> 0.4 -> 1.0)
+  const handleOpacityCycle = () => {
+    const nextOpacity = opacity <= 0.4 ? 1 : Number((opacity - 0.2).toFixed(1));
+    updateAttributes({ opacity: nextOpacity });
   };
 
-  const getShadowStyle = () => {
-    if (shadow === 'lg') return '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
-    if (shadow === 'md') return '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-    if (shadow === 'sm') return '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
-    return 'none';
+  // Apply visual crop
+  const handleApplyCrop = (croppedDataUrl: string) => {
+    const instant = ImageAssetEngine.createInstantAsset(croppedDataUrl, 'Cropped Image');
+    updateAttributes({
+      src: instant.previewUrl,
+      imageId: instant.assetId,
+    });
+    setDisplaySrc(instant.previewUrl);
+    setCropModalOpen(false);
   };
+
+  const shadowClass =
+    shadow === 'lg' ? 'shadow-xl' :
+    shadow === 'md' ? 'shadow-md' :
+    shadow === 'sm' ? 'shadow-sm' : '';
 
   return (
     <NodeViewWrapper
+      ref={wrapperRef}
       className={cn(
-        'resizable-image-wrapper my-4 select-none relative group/img-block transition-all',
-        align === 'center' ? 'flex justify-center' : align === 'right' ? 'flex justify-end' : 'flex justify-start'
+        'my-3 relative group/img select-none transition-all',
+        align === 'left' ? 'text-left mr-auto' :
+        align === 'right' ? 'text-right ml-auto' :
+        'text-center mx-auto'
       )}
       style={{
+        display: 'flex',
+        justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
         breakInside: 'avoid',
         pageBreakInside: 'avoid',
       }}
     >
       <div
         className={cn(
-          'relative inline-block transition-all rounded-lg',
-          selected ? 'ring-2 ring-primary ring-offset-2' : 'hover:ring-1 hover:ring-primary/40'
+          'relative inline-block transition-shadow',
+          selected ? 'ring-2 ring-primary ring-offset-2 rounded-lg' : ''
         )}
-        style={{ width: currentWidth || width || '100%', maxWidth: '100%' }}
+        style={{
+          width: currentWidth,
+          maxWidth: '100%',
+        }}
       >
-        {/* Hidden File Input for Replace */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleReplaceFile}
-          className="hidden"
-        />
-
-        {/* Floating Canva-Style Context Toolbar when selected */}
+        {/* Floating Contextual Toolbar (Canva-style) */}
         {selected && (
           <div
             className="absolute -top-11 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur border border-border rounded-xl shadow-lg px-2 py-1 flex items-center gap-1 z-30 whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
@@ -200,95 +227,129 @@ export function ResizableImageNode({ node, updateAttributes, deleteNode, selecte
             <button
               type="button"
               onClick={() => setCropModalOpen(true)}
-              className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground text-xs"
               title="Crop Image"
             >
-              <Crop className="h-3.5 w-3.5" />
+              <Crop className="h-3 w-3" />
             </button>
 
             {/* Replace Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground text-xs"
               title="Replace Image from Device"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className="h-3 w-3" />
             </button>
 
             {/* Rotate Button */}
             <button
               type="button"
               onClick={handleRotate}
-              className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground text-xs"
               title="Rotate 90°"
             >
-              <RotateCw className="h-3.5 w-3.5" />
+              <RotateCw className="h-3 w-3" />
+            </button>
+
+            {/* Opacity Cycle */}
+            <button
+              type="button"
+              onClick={handleOpacityCycle}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground text-xs"
+              title={`Adjust Opacity (Current: ${Math.round(opacity * 100)}%)`}
+            >
+              <Sliders className="h-3 w-3" />
             </button>
 
             {/* Duplicate Button */}
             <button
               type="button"
               onClick={handleDuplicate}
-              className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
-              title="Duplicate Image"
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground text-xs"
+              title="Duplicate Image Node"
             >
-              <Copy className="h-3.5 w-3.5" />
+              <Copy className="h-3 w-3" />
             </button>
 
             {/* Delete Button */}
             <button
               type="button"
               onClick={deleteNode}
-              className="p-1 text-destructive hover:bg-destructive/10 rounded"
+              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive text-xs"
               title="Delete Image"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-3 w-3" />
             </button>
           </div>
         )}
 
-        {/* The Image Element */}
+        {/* Hidden File Input for Replace */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleReplaceFile}
+          className="hidden"
+        />
+
+        {/* Main Image View with lazy loading */}
         <img
           ref={imageRef}
           src={displaySrc}
           alt={alt || 'Document Image'}
           title={title}
+          loading="lazy"
+          decoding="async"
           style={{
             width: '100%',
             height: 'auto',
-            borderRadius,
-            boxShadow: getShadowStyle(),
+            borderRadius: borderRadius || '8px',
+            opacity: opacity ?? 1,
             transform: rotate ? `rotate(${rotate}deg)` : undefined,
-            opacity,
-            display: 'block',
+            transition: isResizing ? 'none' : 'transform 0.15s ease, opacity 0.15s ease',
           }}
-          className="cursor-pointer max-w-full"
+          className={cn(
+            'block object-contain cursor-pointer transition-all',
+            shadowClass
+          )}
         />
 
-        {/* 4 Corner Resize Handles when Selected */}
+        {/* Corner Resize Handles */}
         {selected && (
           <>
             <div
               onMouseDown={e => handleResizeStart('nw', e)}
               onTouchStart={e => handleResizeStart('nw', e)}
-              className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full shadow-md cursor-nwse-resize z-20"
+              className="absolute -top-1.5 -left-1.5 h-3.5 w-3.5 rounded-full bg-primary border-2 border-background cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
+              title="Drag to resize"
             />
             <div
               onMouseDown={e => handleResizeStart('ne', e)}
               onTouchStart={e => handleResizeStart('ne', e)}
-              className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full shadow-md cursor-nesw-resize z-20"
+              className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full bg-primary border-2 border-background cursor-nesw-resize shadow-md hover:scale-125 transition-transform"
+              title="Drag to resize"
             />
             <div
               onMouseDown={e => handleResizeStart('sw', e)}
               onTouchStart={e => handleResizeStart('sw', e)}
-              className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full shadow-md cursor-nesw-resize z-20"
+              className="absolute -bottom-1.5 -left-1.5 h-3.5 w-3.5 rounded-full bg-primary border-2 border-background cursor-nesw-resize shadow-md hover:scale-125 transition-transform"
+              title="Drag to resize"
             />
             <div
               onMouseDown={e => handleResizeStart('se', e)}
               onTouchStart={e => handleResizeStart('se', e)}
-              className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full shadow-md cursor-nwse-resize z-20"
+              className="absolute -bottom-1.5 -right-1.5 h-3.5 w-3.5 rounded-full bg-primary border-2 border-background cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
+              title="Drag to resize"
             />
+
+            {/* Resize Tooltip */}
+            {isResizing && imageRef.current && (
+              <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] px-1.5 py-0.5 rounded shadow">
+                {imageRef.current.offsetWidth} × {imageRef.current.offsetHeight} px
+              </div>
+            )}
           </>
         )}
       </div>

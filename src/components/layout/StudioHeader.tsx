@@ -203,36 +203,30 @@ export function StudioHeader({
   return (
     <>
       <header className="h-12 bg-background/95 backdrop-blur border-b border-border px-2.5 sm:px-3.5 flex items-center justify-between shrink-0 z-30 select-none">
-        {/* Left: Home Button + Back Button & Document Metadata */}
+        {/* Left: Brand Home Link + Breadcrumb / Document Title */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
-          <Button
-            variant="ghost"
-            size="icon-sm"
+          <button
+            type="button"
             onClick={() => navigate('/dashboard')}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
-            title="Go to Home / Dashboard"
+            className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-foreground hover:text-primary transition-colors cursor-pointer group shrink-0 px-1 py-1 rounded-lg hover:bg-muted/60"
+            title="Go to DocFlow Home / Workspace"
           >
-            <Home className="h-4 w-4" />
-          </Button>
+            <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-2xs">
+              <Sparkles className="h-3.5 w-3.5" />
+            </div>
+            <span className="font-extrabold tracking-tight">DocFlow</span>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => navigate('/documents')}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0 hidden xs:flex"
-            title="Back to All Documents"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+          <span className="text-muted-foreground/40 text-xs font-mono select-none">/</span>
 
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="h-6 w-6 rounded-md bg-muted/60 flex items-center justify-center shrink-0 hidden sm:flex">
               {document.mode === 'presentation' ? (
-                <Presentation className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                <Presentation className="h-3 w-3 text-primary" />
               ) : document.mode === 'design' ? (
-                <Palette className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                <Palette className="h-3 w-3 text-primary" />
               ) : (
-                <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                <FileText className="h-3 w-3 text-primary" />
               )}
             </div>
 
@@ -260,10 +254,11 @@ export function StudioHeader({
                 </button>
               )}
 
-              {/* Desktop Menu Dropdowns */}
-              <div className="hidden md:flex items-center gap-2.5 text-[11px] text-muted-foreground mt-0.5">
+              {/* Desktop Clean Menu Dropdowns */}
+              <div className="hidden md:flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                {/* File */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="hover:text-foreground transition-colors cursor-pointer">
+                  <DropdownMenuTrigger className="hover:text-foreground transition-colors cursor-pointer px-1 py-0.5 rounded hover:bg-muted/50">
                     File
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-52 text-xs">
@@ -271,60 +266,66 @@ export function StudioHeader({
                     <DropdownMenuItem onClick={onOpenVersionHistoryModal}><History className="h-3.5 w-3.5 mr-2" /> Version History</DropdownMenuItem>
                     <DropdownMenuItem onClick={onPrint}><Printer className="h-3.5 w-3.5 mr-2" /> Print / Save PDF</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={onDownload}><Download className="h-3.5 w-3.5 mr-2 text-primary" /> All Export Formats...</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onDownload}><Download className="h-3.5 w-3.5 mr-2 text-primary" /> Export All Formats...</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive"><Trash2 className="h-3.5 w-3.5 mr-2" /> Move to Trash</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* Edit */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="hover:text-primary transition-colors cursor-pointer flex items-center gap-0.5 text-primary font-medium">
-                    <Sparkles className="h-3 w-3" /> AI Studio
+                  <DropdownMenuTrigger className="hover:text-foreground transition-colors cursor-pointer px-1 py-0.5 rounded hover:bg-muted/50">
+                    Edit
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56 text-xs">
-                    <DropdownMenuItem onClick={onOpenAIWritingModal}><Wand2 className="h-3.5 w-3.5 mr-2 text-primary" /> AI Writing Assistant</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOpenAIPresentationModal}><Presentation className="h-3.5 w-3.5 mr-2 text-primary" /> Create Presentation with AI</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOpenAIDocumentModal}><FileText className="h-3.5 w-3.5 mr-2 text-primary" /> Create Document with AI</DropdownMenuItem>
+                  <DropdownMenuContent align="start" className="w-48 text-xs">
+                    <DropdownMenuItem onClick={onOpenFindReplaceModal}><Search className="h-3.5 w-3.5 mr-2" /> Find &amp; Replace (Ctrl+H)</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onOpenCommandPalette}><Command className="h-3.5 w-3.5 mr-2" /> Command Palette (Ctrl+K)</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* View */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="hover:text-foreground transition-colors cursor-pointer flex items-center gap-0.5">
-                    Design
+                  <DropdownMenuTrigger className="hover:text-foreground transition-colors cursor-pointer px-1 py-0.5 rounded hover:bg-muted/50">
+                    View
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56 text-xs">
-                    <DropdownMenuItem onClick={onOpenResumeTemplateModal}><FileText className="h-3.5 w-3.5 mr-2 text-primary" /> Resume Template Switcher</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOpenBrandKitModal}><Palette className="h-3.5 w-3.5 mr-2 text-primary" /> Brand Kit &amp; Palettes</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOpenMagicDesignModal}><Sparkles className="h-3.5 w-3.5 mr-2 text-primary" /> Magic Design Themes</DropdownMenuItem>
+                  <DropdownMenuContent align="start" className="w-52 text-xs">
+                    <DropdownMenuItem onClick={onOpenDocumentOutlineModal}><ListTree className="h-3.5 w-3.5 mr-2 text-primary" /> Document Outline</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onOpenWordCountModal}><Hash className="h-3.5 w-3.5 mr-2 text-primary" /> Word Count &amp; Stats</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onOpenQualityCheckerModal}><ShieldCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Accessibility Audit</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* Insert */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="hover:text-foreground transition-colors cursor-pointer">
+                  <DropdownMenuTrigger className="hover:text-foreground transition-colors cursor-pointer px-1 py-0.5 rounded hover:bg-muted/50">
                     Insert
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-52 text-xs">
-                    <DropdownMenuItem onClick={onOpenImageUploadModal}><ImageIcon className="h-3.5 w-3.5 mr-2 text-primary" /> Image (Upload / Photo)</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onOpenImageUploadModal}><ImageIcon className="h-3.5 w-3.5 mr-2 text-primary" /> Image (Upload / Camera)</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onOpenDiagramModal}><GitFork className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Flowchart &amp; Diagram</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onOpenChartModal}><BarChart3 className="h-3.5 w-3.5 mr-2 text-blue-500" /> Chart &amp; Visualizer</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={onOpenAcademicCoverModal}><GraduationCap className="h-3.5 w-3.5 mr-2 text-primary" /> Academic Cover Page</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOpenEquationModal}><Calculator className="h-3.5 w-3.5 mr-2 text-primary" /> Math Equation (KaTeX)</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOpenDiagramModal}><GitFork className="h-3.5 w-3.5 mr-2 text-primary" /> Flowchart &amp; Diagram</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOpenChartModal}><BarChart3 className="h-3.5 w-3.5 mr-2 text-primary" /> Chart &amp; Data Visualizer</DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={onOpenAcademicCoverModal}><GraduationCap className="h-3.5 w-3.5 mr-2" /> Academic Cover Page</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onOpenEquationModal}><Calculator className="h-3.5 w-3.5 mr-2" /> Math Equation (KaTeX)</DropdownMenuItem>
                     <DropdownMenuItem onClick={onOpenQRCodeModal}><QrCode className="h-3.5 w-3.5 mr-2" /> Custom QR Code</DropdownMenuItem>
                     <DropdownMenuItem onClick={onOpenSignatureModal}><PenTool className="h-3.5 w-3.5 mr-2" /> Digital Signature</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* More / Studio Tools */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="hover:text-foreground transition-colors cursor-pointer">
-                    Review
+                  <DropdownMenuTrigger className="hover:text-foreground transition-colors cursor-pointer px-1 py-0.5 rounded hover:bg-muted/50 flex items-center gap-0.5">
+                    More <ChevronDown className="h-2.5 w-2.5 opacity-50" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-52 text-xs">
-                    <DropdownMenuItem onClick={onOpenQualityCheckerModal}><ShieldCheck className="h-3.5 w-3.5 mr-2 text-primary" /> Quality &amp; Accessibility Audit</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOpenDocumentOutlineModal}><ListTree className="h-3.5 w-3.5 mr-2 text-primary" /> Document Outline</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOpenFindReplaceModal}><Search className="h-3.5 w-3.5 mr-2" /> Find &amp; Replace (Ctrl+H)</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onOpenWordCountModal}><Hash className="h-3.5 w-3.5 mr-2" /> Word Count &amp; Statistics</DropdownMenuItem>
+                  <DropdownMenuContent align="start" className="w-56 text-xs">
+                    <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase">AI &amp; Templates</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={onOpenAIWritingModal}><Wand2 className="h-3.5 w-3.5 mr-2 text-primary" /> AI Writing Assistant</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onOpenAIPresentationModal}><Presentation className="h-3.5 w-3.5 mr-2 text-primary" /> AI Slide Generator</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onOpenResumeTemplateModal}><FileText className="h-3.5 w-3.5 mr-2 text-primary" /> Resume Template Switcher</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase">Design &amp; Brand</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={onOpenBrandKitModal}><Palette className="h-3.5 w-3.5 mr-2 text-primary" /> Brand Kit &amp; Palettes</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onOpenMagicDesignModal}><Sparkles className="h-3.5 w-3.5 mr-2 text-primary" /> Magic Design Themes</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -332,37 +333,37 @@ export function StudioHeader({
           </div>
         </div>
 
-        {/* Center: Primary Mode Switcher (Desktop) */}
-        <div className="hidden lg:flex items-center gap-1 bg-muted/80 p-1 rounded-xl border border-border shadow-inner">
+        {/* Center: Clean Segmented Mode Switcher (Desktop) */}
+        <div className="hidden lg:flex items-center gap-0.5 bg-muted/60 p-0.5 rounded-lg border border-border">
           <button
             type="button"
             onClick={() => onSwitchMode('document')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${document.mode === 'document' ? 'bg-background text-primary shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${document.mode === 'document' ? 'bg-background text-primary shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
           >
             <FileText className="h-3.5 w-3.5" />
-            <span>Document</span>
+            <span>Doc</span>
           </button>
           <button
             type="button"
             onClick={() => onSwitchMode('presentation')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${document.mode === 'presentation' ? 'bg-background text-primary shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${document.mode === 'presentation' ? 'bg-background text-primary shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
           >
             <Presentation className="h-3.5 w-3.5" />
-            <span>Presentation</span>
+            <span>Slides</span>
           </button>
           <button
             type="button"
             onClick={() => onSwitchMode('design')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${document.mode === 'design' ? 'bg-background text-primary shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${document.mode === 'design' ? 'bg-background text-primary shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
           >
             <Palette className="h-3.5 w-3.5" />
             <span>Design</span>
           </button>
         </div>
 
-        {/* Right: Mobile Tools Button + Theme + Export */}
-        <div className="flex items-center gap-1">
-          {/* Mobile All-Tools Sheet Trigger */}
+        {/* Right: Clean Header Actions */}
+        <div className="flex items-center gap-1.5">
+          {/* Mobile Tools Sheet Trigger */}
           <Button
             variant="outline"
             size="sm"
@@ -373,26 +374,14 @@ export function StudioHeader({
             <span>Tools</span>
           </Button>
 
-          {/* Search / Command Palette (Desktop) */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onOpenCommandPalette}
-            className="h-8 px-2 text-xs gap-1.5 text-muted-foreground hover:text-foreground hidden lg:flex"
-            title="Search actions (Ctrl+K)"
-          >
-            <Command className="h-3.5 w-3.5" />
-            <span>Search</span>
-            <kbd className="text-[9px] bg-muted px-1 rounded font-mono border">Ctrl+K</kbd>
-          </Button>
-
-          {/* Comments Sidebar Toggle */}
+          {/* Comments Toggle */}
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={onToggleComments}
             className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-foreground hidden sm:flex"
-            title="Toggle Comments"
+            title="Comments"
+            aria-label="Toggle Document Comments"
           >
             <MessageSquare className="h-4 w-4" />
           </Button>
@@ -404,6 +393,7 @@ export function StudioHeader({
             className="h-7 w-7 sm:h-8 sm:w-8"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             title={`Switch Theme (${theme})`}
+            aria-label={`Switch Theme to ${theme === 'dark' ? 'Light' : 'Dark'}`}
           >
             {theme === 'dark' ? <Moon className="h-3.5 w-3.5 text-amber-400" /> : <Sun className="h-3.5 w-3.5 text-amber-500" />}
           </Button>
@@ -412,7 +402,7 @@ export function StudioHeader({
           <Button
             size="sm"
             onClick={onDownload}
-            className="h-7 sm:h-8 px-2.5 sm:px-3 text-xs gap-1 bg-primary text-white shadow-xs font-semibold hover:bg-primary/90"
+            className="h-7 sm:h-8 px-3 text-xs gap-1.5 bg-primary text-white shadow-xs font-semibold hover:bg-primary/90"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Export</span>

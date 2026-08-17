@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { PDFEngine, MergablePDFItem } from '@/engines/PDFEngine';
 import {
   FileText, Plus, Trash2, ArrowUp, ArrowDown, Download,
   CheckCircle2, AlertCircle, Loader2, RefreshCw, Upload,
-  Layers, FileCheck, Move
+  Layers, FileCheck, Move, Edit3, Sparkles
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useToastStore } from '@/store/toastStore';
@@ -17,13 +18,26 @@ export function PDFMerger() {
   const [stepMessage, setStepMessage] = useState('');
   const [mergedPdfBytes, setMergedPdfBytes] = useState<Uint8Array | null>(null);
   const [mergedOutputName, setMergedOutputName] = useState('merged-document.pdf');
+  const [isEditingOutputName, setIsEditingOutputName] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToastStore();
+
+  // Helper to sanitize filename and guarantee single .pdf extension
+  const sanitizePdfFilename = (name: string): string => {
+    let clean = name.trim().replace(/[/\\:*?"<>|]/g, '_');
+    if (!clean) clean = 'merged-document';
+    clean = clean.replace(/\.pdf$/i, '');
+    return `${clean}.pdf`;
+  };
 
   const handleAddFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
 
     const newItems: MergablePDFItem[] = [];
+    const existingFingerprints = new Set(
+      items.map(it => `${it.name}__${it.size}`)
+    );
+    let duplicateCount = 0;
 
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
@@ -32,22 +46,37 @@ export function PDFMerger() {
         continue;
       }
 
+      const fingerprint = `${file.name}__${file.size}`;
+      if (existingFingerprints.has(fingerprint)) {
+        duplicateCount++;
+        continue;
+      }
+      existingFingerprints.add(fingerprint);
+
       try {
         const buffer = await file.arrayBuffer();
         const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
         const pageCount = pdfDoc.getPageCount();
 
         newItems.push({
-          id: `pdf_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          id: `pdf_${Date.now()}_${Math.random().toString(36).substring(2, 6)}_${i}`,
           name: file.name,
           size: file.size,
           pageCount,
           buffer,
         });
-      } catch (err) {
+      } catch (err: any) {
         console.error(`Error reading ${file.name}:`, err);
-        toast.error(`Failed to read "${file.name}". File may be corrupted or password protected.`);
+        if (err?.message?.toLowerCase().includes('encrypt') || err?.message?.toLowerCase().includes('password')) {
+          toast.error(`"${file.name}" is password protected. Please unlock it before merging.`);
+        } else {
+          toast.error(`Failed to read "${file.name}". File may be corrupted or invalid.`);
+        }
       }
+    }
+
+    if (duplicateCount > 0) {
+      toast.error(`Ignored ${duplicateCount} duplicate PDF file(s).`);
     }
 
     if (newItems.length > 0) {
@@ -78,9 +107,11 @@ export function PDFMerger() {
   const handleClearAll = () => {
     setItems([]);
     setMergedPdfBytes(null);
+    setMergedOutputName('merged-document.pdf');
   };
 
   const handleMerge = async () => {
+    if (isMerging) return;
     if (items.length < 2) {
       toast.error('Please add at least 2 PDF files to merge.');
       return;
@@ -88,7 +119,7 @@ export function PDFMerger() {
 
     setIsMerging(true);
     setProgressPercent(10);
-    setStepMessage('Starting PDF merge...');
+    setStepMessage('Reading and preparing PDF pages...');
 
     try {
       const bytes = await PDFEngine.mergePDFs(
@@ -99,6 +130,9 @@ export function PDFMerger() {
         }
       );
 
+      // Default name based on first file name
+      const baseName = items[0].name.replace(/\.pdf$/i, '');
+      setMergedOutputName(`${baseName}_merged.pdf`);
       setMergedPdfBytes(bytes);
       setIsMerging(false);
       toast.success('PDFs merged successfully!');
@@ -111,8 +145,9 @@ export function PDFMerger() {
 
   const handleDownload = () => {
     if (!mergedPdfBytes) return;
-    PDFEngine.downloadBuffer(mergedPdfBytes, mergedOutputName);
-    toast.success(`Downloaded ${mergedOutputName}`);
+    const finalFilename = sanitizePdfFilename(mergedOutputName);
+    PDFEngine.downloadBuffer(mergedPdfBytes, finalFilename);
+    toast.success(`Downloaded ${finalFilename}`);
   };
 
   const totalPages = items.reduce((acc, it) => acc + it.pageCount, 0);
@@ -160,13 +195,82 @@ export function PDFMerger() {
         </div>
       </div>
 
+      {/* ── Result State Banner when Merge is Complete ───────────────────────── */}
+      {mergedPdfBytes && (
+        <div className="p-6 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/5 shadow-md space-y-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-foreground">PDFs Merged Successfully!</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Merged <strong>{items.length} files</strong> into <strong>{totalPages} pages</strong> ({PDFEngine.formatBytes(mergedPdfBytes.byteLength)})
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Editable Filename Section */}
+          <div className="p-3.5 rounded-xl border border-border bg-background flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <label className="text-[11px] font-bold text-muted-foreground block mb-1">
+                Merged PDF File Name
+              </label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={mergedOutputName}
+                  onChange={e => setMergedOutputName(e.target.value)}
+                  onBlur={() => setMergedOutputName(sanitizePdfFilename(mergedOutputName))}
+                  placeholder="merged-document.pdf"
+                  className="h-8 text-xs font-mono font-semibold"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1 sm:pt-4 shrink-0">
+              <Button
+                onClick={handleDownload}
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
+                size="sm"
+              >
+                <Download className="h-4 w-4" /> Download PDF
+              </Button>
+            </div>
+          </div>
+
+          {/* Secondary Actions */}
+          <div className="flex items-center justify-between pt-1 text-xs">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-primary hover:underline font-semibold flex items-center gap-1"
+            >
+              <Plus className="h-3.5 w-3.5" /> Merge More PDFs
+            </button>
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1"
+            >
+              <RefreshCw className="h-3.5 w-3.5" /> Start New
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Empty State / Dropzone */}
       {items.length === 0 ? (
         <div
           onClick={() => fileInputRef.current?.click()}
-          onDragOver={e => e.preventDefault()}
+          onDragOver={e => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           onDrop={e => {
             e.preventDefault();
+            e.stopPropagation();
             handleAddFiles(e.dataTransfer.files);
           }}
           className="border-2 border-dashed border-border hover:border-primary/50 bg-card/60 rounded-2xl p-12 flex flex-col items-center justify-center text-center cursor-pointer transition-all"
@@ -178,7 +282,16 @@ export function PDFMerger() {
           <p className="text-xs text-muted-foreground mt-1 max-w-sm">
             Add multiple PDFs to arrange, reorder, and combine into a single seamless document.
           </p>
-          <Button variant="default" size="sm" className="mt-5 gap-1.5 font-semibold">
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
+            className="mt-5 gap-1.5 font-semibold"
+          >
             <Plus className="h-4 w-4" /> Select PDF Files
           </Button>
         </div>
@@ -187,7 +300,7 @@ export function PDFMerger() {
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1 font-medium">
             <span>FILES TO MERGE ({items.length}) • TOTAL {totalPages} PAGES ({PDFEngine.formatBytes(totalSize)})</span>
-            <span className="italic text-[11px]">Drag or use arrows to adjust order</span>
+            <span className="italic text-[11px] hidden sm:inline">Use arrows to adjust merge sequence</span>
           </div>
 
           <div className="space-y-2">
@@ -197,7 +310,7 @@ export function PDFMerger() {
                 className="flex items-center gap-3 p-3.5 rounded-xl border border-border bg-card hover:border-primary/30 transition-all shadow-2xs group"
               >
                 {/* Order Index */}
-                <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center font-mono font-bold text-xs text-muted-foreground shrink-0">
+                <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center font-mono font-bold text-xs text-muted-foreground shrink-0">
                   {idx + 1}
                 </div>
 
@@ -213,17 +326,17 @@ export function PDFMerger() {
                   </p>
                 </div>
 
-                {/* Controls */}
+                {/* Controls with touch-friendly min targets */}
                 <div className="flex items-center gap-1 shrink-0">
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     disabled={idx === 0}
                     onClick={() => handleMove(idx, 'up')}
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
                     title="Move Up"
                   >
-                    <ArrowUp className="h-3.5 w-3.5" />
+                    <ArrowUp className="h-4 w-4" />
                   </Button>
 
                   <Button
@@ -231,20 +344,20 @@ export function PDFMerger() {
                     size="icon-sm"
                     disabled={idx === items.length - 1}
                     onClick={() => handleMove(idx, 'down')}
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
                     title="Move Down"
                   >
-                    <ArrowDown className="h-3.5 w-3.5" />
+                    <ArrowDown className="h-4 w-4" />
                   </Button>
 
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     onClick={() => handleRemove(item.id)}
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
                     title="Remove from List"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -252,51 +365,43 @@ export function PDFMerger() {
           </div>
 
           {/* Merge Progress & Action Section */}
-          <div className="p-5 rounded-2xl border border-border bg-card shadow-xs space-y-4">
-            {isMerging && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-primary flex items-center gap-1.5">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> {stepMessage}
-                  </span>
-                  <span className="font-mono font-bold text-primary">{progressPercent}%</span>
+          {!mergedPdfBytes && (
+            <div className="p-5 rounded-2xl border border-border bg-card shadow-xs space-y-4">
+              {isMerging && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-primary flex items-center gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> {stepMessage}
+                    </span>
+                    <span className="font-mono font-bold text-primary">{progressPercent}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300 rounded-full"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all duration-300 rounded-full"
-                    style={{ width: `${progressPercent}%` }}
-                  />
+              )}
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                <div className="text-xs text-muted-foreground">
+                  Final output will contain <strong className="text-foreground">{totalPages} pages</strong> in the exact sequence shown above.
                 </div>
-              </div>
-            )}
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-              <div className="text-xs text-muted-foreground">
-                Final output will contain <strong className="text-foreground">{totalPages} pages</strong> in the exact sequence shown above.
-              </div>
-
-              <div className="flex items-center gap-2">
-                {mergedPdfBytes ? (
-                  <Button
-                    onClick={handleDownload}
-                    className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
-                    size="sm"
-                  >
-                    <Download className="h-4 w-4" /> Download Merged PDF
-                  </Button>
-                ) : (
+                <div className="flex items-center gap-2">
                   <Button
                     onClick={handleMerge}
                     disabled={isMerging || items.length < 2}
-                    className="gap-2 bg-primary font-semibold shadow-xs"
+                    className="gap-2 bg-primary font-semibold shadow-xs w-full sm:w-auto"
                     size="sm"
                   >
                     <Layers className="h-4 w-4" /> Merge {items.length} PDFs
                   </Button>
-                )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

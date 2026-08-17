@@ -4,6 +4,9 @@ import { useDocumentsStore } from '@/store/documentsStore';
 import { useToastStore } from '@/store/toastStore';
 import { TemplateEngine } from '@/engines/TemplateEngine';
 import { Button } from '@/components/ui/button';
+import { SEOHead } from '@/components/seo/SEOHead';
+import { PublicHeader } from '@/components/layout/PublicHeader';
+import { PublicFooter } from '@/components/layout/PublicFooter';
 import {
   FileText, Presentation, Palette, Sparkles, CheckCircle2,
   ArrowRight, ShieldCheck, Download, Code2, Calculator
@@ -23,7 +26,7 @@ const SEO_TOOLS: Record<string, SeoToolConfig> = {
   'project-report-maker': {
     title: 'Free Online Project Report Maker for College & Engineering',
     subtitle: 'Generate standard academic project reports with automatic Cover Page, Certificate, Declaration, Table of Contents, List of Figures, and IEEE Citations.',
-    metaDesc: 'Create professional university project reports, college assignments, and thesis documents online. Paginated A4 canvas, equation editor, flowcharts, and instant PDF/DOCX export.',
+    metaDesc: 'Create professional university project reports, college assignments, and thesis documents online with DocFlow. Paginated A4 canvas, equation editor, flowcharts, and instant PDF/DOCX export.',
     heroBadge: 'Academic Project Report Builder',
     templateId: 'academic-project-report',
     features: [
@@ -33,15 +36,15 @@ const SEO_TOOLS: Record<string, SeoToolConfig> = {
       { title: 'Multi-Format PDF & DOCX Export', desc: 'Export high-resolution printable PDFs or editable Word DOCX files directly from your browser.' },
     ],
     faqs: [
-      { q: 'Is OpenDoc Studio free for students and researchers?', a: 'Yes! OpenDoc Studio is 100% open-source and free without watermarks, page limits, or account requirements.' },
+      { q: 'Is DocFlow free for students and researchers?', a: 'Yes! DocFlow provides core features 100% free without watermarks, page limits, or forced subscriptions.' },
       { q: 'Can I customize the university cover page?', a: 'Yes, our Academic Cover Page builder allows you to specify University Name, Department, Guide Name, Student USN, and Academic Year.' },
-      { q: 'Does this save my work if I close the tab?', a: 'Yes, OpenDoc Studio uses browser-native IndexedDB to automatically save every keystroke locally on your machine.' },
+      { q: 'Does this save my work if I close the tab?', a: 'Yes, DocFlow uses browser-native IndexedDB to automatically save every keystroke locally on your machine.' },
     ],
   },
   'resume-maker': {
     title: 'Professional ATS-Friendly Resume & CV Builder',
     subtitle: 'Craft modern, high-impact software engineer, business, and academic resumes with clean typography and instant PDF export.',
-    metaDesc: 'Free online resume and CV maker. Build ATS-compliant resumes with modular sections, skills matrices, and instant PDF downloads.',
+    metaDesc: 'Free online resume and CV maker with DocFlow. Build ATS-compliant resumes with modular sections, skills matrices, and instant PDF downloads.',
     heroBadge: 'ATS Resume Builder',
     templateId: 'modern-tech-resume',
     features: [
@@ -51,12 +54,13 @@ const SEO_TOOLS: Record<string, SeoToolConfig> = {
     ],
     faqs: [
       { q: 'Are resumes downloaded without watermarks?', a: 'Yes, all resumes export cleanly with zero watermarks or subscription prompts.' },
+      { q: 'Is my personal information stored securely?', a: 'DocFlow operates with local browser-first storage. Your personal information is not sold or sent to remote servers.' },
     ],
   },
   'presentation-maker': {
     title: 'Online Pitch Deck & Slide Presentation Maker',
     subtitle: 'Create 16:9 widescreen PowerPoint-style presentations with built-in themes, charts, diagrams, speaker notes, and fullscreen presenter mode.',
-    metaDesc: 'Design pitch decks and presentations online. Widescreen 16:9 slides, rich themes, live presenter mode, speaker notes, and PDF/PPTX export.',
+    metaDesc: 'Design pitch decks and presentations online with DocFlow. Widescreen 16:9 slides, rich themes, live presenter mode, speaker notes, and PDF/PPTX export.',
     heroBadge: 'Slide Presentation Studio',
     templateId: 'startup-pitch-deck',
     features: [
@@ -91,7 +95,8 @@ export function SeoToolPage() {
   const { createDocument } = useDocumentsStore();
   const toast = useToastStore();
 
-  const tool = (toolId && SEO_TOOLS[toolId]) || SEO_TOOLS['project-report-maker'];
+  const toolKey = toolId || 'project-report-maker';
+  const tool = SEO_TOOLS[toolKey] || SEO_TOOLS['project-report-maker'];
 
   const handleStartNow = () => {
     const tmpl = TemplateEngine.getTemplateById(tool.templateId);
@@ -111,6 +116,22 @@ export function SeoToolPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
+      <SEOHead
+        title={`${tool.title} | DocFlow`}
+        description={tool.metaDesc}
+        canonicalPath={`/tools/${toolKey}`}
+        h1={tool.title}
+        breadcrumbs={[
+          { name: 'Home', item: '/' },
+          { name: 'Tools', item: '/tools' },
+          { name: tool.heroBadge, item: `/tools/${toolKey}` },
+        ]}
+        faqs={tool.faqs.map(f => ({ question: f.q, answer: f.a }))}
+        softwareAppSchema={true}
+      />
+
+      <PublicHeader />
+
       {/* Hero Section */}
       <div className="border-b border-border bg-gradient-to-b from-primary/5 via-background to-background py-16 px-6">
         <div className="max-w-4xl mx-auto text-center space-y-4">
@@ -138,13 +159,13 @@ export function SeoToolPage() {
       {/* Features Grid */}
       <div className="max-w-5xl mx-auto px-6 py-14 space-y-12">
         <div className="text-center space-y-2">
-          <h2 className="text-2xl font-bold tracking-tight">Key Features & Capabilities</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Key Features &amp; Capabilities</h2>
           <p className="text-sm text-muted-foreground">Engineered for academic precision, design elegance, and maximum speed.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {tool.features.map((f, i) => (
-            <div key={i} className="p-6 rounded-2xl border border-border bg-card shadow-sm space-y-2">
+            <div key={i} className="p-6 rounded-2xl border border-border bg-card shadow-xs space-y-2">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
                 <h3 className="font-semibold text-base">{f.title}</h3>
@@ -174,10 +195,12 @@ export function SeoToolPage() {
           <h3 className="text-xl font-bold">Ready to craft your document?</h3>
           <p className="text-xs text-muted-foreground">No account or credit card required. Everything runs locally in your browser.</p>
           <Button size="lg" className="mt-2 gap-2" onClick={handleStartNow}>
-            Launch OpenDoc Studio <ArrowRight className="h-4 w-4" />
+            Launch DocFlow Workspace <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      <PublicFooter />
     </div>
   );
 }

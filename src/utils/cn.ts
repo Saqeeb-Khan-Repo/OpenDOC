@@ -64,9 +64,12 @@ export function truncate(str: string, length: number): string {
 }
 
 export function extractTextFromHtml(html: string): string {
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  return div.textContent ?? '';
+  if (typeof document !== 'undefined') {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent ?? '';
+  }
+  return html.replace(/<[^>]+>/g, ' ');
 }
 
 export function countWords(html: string): number {

@@ -10,6 +10,8 @@ import {
   GraduationCap, Briefcase, Award, ArrowRight
 } from 'lucide-react';
 
+import { SEOHead } from '@/components/seo/SEOHead';
+
 export function TemplatesPage() {
   const navigate = useNavigate();
   const { createDocument } = useDocumentsStore();
@@ -36,6 +38,15 @@ export function TemplatesPage() {
 
   return (
     <div className="flex flex-col h-full bg-background">
+      <SEOHead
+        title="Document, Slide & Diagram Templates | DocFlow"
+        description="Browse free pre-formatted templates for academic project reports, startup pitch decks, ATS resumes, and engineering flowcharts."
+        canonicalPath="/templates"
+        breadcrumbs={[
+          { name: 'Home', item: '/' },
+          { name: 'Templates', item: '/templates' },
+        ]}
+      />
       {/* Header */}
       <div className="px-3.5 sm:px-6 pt-4 sm:pt-6 pb-4 sm:pb-5 border-b border-border shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

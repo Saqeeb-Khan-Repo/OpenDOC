@@ -125,7 +125,7 @@ export interface ChartData {
 
 export interface DiagramNode {
   id: string;
-  type: 'start' | 'process' | 'decision' | 'input-output' | 'end' | 'custom';
+  type: 'start' | 'process' | 'decision' | 'input-output' | 'end' | 'database' | 'document' | 'subprocess' | 'cloud' | 'custom';
   text: string;
   x: number;
   y: number;

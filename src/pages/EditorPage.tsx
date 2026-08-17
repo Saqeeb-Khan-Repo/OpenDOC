@@ -10,6 +10,7 @@ import { generateShareUrl, copyToClipboard } from '@/utils/share';
 import { BrandKit } from '@/engines/BrandKitEngine';
 import { DesignPreset, MagicDesignEngine } from '@/engines/MagicDesignEngine';
 import { GeneratedDocument } from '@/engines/AIEngine';
+import { SEOHead } from '@/components/seo/SEOHead';
 
 // Editor components
 import { StudioHeader } from '@/components/layout/StudioHeader';
@@ -447,6 +448,12 @@ export function EditorPage() {
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
+      <SEOHead
+        title={`${doc.title || 'Untitled Document'} | DocFlow`}
+        description="DocFlow Document Editor"
+        canonicalPath={`/editor/${doc.id}`}
+        noindex={true}
+      />
       {/* Top Suite Navigation Header */}
       <StudioHeader
         document={doc}
@@ -489,6 +496,21 @@ export function EditorPage() {
               onChangeContent={html => handlePatch({ content: html })}
               pageSettings={doc.pageSettings || {}}
               onChangePageSettings={ps => handlePatch({ pageSettings: ps })}
+              onOpenImageUploadModal={() => setImageUploadOpen(true)}
+              onOpenEquationModal={() => setEquationOpen(true)}
+              onOpenDiagramModal={() => setDiagramOpen(true)}
+              onOpenChartModal={() => setChartOpen(true)}
+              onOpenQRCodeModal={() => setQrOpen(true)}
+              onOpenSignatureModal={() => setSignatureOpen(true)}
+              onOpenAcademicCoverModal={() => setAcademicCoverOpen(true)}
+              onOpenFindReplaceModal={() => setFindReplaceOpen(true)}
+              onOpenWordCountModal={() => setWordCountOpen(true)}
+              onOpenAIWritingModal={() => setAiWritingOpen(true)}
+              onOpenQualityCheckerModal={() => setQualityCheckerOpen(true)}
+              onOpenDocumentOutlineModal={() => setOutlineOpen(true)}
+              onOpenVersionHistoryModal={() => setVersionHistoryOpen(true)}
+              onDownload={() => setExportOpen(true)}
+              onPrint={() => ExportEngine.printDocument(doc)}
             />
           )}
 

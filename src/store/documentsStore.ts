@@ -8,9 +8,14 @@ import { PresentationEngine, PRESENTATION_THEMES } from '@/engines/PresentationE
 import { ElementEngine } from '@/engines/ElementEngine';
 import { LocalStorageEngine } from '@/engines/LocalStorageEngine';
 import { StudioDocument } from '@/engines/types';
+import { normalizeDocument } from '@/utils/documentNormalizer';
+
+export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
 interface DocumentsState {
   documents: Document[];
+  saveStatus: SaveStatus;
+  lastSavedAt: string | null;
   // CRUD
   createDocument: (opts?: {
     title?: string;
@@ -26,6 +31,7 @@ interface DocumentsState {
   permanentlyDeleteDocument: (id: string) => void;
   duplicateDocument: (id: string) => Document | null;
   toggleStar: (id: string) => void;
+  setSaveStatus: (status: SaveStatus) => void;
   // Getters
   getDocument: (id: string) => Document | undefined;
   getDocumentsByFolder: (folderId: string | null) => Document[];
@@ -42,13 +48,17 @@ export const useDocumentsStore = create<DocumentsState>()(
   persist(
     (set, get) => ({
       documents: [],
+      saveStatus: 'saved',
+      lastSavedAt: null,
+
+      setSaveStatus: (status) => set({ saveStatus: status }),
 
       createDocument: (opts = {}) => {
         const now = new Date().toISOString();
         const mode: EditorMode = opts.mode || opts.initialData?.mode || 'document';
         const content = opts.content ?? opts.initialData?.content ?? DEFAULT_CONTENT;
 
-        const doc: Document = {
+        const rawDoc = {
           id: uuidv4(),
           title: opts.title ?? opts.initialData?.title ?? (mode === 'presentation' ? 'Untitled Presentation' : mode === 'design' ? 'Untitled Visual Design' : 'Untitled Document'),
           content,
@@ -90,24 +100,45 @@ export const useDocumentsStore = create<DocumentsState>()(
           ...opts.initialData,
         };
 
-        set(state => ({ documents: [doc, ...state.documents] }));
-        LocalStorageEngine.saveDocument(doc as unknown as StudioDocument);
+        const doc = normalizeDocument(rawDoc);
+
+        set(state => ({
+          documents: [doc, ...state.documents],
+          saveStatus: 'saved',
+          lastSavedAt: now,
+        }));
+
+        try {
+          LocalStorageEngine.saveDocument(doc as unknown as StudioDocument);
+        } catch (e) {
+          console.warn('LocalStorage save error:', e);
+        }
+
         return doc;
       },
 
       updateDocument: (id, patch) => {
         set(state => {
+          const now = new Date().toISOString();
           const docs = state.documents.map(doc => {
             if (doc.id !== id) return doc;
-            const updated = { ...doc, ...patch, updatedAt: new Date().toISOString() };
+            const updated = normalizeDocument({
+              ...doc,
+              ...patch,
+              updatedAt: now,
+            });
             if (patch.content !== undefined) {
               updated.wordCount = countWords(patch.content);
               updated.charCount = countChars(patch.content);
             }
-            LocalStorageEngine.saveDocument(updated as unknown as StudioDocument);
+            try {
+              LocalStorageEngine.saveDocument(updated as unknown as StudioDocument);
+            } catch (err) {
+              console.warn('Failed to save updated document:', err);
+            }
             return updated;
           });
-          return { documents: docs };
+          return { documents: docs, saveStatus: 'saved', lastSavedAt: now };
         });
       },
 
@@ -128,7 +159,9 @@ export const useDocumentsStore = create<DocumentsState>()(
       },
 
       permanentlyDeleteDocument: (id) => {
-        LocalStorageEngine.deleteDocument(id);
+        try {
+          LocalStorageEngine.deleteDocument(id);
+        } catch {}
         set(state => ({
           documents: state.documents.filter(doc => doc.id !== id),
         }));
@@ -138,7 +171,7 @@ export const useDocumentsStore = create<DocumentsState>()(
         const original = get().documents.find(d => d.id === id);
         if (!original) return null;
         const now = new Date().toISOString();
-        const copy: Document = {
+        const copy = normalizeDocument({
           ...original,
           id: uuidv4(),
           title: `${original.title} (Copy)`,
@@ -146,9 +179,12 @@ export const useDocumentsStore = create<DocumentsState>()(
           updatedAt: now,
           deletedAt: null,
           isStarred: false,
-        };
+        });
+
         set(state => ({ documents: [copy, ...state.documents] }));
-        LocalStorageEngine.saveDocument(copy as unknown as StudioDocument);
+        try {
+          LocalStorageEngine.saveDocument(copy as unknown as StudioDocument);
+        } catch {}
         return copy;
       },
 
@@ -160,7 +196,10 @@ export const useDocumentsStore = create<DocumentsState>()(
         }));
       },
 
-      getDocument: (id) => get().documents.find(d => d.id === id),
+      getDocument: (id) => {
+        const doc = get().documents.find(d => d.id === id);
+        return doc ? normalizeDocument(doc) : undefined;
+      },
 
       getDocumentsByFolder: (folderId) =>
         get().documents.filter(d => d.folderId === folderId && !d.deletedAt),
@@ -193,8 +232,35 @@ export const useDocumentsStore = create<DocumentsState>()(
       },
     }),
     {
-      name: 'opendoc-studio-documents',
-      version: 2,
+      name: 'docflow-documents',
+      version: 3,
+      migrate: (persistedState: any, version: number) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return { documents: [], saveStatus: 'saved', lastSavedAt: null };
+        }
+
+        // Migrate from version 1 or 2 or legacy keys
+        let docs = Array.isArray(persistedState.documents) ? persistedState.documents : [];
+        if (docs.length === 0 && typeof window !== 'undefined' && window.localStorage) {
+          try {
+            const old = localStorage.getItem('opendoc-studio-documents');
+            if (old) {
+              const parsed = JSON.parse(old);
+              if (parsed && Array.isArray(parsed.state?.documents)) {
+                docs = parsed.state.documents;
+              }
+            }
+          } catch {}
+        }
+
+        const normalizedDocs = docs.map((d: any) => normalizeDocument(d));
+        return {
+          ...persistedState,
+          documents: normalizedDocs,
+          saveStatus: 'saved',
+          lastSavedAt: new Date().toISOString(),
+        };
+      },
     }
   )
 );

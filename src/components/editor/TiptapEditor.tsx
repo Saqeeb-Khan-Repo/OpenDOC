@@ -338,14 +338,14 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
             <Redo2 className="h-3.5 w-3.5" />
           </TBtn>
 
-          <Separator orientation="vertical" className="h-5 mx-1" />
+          <Separator orientation="vertical" className="h-4 mx-1" />
 
-          {/* Canva-Style Font Family Selector */}
+          {/* Font Family */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-muted/40 border border-border/80 text-xs hover:bg-accent transition-colors max-w-[130px] justify-between font-medium truncate"
+                className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md bg-muted/40 border border-border/80 text-xs hover:bg-accent transition-colors max-w-[110px] justify-between font-medium truncate"
                 title="Font Family"
               >
                 <span className="truncate">
@@ -354,7 +354,7 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
                 <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-52 text-xs">
+            <DropdownMenuContent className="w-48 text-xs">
               <DropdownMenuLabel>Font Family</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {FONT_FAMILIES.map(f => (
@@ -370,26 +370,24 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Canva-Style Font Size Selector (+ / − / Input / Dropdown) */}
+          {/* Font Size Selector */}
           <FontSizeSelector editor={editor} />
 
-          <Separator orientation="vertical" className="h-5 mx-1" />
+          <Separator orientation="vertical" className="h-4 mx-1" />
 
-          {/* Headings / Styles */}
+          {/* Heading Style */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button type="button" className="inline-flex items-center gap-1 h-7 px-2 rounded-md text-xs hover:bg-accent transition-colors min-w-[88px] justify-between font-medium">
+              <button type="button" className="inline-flex items-center gap-1 h-7 px-2 rounded-md text-xs hover:bg-accent transition-colors min-w-[80px] justify-between font-medium">
                 <span>
-                  {[1,2,3,4,5,6].find(l => editor.isActive('heading', { level: l }))
-                    ? `Heading ${[1,2,3,4,5,6].find(l => editor.isActive('heading', { level: l }))}`
-                    : editor.isActive('codeBlock') ? 'Code Block'
-                    : editor.isActive('blockquote') ? 'Blockquote'
-                    : 'Normal Text'}
+                  {[1,2,3,4].find(l => editor.isActive('heading', { level: l }))
+                    ? `Heading ${[1,2,3,4].find(l => editor.isActive('heading', { level: l }))}`
+                    : 'Normal'}
                 </span>
                 <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-44 text-xs">
+            <DropdownMenuContent className="w-40 text-xs">
               <DropdownMenuItem onClick={() => editor.chain().focus().setParagraph().run()} className={cn(editor.isActive('paragraph') && !editor.isActive('heading') && 'bg-accent')}>
                 <span>Normal Text</span>
               </DropdownMenuItem>
@@ -398,168 +396,97 @@ export function TiptapToolbar({ editor }: { editor: Editor | null }) {
                   <span>Heading {level}</span>
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => editor.chain().focus().toggleCodeBlock().run()} className={cn(editor.isActive('codeBlock') && 'bg-accent')}>
-                <Code2 className="h-3.5 w-3.5 mr-1.5" /> Code Block
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().toggleBlockquote().run()} className={cn(editor.isActive('blockquote') && 'bg-accent')}>
-                <Quote className="h-3.5 w-3.5 mr-1.5" /> Blockquote
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
-          {/* Text formatting */}
+          {/* Primary Formats: B, I, U */}
           <TBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold (Ctrl+B)"><Bold className="h-3.5 w-3.5" /></TBtn>
           <TBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic (Ctrl+I)"><Italic className="h-3.5 w-3.5" /></TBtn>
           <TBtn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline (Ctrl+U)"><UnderlineIcon className="h-3.5 w-3.5" /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough"><Strikethrough className="h-3.5 w-3.5" /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Inline Code"><Code className="h-3.5 w-3.5" /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleSuperscript().run()} active={editor.isActive('superscript')} title="Superscript"><SuperscriptIcon className="h-3.5 w-3.5" /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleSubscript().run()} active={editor.isActive('subscript')} title="Subscript"><SubscriptIcon className="h-3.5 w-3.5" /></TBtn>
 
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
-          {/* Text color */}
+          {/* Text Color */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" title="Text Color" className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent transition-colors relative">
                 <span className="text-xs font-bold leading-none" style={{ color: editor.getAttributes('textStyle').color || 'currentColor' }}>A</span>
-                <span className="absolute bottom-1 left-1 right-1 h-0.5 rounded" style={{ backgroundColor: editor.getAttributes('textStyle').color || 'currentColor' }} />
+                <span className="absolute bottom-1 left-1.5 right-1.5 h-0.5 rounded" style={{ backgroundColor: editor.getAttributes('textStyle').color || 'currentColor' }} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="p-3 w-48">
-              <p className="text-xs text-muted-foreground mb-2">Text color</p>
-              <div className="grid grid-cols-6 gap-1.5">
+            <DropdownMenuContent className="p-2.5 w-44 text-xs">
+              <p className="text-[11px] text-muted-foreground mb-1.5 font-semibold">Text Color</p>
+              <div className="grid grid-cols-6 gap-1">
                 {TEXT_COLORS.map(c => (
-                  <button key={c} onClick={() => editor.chain().focus().setColor(c).run()} className="h-6 w-6 rounded border border-border/40 hover:scale-110 transition-transform" style={{ backgroundColor: c }} title={c} />
+                  <button key={c} onClick={() => editor.chain().focus().setColor(c).run()} className="h-5 w-5 rounded border border-border/40 hover:scale-110 transition-transform" style={{ backgroundColor: c }} title={c} />
                 ))}
               </div>
-              <button onClick={() => editor.chain().focus().unsetColor().run()} className="mt-2 w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-left">Remove color</button>
+              <button onClick={() => editor.chain().focus().unsetColor().run()} className="mt-2 w-full text-[11px] text-muted-foreground hover:text-foreground text-left">Reset default</button>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Highlight */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" title="Highlight Color" className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent transition-colors">
-                <Highlighter className="h-3.5 w-3.5" style={{ color: editor.isActive('highlight') ? '#EAB308' : undefined }} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="p-3 w-48">
-              <p className="text-xs text-muted-foreground mb-2">Highlight color</p>
-              <div className="grid grid-cols-5 gap-1.5">
-                {HIGHLIGHT_COLORS.map(c => (
-                  <button key={c} onClick={() => editor.chain().focus().toggleHighlight({ color: c }).run()} className="h-6 w-6 rounded border border-border/40 hover:scale-110 transition-transform" style={{ backgroundColor: c }} />
-                ))}
-              </div>
-              <button onClick={() => editor.chain().focus().unsetHighlight().run()} className="mt-2 w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-left">Remove highlight</button>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Separator orientation="vertical" className="h-4 mx-1" />
 
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
-          {/* Alignment */}
-          <TBtn onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align Left"><AlignLeft className="h-3.5 w-3.5" /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })} title="Align Center"><AlignCenter className="h-3.5 w-3.5" /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="Align Right"><AlignRight className="h-3.5 w-3.5" /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().setTextAlign('justify').run()} active={editor.isActive({ textAlign: 'justify' })} title="Justify"><AlignJustify className="h-3.5 w-3.5" /></TBtn>
-
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
-          {/* Lists */}
-          <TBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet List"><List className="h-3.5 w-3.5" /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered List"><ListOrdered className="h-3.5 w-3.5" /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive('taskList')} title="Checklist"><ListChecks className="h-3.5 w-3.5" /></TBtn>
-
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
-          {/* Table Operations (When inside table) */}
-          {isTableActive ? (
-            <div className="flex items-center gap-0.5 bg-primary/10 px-1 py-0.5 rounded-md border border-primary/30">
+          {/* Contextual Table Tools (If inside table) */}
+          {isTableActive && (
+            <div className="flex items-center gap-0.5 bg-primary/10 px-1 py-0.5 rounded-md border border-primary/30 mr-1">
               <TBtn onClick={() => editor.chain().focus().addRowAfter().run()} title="Add Row Below"><Rows className="h-3.5 w-3.5 text-primary" /></TBtn>
               <TBtn onClick={() => editor.chain().focus().addColumnAfter().run()} title="Add Column Right"><Columns className="h-3.5 w-3.5 text-primary" /></TBtn>
               <TBtn onClick={() => editor.chain().focus().deleteRow().run()} title="Delete Row"><Trash className="h-3.5 w-3.5 text-destructive" /></TBtn>
               <TBtn onClick={() => editor.chain().focus().deleteTable().run()} title="Delete Table"><Trash className="h-3.5 w-3.5 text-destructive font-bold" /></TBtn>
             </div>
-          ) : (
-            <TBtn onClick={insertTable} title="Insert Table (3x3)"><TableIcon className="h-3.5 w-3.5" /></TBtn>
           )}
 
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
-          {/* Borders */}
+          {/* Insert Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button type="button" title="Borders" className={cn('inline-flex items-center gap-1 h-7 px-1.5 rounded-md hover:bg-accent transition-colors text-xs', editor.isActive('borderBox') && 'bg-accent text-accent-foreground')}>
-                <Frame className="h-3.5 w-3.5" />
-                <ChevronDown className="h-3 w-3 opacity-50" />
+              <button type="button" className="inline-flex items-center gap-1 h-7 px-2 rounded-md text-xs font-semibold hover:bg-accent transition-colors text-primary bg-primary/5 border border-primary/20">
+                <Plus className="h-3 w-3" />
+                <span>Insert</span>
+                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-60 p-3" align="start">
-              <DropdownMenuLabel className="text-xs mb-2">Border Style</DropdownMenuLabel>
-              <div className="grid grid-cols-2 gap-1.5 mb-3">
-                {([
-                  { type: 'full'   as BorderType, icon: Square,            label: 'Full Border'   },
-                  { type: 'left'   as BorderType, icon: RectangleVertical, label: 'Left Border'   },
-                  { type: 'top'    as BorderType, icon: PanelTopOpen,      label: 'Top Border'    },
-                  { type: 'bottom' as BorderType, icon: PanelBottomOpen,   label: 'Bottom Border' },
-                ]).map(({ type, icon: Icon, label }) => (
-                  <button
-                    key={type}
-                    onClick={() => applyBorder(type)}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors border border-transparent hover:border-border"
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {label}
-                  </button>
-                ))}
-                <button
-                  onClick={() => editor.chain().focus().unsetBorderBox().run()}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors border border-transparent hover:border-border col-span-2 text-destructive hover:text-destructive"
-                >
-                  <RemoveFormatting className="h-4 w-4" /> Remove Border
-                </button>
-              </div>
-
+            <DropdownMenuContent align="start" className="w-48 text-xs">
+              <DropdownMenuItem onClick={addImage}><ImageIcon className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Image (Upload / Photo)</DropdownMenuItem>
+              <DropdownMenuItem onClick={insertTable}><TableIcon className="h-3.5 w-3.5 mr-2 text-blue-500" /> Table (3x3)</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowLinkInput(true)}><LinkIcon className="h-3.5 w-3.5 mr-2 text-indigo-500" /> Web Link (Ctrl+K)</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <div className="mt-2 mb-2">
-                <p className="text-xs text-muted-foreground mb-1.5">Line style</p>
-                <div className="grid grid-cols-4 gap-1">
-                  {(['solid','dashed','dotted','double'] as BorderStyle[]).map(s => (
-                    <button key={s} onClick={() => setBorderStyle(s)} className={cn('px-2 py-1 rounded text-xs border transition-all', borderStyle === s ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50')}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-2">
-                <p className="text-xs text-muted-foreground mb-1.5">Border color</p>
-                <div className="flex gap-1.5 flex-wrap">
-                  {BORDER_COLORS.map(c => (
-                    <button key={c} onClick={() => setBorderColor(c)} className={cn('h-5 w-5 rounded border hover:scale-110 transition-transform', borderColor === c && 'ring-2 ring-offset-1 ring-primary scale-110')} style={{ backgroundColor: c }} />
-                  ))}
-                </div>
-              </div>
+              <DropdownMenuItem onClick={insertPageBreak}><SplitSquareVertical className="h-3.5 w-3.5 mr-2 text-primary" /> Page Break (Ctrl+Enter)</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => editor.chain().focus().setHorizontalRule().run()}><Minus className="h-3.5 w-3.5 mr-2" /> Horizontal Divider</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Insert Tools */}
-          <TBtn onClick={() => setShowLinkInput(v => !v)} active={editor.isActive('link') || showLinkInput} title="Insert Link (Ctrl+K)">
-            <LinkIcon className="h-3.5 w-3.5" />
-          </TBtn>
-          <TBtn onClick={addImage} title="Insert Image"><ImageIcon className="h-3.5 w-3.5" /></TBtn>
-          <TBtn onClick={insertPageBreak} title="Insert Page Break (Ctrl+Enter)"><SplitSquareVertical className="h-3.5 w-3.5 text-primary" /></TBtn>
-          <TBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal Rule"><Minus className="h-3.5 w-3.5" /></TBtn>
+          {/* More Formatting Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="inline-flex items-center gap-0.5 h-7 px-1.5 rounded-md text-xs hover:bg-accent transition-colors text-muted-foreground hover:text-foreground" title="More Formatting">
+                <span>More</span>
+                <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 p-2 text-xs">
+              <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase">Alignment</DropdownMenuLabel>
+              <div className="flex items-center gap-1 py-1">
+                <TBtn onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Left"><AlignLeft className="h-3.5 w-3.5" /></TBtn>
+                <TBtn onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })} title="Center"><AlignCenter className="h-3.5 w-3.5" /></TBtn>
+                <TBtn onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="Right"><AlignRight className="h-3.5 w-3.5" /></TBtn>
+                <TBtn onClick={() => editor.chain().focus().setTextAlign('justify').run()} active={editor.isActive({ textAlign: 'justify' })} title="Justify"><AlignJustify className="h-3.5 w-3.5" /></TBtn>
+              </div>
 
-          <Separator orientation="vertical" className="h-5 mx-1" />
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase">Lists</DropdownMenuLabel>
+              <div className="flex items-center gap-1 py-1">
+                <TBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet List"><List className="h-3.5 w-3.5" /></TBtn>
+                <TBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered List"><ListOrdered className="h-3.5 w-3.5" /></TBtn>
+                <TBtn onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive('taskList')} title="Checklist"><ListChecks className="h-3.5 w-3.5" /></TBtn>
+              </div>
 
-          {/* Clear Formatting */}
-          <TBtn onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title="Clear Formatting">
-            <RemoveFormatting className="h-3.5 w-3.5" />
-          </TBtn>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough className="h-3.5 w-3.5 mr-2" /> Strikethrough</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => editor.chain().focus().toggleCode().run()}><Code className="h-3.5 w-3.5 mr-2" /> Inline Code</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => editor.chain().focus().toggleSuperscript().run()}><SuperscriptIcon className="h-3.5 w-3.5 mr-2" /> Superscript</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => editor.chain().focus().toggleSubscript().run()}><SubscriptIcon className="h-3.5 w-3.5 mr-2" /> Subscript</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}><RemoveFormatting className="h-3.5 w-3.5 mr-2 text-destructive" /> Clear Formatting</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Link Input Bar */}

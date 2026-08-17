@@ -1,27 +1,30 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Slide, SlideLayout, PresentationSettings, SlideTheme,
-  CanvasElement, ShapeType
+  CanvasElement, ShapeType, SlideTransition
 } from '@/engines/types';
 import {
   PresentationEngine, PRESENTATION_THEMES, PRESENTATION_GRADIENTS, GradientPreset
 } from '@/engines/PresentationEngine';
 import { ElementEngine } from '@/engines/ElementEngine';
-import {
-  Plus, Copy, Trash2, Play, Palette, Layout, Type, Square,
-  Image as ImageIcon, BarChart3, GitFork, QrCode, FileText, ChevronDown,
-  ArrowUp, ArrowDown, Sparkles, Undo2, Redo2, Layers, Check,
-  Move, RotateCcw, Crop, RefreshCw, RotateCw, Sliders, ArrowUpSquare, ArrowDownSquare
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-  DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuGroup
-} from '@/components/ui/dropdown-menu';
+import { PresentationSidebar } from './PresentationSidebar';
+import { PresentationToolbar } from './PresentationToolbar';
+import { PresentationPropertiesPanel } from './PresentationPropertiesPanel';
+import { MobilePresentationToolbar } from './MobilePresentationToolbar';
 import { PresenterModal } from './PresenterModal';
 import { ImageUploadModal } from './ImageUploadModal';
 import { ImageCropModal } from './ImageCropModal';
 import { ImageAssetEngine } from '@/engines/ImageAssetEngine';
+import { useResponsiveEditor } from '@/hooks/useResponsiveEditor';
+import {
+  Plus, Copy, Trash2, Play, Palette, Layout, Type, Square,
+  Image as ImageIcon, BarChart3, GitFork, QrCode, FileText, ChevronDown,
+  ArrowUp, ArrowDown, Sparkles, Undo2, Redo2, Layers, Check,
+  Move, RotateCcw, Crop, RefreshCw, RotateCw, Sliders, ArrowUpSquare,
+  ArrowDownSquare, ChevronUp, ChevronRight, Minus
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/utils/cn';
 
 interface PresentationCanvasProps {
   slides: Slide[];
@@ -46,7 +49,9 @@ export function PresentationCanvas({
   onOpenDiagramModal,
   onOpenQRCodeModal,
 }: PresentationCanvasProps) {
-  // Ensure we always have at least 1 valid slide
+  const responsive = useResponsiveEditor();
+
+  // Ensure valid slides
   const validSlides = slides && slides.length > 0
     ? slides
     : [PresentationEngine.createSlide('title', settings.theme || PRESENTATION_THEMES[0])];
@@ -56,12 +61,14 @@ export function PresentationCanvas({
 
   const [presenterOpen, setPresenterOpen] = useState(false);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
   const [showNotesDrawer, setShowNotesDrawer] = useState(true);
   const [imageUploadOpen, setImageUploadOpen] = useState(false);
   const [cropTarget, setCropTarget] = useState<CanvasElement | null>(null);
+  const [clipboardElement, setClipboardElement] = useState<CanvasElement | null>(null);
   const replaceFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Undo / Redo History for Presentation
+  // Undo / Redo History
   const [history, setHistory] = useState<Slide[][]>([validSlides]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -91,31 +98,49 @@ export function PresentationCanvas({
     }
   }, [history, historyIndex, onChangeSlides, onChangeActiveSlideIndex, safeActiveIndex]);
 
-  // Keyboard Shortcuts (Ctrl+M for new slide, Ctrl+Z, Ctrl+Y, Arrow navigation)
+  const selectedElement = activeSlide.elements.find(el => el.id === selectedElementId) || null;
+
+  // ── Responsive Viewport & Proportional Scale Observer ───────────────────────
+  const stageContainerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 960, height: 540 });
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
-        e.preventDefault();
-        handleAddSlide('title-content');
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      } else if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) {
-        e.preventDefault();
-        handleRedo();
-      } else if (e.key === 'ArrowUp' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
-        if (safeActiveIndex > 0) onChangeActiveSlideIndex(safeActiveIndex - 1);
-      } else if (e.key === 'ArrowDown' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
-        if (safeActiveIndex < validSlides.length - 1) onChangeActiveSlideIndex(safeActiveIndex + 1);
+    const el = stageContainerRef.current;
+    if (!el) return;
+    const updateSize = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        setContainerSize({ width: rect.width, height: rect.height });
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [safeActiveIndex, validSlides.length, handleUndo, handleRedo]);
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(el);
+    window.addEventListener('resize', updateSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, []);
+
+  const SLIDE_CANONICAL_WIDTH = 960;
+  const SLIDE_CANONICAL_HEIGHT = 540;
+  const stagePadding = responsive.isMobile ? 12 : 32;
+  const availWidth = Math.max(120, containerSize.width - stagePadding * 2);
+  const availHeight = Math.max(120, containerSize.height - stagePadding * 2);
+  const computedScale = Math.min(
+    availWidth / SLIDE_CANONICAL_WIDTH,
+    availHeight / SLIDE_CANONICAL_HEIGHT
+  );
+
+  // ── Update Helper ───────────────────────────────────────────────────────────
+  const updateActiveSlide = (newSlide: Slide) => {
+    const nextSlides = validSlides.map((s, idx) => idx === safeActiveIndex ? newSlide : s);
+    pushHistory(nextSlides);
+    onChangeSlides(nextSlides);
+  };
 
   // ── Slide Actions ───────────────────────────────────────────────────────────
-
-  // Add Slide immediately after the currently active slide
   const handleAddSlide = (layout: SlideLayout = 'title-content', gradient?: string) => {
     const newSlide = PresentationEngine.createSlide(
       layout,
@@ -139,492 +164,294 @@ export function PresentationCanvas({
     const duplicatedElements = target.elements.map(el => ({
       ...el,
       id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      transform: { ...el.transform },
-      style: { ...el.style },
     }));
 
-    const copy: Slide = {
+    const duplicatedSlide: Slide = {
       ...target,
-      id: `slide_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: `slide_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       title: `${target.title} (Copy)`,
       elements: duplicatedElements,
     };
 
-    const next = [...validSlides];
-    next.splice(idx + 1, 0, copy);
+    const nextSlides = [...validSlides];
+    nextSlides.splice(idx + 1, 0, duplicatedSlide);
 
-    pushHistory(next);
-    onChangeSlides(next);
+    pushHistory(nextSlides);
+    onChangeSlides(nextSlides);
     onChangeActiveSlideIndex(idx + 1);
   };
 
   const handleDeleteSlide = (idx: number) => {
     if (validSlides.length <= 1) return;
-    const next = validSlides.filter((_, i) => i !== idx);
-    const nextActive = Math.max(0, Math.min(idx, next.length - 1));
-
-    pushHistory(next);
-    onChangeSlides(next);
-    onChangeActiveSlideIndex(nextActive);
+    const nextSlides = validSlides.filter((_, i) => i !== idx);
+    pushHistory(nextSlides);
+    onChangeSlides(nextSlides);
+    onChangeActiveSlideIndex(Math.max(0, idx - 1));
   };
 
-  const handleMoveSlide = (fromIndex: number, toIndex: number) => {
-    if (toIndex < 0 || toIndex >= validSlides.length) return;
-    const next = PresentationEngine.moveSlide(validSlides, fromIndex, toIndex);
-
-    pushHistory(next);
-    onChangeSlides(next);
-    onChangeActiveSlideIndex(toIndex);
-  };
-
-  const updateActiveSlide = (updated: Slide) => {
-    const next = [...validSlides];
-    next[safeActiveIndex] = updated;
-    onChangeSlides(next);
-  };
-
-  // ── Gradient & Theme Actions ────────────────────────────────────────────────
-  const handleApplyGradient = (preset: GradientPreset, applyToAll = false) => {
-    if (applyToAll) {
-      const next = validSlides.map(s => ({
-        ...s,
-        gradient: preset.gradient,
-        background: undefined,
-      }));
-      pushHistory(next);
-      onChangeSlides(next);
-    } else {
-      const updated = {
-        ...activeSlide,
-        gradient: preset.gradient,
-        background: undefined,
-      };
-      const next = [...validSlides];
-      next[safeActiveIndex] = updated;
-      pushHistory(next);
-      onChangeSlides(next);
-    }
-  };
-
-  const handleClearGradient = (applyToAll = false) => {
-    if (applyToAll) {
-      const next = validSlides.map(s => ({
-        ...s,
-        gradient: undefined,
-        background: settings.theme.backgroundColor,
-      }));
-      pushHistory(next);
-      onChangeSlides(next);
-    } else {
-      const updated = {
-        ...activeSlide,
-        gradient: undefined,
-        background: settings.theme.backgroundColor,
-      };
-      const next = [...validSlides];
-      next[safeActiveIndex] = updated;
-      pushHistory(next);
-      onChangeSlides(next);
-    }
-  };
-
-  const handleThemeChange = (theme: SlideTheme) => {
-    onChangeSettings({ ...settings, theme });
-    const updated = validSlides.map(s => ({
-      ...s,
-      background: s.gradient ? undefined : theme.backgroundColor,
-    }));
-    pushHistory(updated);
-    onChangeSlides(updated);
+  const handleLoadProjectDeck = () => {
+    const deck = PresentationEngine.createProjectDeck(
+      'Autonomous Intelligent Document Studio',
+      'Team DocFlow',
+      settings.theme || PRESENTATION_THEMES[0],
+      PRESENTATION_GRADIENTS[0].gradient
+    );
+    pushHistory(deck);
+    onChangeSlides(deck);
+    onChangeActiveSlideIndex(0);
   };
 
   // ── Element Actions ─────────────────────────────────────────────────────────
   const handleAddTextElement = () => {
-    const isDark = activeSlide.gradient?.includes('#1e3a8a') || activeSlide.gradient?.includes('#7c3aed') || activeSlide.gradient?.includes('#090d16') || activeSlide.gradient?.includes('#18181b');
-    const color = isDark ? '#ffffff' : (settings.theme?.textColor || '#0f172a');
-
     const newEl = ElementEngine.createElement('text', {
-      transform: { x: 100, y: 120, width: 420, height: 80, rotation: 0 },
-      content: `<p style="font-size: 22px; font-weight: bold; color: ${color};">Editable text box</p>`,
+      transform: { x: 100, y: 150, width: 450, height: 80, rotation: 0 },
+      content: '<p style="font-size: 24px; color: inherit;">Click to edit text...</p>',
+      style: { fontFamily: settings.theme?.bodyFont || 'Inter' },
     });
-    const updatedSlide = {
-      ...activeSlide,
-      elements: [...activeSlide.elements, newEl],
-    };
-    updateActiveSlide(updatedSlide);
+    updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, newEl] });
     setSelectedElementId(newEl.id);
   };
 
   const handleAddShapeElement = (shapeType: ShapeType = 'rounded-rectangle') => {
     const newEl = ElementEngine.createElement('shape', {
       shapeType,
-      transform: { x: 160, y: 160, width: 140, height: 140, rotation: 0 },
+      transform: { x: 200, y: 180, width: 160, height: 120, rotation: 0 },
       style: {
-        fill: settings.theme.primaryColor || '#2563EB',
+        fill: settings.theme?.primaryColor || '#2563EB',
         stroke: '#ffffff',
-        strokeWidth: 1,
-        cornerRadius: 10,
+        strokeWidth: 0,
+        cornerRadius: shapeType === 'circle' ? 999 : 8,
+        opacity: 0.95,
       },
     });
-    const updatedSlide = {
-      ...activeSlide,
-      elements: [...activeSlide.elements, newEl],
-    };
-    updateActiveSlide(updatedSlide);
+    updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, newEl] });
     setSelectedElementId(newEl.id);
   };
 
-  const handleElementContentChange = (elId: string, html: string) => {
-    const nextElements = activeSlide.elements.map(el =>
-      el.id === elId ? { ...el, content: html } : el
-    );
-    updateActiveSlide({ ...activeSlide, elements: nextElements });
+  const handleAddTableElement = (rows = 3, cols = 3) => {
+    let tableHtml = '<table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: left;">';
+    for (let r = 0; r < rows; r++) {
+      tableHtml += '<tr>';
+      for (let c = 0; c < cols; c++) {
+        if (r === 0) {
+          tableHtml += `<th style="border: 1px solid rgba(255,255,255,0.2); padding: 8px 12px; background: rgba(37,99,235,0.2); font-weight: bold;">Header ${c + 1}</th>`;
+        } else {
+          tableHtml += `<td style="border: 1px solid rgba(255,255,255,0.15); padding: 8px 12px;">Cell ${r},${c + 1}</td>`;
+        }
+      }
+      tableHtml += '</tr>';
+    }
+    tableHtml += '</table>';
+
+    const newEl = ElementEngine.createElement('table', {
+      transform: { x: 120, y: 140, width: 600, height: 200, rotation: 0 },
+      content: tableHtml,
+      style: { backgroundColor: 'rgba(255,255,255,0.05)', padding: 8, cornerRadius: 6 },
+    });
+    updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, newEl] });
+    setSelectedElementId(newEl.id);
   };
 
-  const handleDeleteElement = (elId: string) => {
-    const nextElements = activeSlide.elements.filter(el => el.id !== elId);
-    updateActiveSlide({ ...activeSlide, elements: nextElements });
+  const handleUpdateSelectedElement = (patch: Partial<CanvasElement>) => {
+    if (!selectedElementId) return;
+    const nextEls = activeSlide.elements.map(el => el.id === selectedElementId ? { ...el, ...patch } : el);
+    updateActiveSlide({ ...activeSlide, elements: nextEls });
+  };
+
+  const handleDeleteSelectedElement = () => {
+    if (!selectedElementId) return;
+    const nextEls = activeSlide.elements.filter(el => el.id !== selectedElementId);
+    updateActiveSlide({ ...activeSlide, elements: nextEls });
     setSelectedElementId(null);
   };
 
-  const handleInsertImageToSlide = async (imageData: { src: string; imageId?: string; alt?: string }) => {
-    const { width, height } = await ImageAssetEngine.getImageDimensions(imageData.src);
-    const fit = ImageAssetEngine.calculateFitDimensions(width, height, 480, 320);
-
-    const imgEl: CanvasElement = {
+  const handleDuplicateSelectedElement = () => {
+    if (!selectedElement) return;
+    const dup: CanvasElement = {
+      ...selectedElement,
       id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      type: 'image',
-      content: imageData.src,
       transform: {
-        x: Math.round((960 - fit.width) / 2),
-        y: Math.round((540 - fit.height) / 2),
-        width: fit.width,
-        height: fit.height,
-        rotation: 0,
+        ...selectedElement.transform,
+        x: selectedElement.transform.x + 20,
+        y: selectedElement.transform.y + 20,
       },
-      style: {
-        opacity: 1,
-        cornerRadius: 8,
-      },
-      zIndex: activeSlide.elements.length + 1,
+    };
+    updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, dup] });
+    setSelectedElementId(dup.id);
+  };
+
+  // ── Rich Text Formatting on Selection ───────────────────────────────────────
+  const handleFormatText = (command: string, value?: string) => {
+    if (typeof window !== 'undefined') {
+      document.execCommand(command, false, value);
+    }
+  };
+
+  // ── Keyboard Shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+D, Ctrl+C, Ctrl+V, Delete) ────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isInput = ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName);
+      if (isInput) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) {
+        e.preventDefault();
+        handleRedo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && selectedElement) {
+        e.preventDefault();
+        handleDuplicateSelectedElement();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && selectedElement) {
+        setClipboardElement(selectedElement);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && clipboardElement) {
+        e.preventDefault();
+        const pasted: CanvasElement = {
+          ...clipboardElement,
+          id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          transform: {
+            ...clipboardElement.transform,
+            x: clipboardElement.transform.x + 24,
+            y: clipboardElement.transform.y + 24,
+          },
+        };
+        updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, pasted] });
+        setSelectedElementId(pasted.id);
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId && !(e.target as HTMLElement)?.isContentEditable) {
+        e.preventDefault();
+        handleDeleteSelectedElement();
+      } else if (e.key === 'ArrowUp' && safeActiveIndex > 0) {
+        onChangeActiveSlideIndex(safeActiveIndex - 1);
+      } else if (e.key === 'ArrowDown' && safeActiveIndex < validSlides.length - 1) {
+        onChangeActiveSlideIndex(safeActiveIndex + 1);
+      }
     };
 
-    updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, imgEl] });
-    setSelectedElementId(imgEl.id);
-  };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [safeActiveIndex, validSlides.length, selectedElement, selectedElementId, clipboardElement, handleUndo, handleRedo]);
 
-  const handleReplaceSlideImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedElementId) return;
-
-    const asset = await ImageAssetEngine.storeImage(file);
-    const nextEls = activeSlide.elements.map(item =>
-      item.id === selectedElementId ? { ...item, content: asset.dataUrl } : item
-    );
-    updateActiveSlide({ ...activeSlide, elements: nextEls });
-    e.target.value = '';
-  };
-
-  const handleApplySlideCrop = async (croppedDataUrl: string) => {
-    if (!cropTarget) return;
-    const asset = await ImageAssetEngine.storeImage(croppedDataUrl, 'Cropped Slide Image');
-    const nextEls = activeSlide.elements.map(item =>
-      item.id === cropTarget.id ? { ...item, content: asset.dataUrl } : item
-    );
-    updateActiveSlide({ ...activeSlide, elements: nextEls });
-    setCropTarget(null);
-  };
-
-  const currentSlideBackground = activeSlide.gradient || activeSlide.background || settings.theme.backgroundColor || '#ffffff';
+  const currentSlideBackground = activeSlide.gradient || activeSlide.background || settings.theme?.backgroundColor || '#ffffff';
 
   return (
-    <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-[#090d16] overflow-hidden select-none">
-      {/* ── Top Presentation Ribbon Toolbar ─────────────────────────── */}
-      <div className="h-11 bg-background/95 backdrop-blur border-b border-border px-4 flex items-center justify-between shrink-0 text-xs z-20">
-        {/* Formatting Actions */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap shrink-0">
-          {/* Main "+ Add Slide" Button & Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" className="h-7 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xs">
-                <Plus className="h-3.5 w-3.5" /> Add Slide <ChevronDown className="h-3 w-3 opacity-70" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56 text-xs" align="start">
-              <DropdownMenuLabel className="text-xs">Slide Layout Presets</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleAddSlide('title')}>
-                <span>Title Slide</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddSlide('title-content')}>
-                <span>Title & Content</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddSlide('two-columns')}>
-                <span>Two Columns</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddSlide('section-header')}>
-                <span>Section Header</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddSlide('image-text')}>
-                <span>Image & Text</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddSlide('timeline')}>
-                <span>Timeline & Roadmap</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddSlide('statistics')}>
-                <span>Key Metrics & Stats</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddSlide('quote')}>
-                <span>Quote Slide</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddSlide('closing')}>
-                <span>Closing / Thank You</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddSlide('blank')}>
-                <span>Blank Slide</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-[#090d16] overflow-hidden relative select-none">
+      {/* ── Top Ribbon Toolbar ──────────────────────────────────────────────── */}
+      <PresentationToolbar
+        activeSlide={activeSlide}
+        selectedElement={selectedElement}
+        settings={settings}
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < history.length - 1}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onAddSlide={handleAddSlide}
+        onAddText={handleAddTextElement}
+        onAddImage={() => setImageUploadOpen(true)}
+        onAddShape={handleAddShapeElement}
+        onAddTable={handleAddTableElement}
+        onOpenChartModal={onOpenChartModal}
+        onOpenDiagramModal={onOpenDiagramModal}
+        onOpenQRCodeModal={onOpenQRCodeModal}
+        onOpenSignatureModal={() => {}}
+        onApplyGradient={(preset, applyToAll) => {
+          if (applyToAll) {
+            const next = validSlides.map(s => ({ ...s, gradient: preset.gradient, background: undefined }));
+            pushHistory(next);
+            onChangeSlides(next);
+          } else {
+            updateActiveSlide({ ...activeSlide, gradient: preset.gradient, background: undefined });
+          }
+        }}
+        onClearGradient={(applyToAll) => {
+          if (applyToAll) {
+            const next = validSlides.map(s => ({ ...s, gradient: undefined, background: settings.theme.backgroundColor }));
+            pushHistory(next);
+            onChangeSlides(next);
+          } else {
+            updateActiveSlide({ ...activeSlide, gradient: undefined, background: settings.theme.backgroundColor });
+          }
+        }}
+        onChangeTheme={(th, applyToAll = true) => {
+          onChangeSettings({ ...settings, theme: th });
+          if (applyToAll) {
+            const updated = PresentationEngine.applyThemeToAllSlides(validSlides, th);
+            pushHistory(updated);
+            onChangeSlides(updated);
+          }
+        }}
+        onApplyFontToAll={(fontFamily) => {
+          const updated = PresentationEngine.applyFontToAllSlides(validSlides, fontFamily, 'all');
+          pushHistory(updated);
+          onChangeSlides(updated);
+        }}
+        onApplyTextColorToAll={(color) => {
+          const updated = PresentationEngine.applyTextColorToAllSlides(validSlides, color, 'all');
+          pushHistory(updated);
+          onChangeSlides(updated);
+        }}
+        onFormatText={handleFormatText}
+        onUpdateSelectedElement={handleUpdateSelectedElement}
+        onBringForward={() => {
+          if (selectedElementId) {
+            const reordered = ElementEngine.bringForward(activeSlide.elements, selectedElementId);
+            updateActiveSlide({ ...activeSlide, elements: reordered });
+          }
+        }}
+        onSendBackward={() => {
+          if (selectedElementId) {
+            const reordered = ElementEngine.sendBackward(activeSlide.elements, selectedElementId);
+            updateActiveSlide({ ...activeSlide, elements: reordered });
+          }
+        }}
+        onAlignElements={(alignment) => {
+          if (selectedElementId) {
+            const aligned = PresentationEngine.alignElements(activeSlide.elements, [selectedElementId], alignment);
+            updateActiveSlide({ ...activeSlide, elements: aligned });
+          }
+        }}
+        onPresent={() => setPresenterOpen(true)}
+      />
 
-          <div className="h-4 w-px bg-border mx-1" />
-
-          {/* History Undo / Redo */}
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7" onClick={handleUndo} disabled={historyIndex === 0} title="Undo (Ctrl+Z)">
-            <Undo2 className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7" onClick={handleRedo} disabled={historyIndex >= history.length - 1} title="Redo (Ctrl+Y)">
-            <Redo2 className="h-3.5 w-3.5" />
-          </Button>
-
-          <div className="h-4 w-px bg-border mx-1" />
-
-          {/* Insert Elements */}
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleAddTextElement}>
-            <Type className="h-3.5 w-3.5" /> Text
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setImageUploadOpen(true)}>
-            <ImageIcon className="h-3.5 w-3.5 text-primary" /> Image
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => handleAddShapeElement('rounded-rectangle')}>
-            <Square className="h-3.5 w-3.5" /> Shape
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={onOpenChartModal}>
-            <BarChart3 className="h-3.5 w-3.5" /> Chart
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={onOpenDiagramModal}>
-            <GitFork className="h-3.5 w-3.5" /> Diagram
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={onOpenQRCodeModal}>
-            <QrCode className="h-3.5 w-3.5" /> QR Code
-          </Button>
-
-          <div className="h-4 w-px bg-border mx-1" />
-
-          {/* Modern Gradient Designs Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 border-primary/30 hover:border-primary">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span>Gradients</span>
-                <ChevronDown className="h-3 w-3 opacity-60" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64 p-2 text-xs" align="start">
-              <DropdownMenuLabel className="text-xs flex items-center justify-between">
-                <span>Modern Gradient Styles</span>
-                {activeSlide.gradient && (
-                  <button
-                    type="button"
-                    onClick={() => handleClearGradient(false)}
-                    className="text-[11px] text-muted-foreground hover:text-destructive transition-colors font-normal"
-                  >
-                    Remove
-                  </button>
-                )}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-
-              <div className="grid grid-cols-2 gap-1.5 py-1">
-                {PRESENTATION_GRADIENTS.map(g => {
-                  const isSelected = activeSlide.gradient === g.gradient;
-                  return (
-                    <button
-                      key={g.id}
-                      type="button"
-                      onClick={() => handleApplyGradient(g, false)}
-                      className={`h-10 rounded-md p-1.5 flex flex-col justify-end text-left border transition-all relative overflow-hidden group ${isSelected ? 'ring-2 ring-primary border-primary scale-[1.02]' : 'border-border/60 hover:scale-[1.02]'}`}
-                      style={{ background: g.gradient }}
-                    >
-                      <span className="text-[10px] font-semibold truncate z-10" style={{ color: g.headingColor }}>
-                        {g.name}
-                      </span>
-                      {isSelected && (
-                        <div className="absolute top-1 right-1 bg-black/40 rounded-full p-0.5 z-10">
-                          <Check className="h-2.5 w-2.5 text-white" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => activeSlide.gradient && handleApplyGradient(PRESENTATION_GRADIENTS.find(g => g.gradient === activeSlide.gradient) || PRESENTATION_GRADIENTS[0], true)}>
-                <span>Apply Current Gradient to All Slides</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleClearGradient(true)}>
-                <span>Reset All Slides to Theme Colors</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Theme Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                <Palette className="h-3.5 w-3.5 text-primary" />
-                <span>{settings.theme?.name || 'Theme'}</span>
-                <ChevronDown className="h-3 w-3 opacity-60" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48 text-xs">
-              <DropdownMenuLabel className="text-xs">Slide Themes</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {PRESENTATION_THEMES.map(th => (
-                <DropdownMenuItem
-                  key={th.id}
-                  onClick={() => handleThemeChange(th)}
-                  className="flex items-center justify-between text-xs"
-                >
-                  <span>{th.name}</span>
-                  <div className="flex items-center gap-1">
-                    <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: th.primaryColor }} />
-                    <div className="h-2.5 w-2.5 rounded-full border border-border" style={{ backgroundColor: th.backgroundColor }} />
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Presenter Mode Button */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
-            onClick={() => setPresenterOpen(true)}
-            className="h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs font-semibold"
-          >
-            <Play className="h-3.5 w-3.5 fill-current" />
-            <span className="hidden sm:inline">Present</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* ── Main Presentation Workspace ───────────────────────────── */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Desktop Left Thumbnails Rail */}
-        <div className="w-60 bg-card border-r border-border hidden md:flex flex-col p-3 overflow-y-auto shrink-0 gap-3">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold px-1">
-            <span>SLIDES ({validSlides.length})</span>
-            <button
-              type="button"
-              onClick={() => handleAddSlide('title-content')}
-              className="text-primary hover:underline flex items-center gap-0.5 text-xs font-medium"
-              title="Add New Slide (Ctrl+M)"
-            >
-              <Plus className="h-3 w-3" /> Add
-            </button>
-          </div>
-
-          {/* List of Slide Thumbnails */}
-          {validSlides.map((s, idx) => {
-            const isActive = idx === safeActiveIndex;
-            const slideBg = s.gradient || s.background || settings.theme?.backgroundColor || '#ffffff';
-
-            return (
-              <div
-                key={s.id}
-                onClick={() => onChangeActiveSlideIndex(idx)}
-                className={`group relative rounded-xl border-2 transition-all cursor-pointer p-2 flex flex-col gap-1.5 ${isActive ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20' : 'border-border/70 hover:border-primary/40 bg-card'}`}
-              >
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-mono font-bold text-muted-foreground">{idx + 1}</span>
-                  <span className="truncate max-w-[120px] font-medium text-foreground">{s.title}</span>
-                </div>
-
-                {/* Mini Preview Box */}
-                <div
-                  className="w-full aspect-video rounded-md border border-border/50 overflow-hidden relative p-1.5 shadow-2xs"
-                  style={{ background: slideBg }}
-                >
-                  <div className="text-[8px] font-bold truncate text-foreground/80 drop-shadow-xs">
-                    {s.title}
-                  </div>
-                </div>
-
-                {/* Quick Slide Actions */}
-                <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 bg-background/90 backdrop-blur rounded-md p-0.5 border border-border transition-opacity shadow-xs">
-                  {idx > 0 && (
-                    <button
-                      type="button"
-                      onClick={e => { e.stopPropagation(); handleMoveSlide(idx, idx - 1); }}
-                      className="p-1 hover:text-primary text-muted-foreground"
-                      title="Move Up"
-                    >
-                      <ArrowUp className="h-2.5 w-2.5" />
-                    </button>
-                  )}
-                  {idx < validSlides.length - 1 && (
-                    <button
-                      type="button"
-                      onClick={e => { e.stopPropagation(); handleMoveSlide(idx, idx + 1); }}
-                      className="p-1 hover:text-primary text-muted-foreground"
-                      title="Move Down"
-                    >
-                      <ArrowDown className="h-2.5 w-2.5" />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={e => { e.stopPropagation(); handleDuplicateSlide(idx); }}
-                    className="p-1 hover:text-primary text-muted-foreground"
-                    title="Duplicate Slide"
-                  >
-                    <Copy className="h-2.5 w-2.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={e => { e.stopPropagation(); handleDeleteSlide(idx); }}
-                    disabled={validSlides.length <= 1}
-                    className="p-1 hover:text-destructive text-muted-foreground disabled:opacity-30"
-                    title="Delete Slide"
-                  >
-                    <Trash2 className="h-2.5 w-2.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Big Add Slide Card at Bottom of Rail */}
-          <button
-            type="button"
-            onClick={() => handleAddSlide('title-content')}
-            className="border-2 border-dashed border-border hover:border-primary/60 rounded-xl p-3 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-all text-xs gap-1 hover:bg-primary/5 mt-1"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="font-semibold">Add New Slide</span>
-          </button>
-        </div>
+      {/* ── Main Workspace Body: Left Sidebar + Center Stage + Right Inspector ─ */}
+      <div className="flex-1 flex overflow-hidden relative w-full">
+        {/* Slide Navigator Sidebar */}
+        <PresentationSidebar
+          slides={validSlides}
+          activeSlideIndex={safeActiveIndex}
+          settings={settings}
+          onChangeSlides={(s) => {
+            pushHistory(s);
+            onChangeSlides(s);
+          }}
+          onChangeActiveSlideIndex={onChangeActiveSlideIndex}
+          onAddSlide={handleAddSlide}
+          onDuplicateSlide={handleDuplicateSlide}
+          onDeleteSlide={handleDeleteSlide}
+          onLoadProjectDeck={handleLoadProjectDeck}
+        />
 
         {/* Center Stage & Speaker Notes */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Main Slide Canvas */}
-          <div className="flex-1 flex items-center justify-center p-8 overflow-auto">
+        <div className="flex-1 flex flex-col overflow-hidden relative bg-muted/20">
+          {/* Main Slide Canvas Viewport with Canonical Proportional Scaling */}
+          <div
+            ref={stageContainerRef}
+            className="flex-1 flex items-center justify-center p-2 sm:p-6 overflow-hidden relative"
+            onClick={() => setSelectedElementId(null)}
+          >
+            {/* Canonical 960x540 Slide Canvas with Uniform Transform Scale */}
             <div
-              className="w-[840px] aspect-video rounded-xl shadow-2xl border border-border/80 relative overflow-hidden transition-all duration-150 group/stage select-text"
-              style={{ background: currentSlideBackground }}
-              onClick={() => setSelectedElementId(null)}
+              style={{
+                width: '960px',
+                height: '540px',
+                transform: `scale(${computedScale})`,
+                transformOrigin: 'center center',
+                background: currentSlideBackground,
+              }}
+              className="rounded-xl shadow-2xl border border-black/10 dark:border-white/10 relative shrink-0 transition-transform duration-75 group/stage select-text"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedElementId(null);
+              }}
             >
               {activeSlide.elements.map(el => {
                 const isSelected = selectedElementId === el.id;
@@ -638,17 +465,17 @@ export function PresentationCanvas({
                     }}
                     style={{
                       position: 'absolute',
-                      left: `${(el.transform.x / 960) * 100}%`,
-                      top: `${(el.transform.y / 540) * 100}%`,
-                      width: `${(el.transform.width / 960) * 100}%`,
-                      height: `${(el.transform.height / 540) * 100}%`,
+                      left: `${el.transform.x}px`,
+                      top: `${el.transform.y}px`,
+                      width: `${el.transform.width}px`,
+                      height: `${el.transform.height}px`,
+                      transform: el.transform.rotation ? `rotate(${el.transform.rotation}deg)` : undefined,
                       border: isSelected ? '2px solid #2563EB' : '1px solid transparent',
-                      cursor: 'text',
                       ...el.style,
                     }}
-                    className={`group/el relative ${isSelected ? 'shadow-sm ring-1 ring-primary/40' : ''}`}
+                    className={`group/el relative ${isSelected ? 'shadow-lg ring-2 ring-primary/40' : ''}`}
                   >
-                    {/* Element Content: Image or Editable Text/Shape */}
+                    {/* Element Type Rendering */}
                     {el.type === 'image' ? (
                       <div className="w-full h-full overflow-hidden flex items-center justify-center pointer-events-none">
                         <img
@@ -660,21 +487,51 @@ export function PresentationCanvas({
                             objectFit: 'contain',
                             borderRadius: el.style?.cornerRadius || 8,
                             opacity: el.style?.opacity ?? 1,
-                            transform: el.transform.rotation ? `rotate(${el.transform.rotation}deg)` : undefined,
                           }}
                         />
                       </div>
+                    ) : el.type === 'shape' ? (
+                      <div
+                        className="w-full h-full flex items-center justify-center p-2 text-center"
+                        style={{
+                          backgroundColor: el.style?.fill || '#2563eb',
+                          borderRadius: el.style?.cornerRadius || 8,
+                          border: el.style?.stroke ? `${el.style.strokeWidth || 1}px solid ${el.style.stroke}` : undefined,
+                          opacity: el.style?.opacity ?? 1,
+                        }}
+                      >
+                        {el.content ? (
+                          <div
+                            contentEditable
+                            suppressContentEditableWarning
+                            onBlur={e => {
+                              const nextEls = activeSlide.elements.map(item =>
+                                item.id === el.id ? { ...item, content: e.currentTarget.innerHTML } : item
+                              );
+                              updateActiveSlide({ ...activeSlide, elements: nextEls });
+                            }}
+                            dangerouslySetInnerHTML={{ __html: el.content }}
+                            className="w-full h-full outline-none select-text"
+                          />
+                        ) : null}
+                      </div>
                     ) : (
+                      /* Rich Text Box / Table / KaTeX */
                       <div
                         contentEditable
                         suppressContentEditableWarning
-                        onBlur={e => handleElementContentChange(el.id, e.currentTarget.innerHTML)}
+                        onBlur={e => {
+                          const nextEls = activeSlide.elements.map(item =>
+                            item.id === el.id ? { ...item, content: e.currentTarget.innerHTML } : item
+                          );
+                          updateActiveSlide({ ...activeSlide, elements: nextEls });
+                        }}
                         dangerouslySetInnerHTML={{ __html: el.content || '' }}
-                        className="w-full h-full outline-none"
+                        className="w-full h-full outline-none select-text"
                       />
                     )}
 
-                    {/* Canva-Style Selection & Transform Handles */}
+                    {/* Transform Handles when selected */}
                     {isSelected && (
                       <>
                         <div className="absolute -top-1.5 -left-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
@@ -684,10 +541,9 @@ export function PresentationCanvas({
 
                         {/* Contextual Action Bar Floating Above Element */}
                         <div
-                          className="absolute -top-10 left-0 bg-background/95 backdrop-blur border border-border shadow-lg rounded-md px-1.5 py-1 flex items-center gap-1 z-30 select-none whitespace-nowrap"
+                          className="absolute -top-9 left-0 bg-background/95 backdrop-blur border border-border shadow-lg rounded-md px-1.5 py-0.5 flex items-center gap-1 z-30 select-none"
                           onClick={e => e.stopPropagation()}
                         >
-                          {/* Image Specific Actions */}
                           {el.type === 'image' && (
                             <>
                               <button
@@ -698,103 +554,40 @@ export function PresentationCanvas({
                               >
                                 <Crop className="h-3 w-3" />
                               </button>
-
                               <button
                                 type="button"
-                                onClick={() => {
-                                  replaceFileInputRef.current?.click();
-                                }}
+                                onClick={() => replaceFileInputRef.current?.click()}
                                 className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
                                 title="Replace Image"
                               >
                                 <RefreshCw className="h-3 w-3" />
                               </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const nextRotation = ((el.transform.rotation || 0) + 90) % 360;
-                                  const nextEls = activeSlide.elements.map(item =>
-                                    item.id === el.id ? { ...item, transform: { ...item.transform, rotation: nextRotation } } : item
-                                  );
-                                  updateActiveSlide({ ...activeSlide, elements: nextEls });
-                                }}
-                                className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
-                                title="Rotate 90°"
-                              >
-                                <RotateCw className="h-3 w-3" />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const currentOp = el.style?.opacity ?? 1;
-                                  const nextOp = currentOp <= 0.4 ? 1 : currentOp - 0.2;
-                                  const nextEls = activeSlide.elements.map(item =>
-                                    item.id === el.id ? { ...item, style: { ...item.style, opacity: Number(nextOp.toFixed(1)) } } : item
-                                  );
-                                  updateActiveSlide({ ...activeSlide, elements: nextEls });
-                                }}
-                                className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
-                                title="Adjust Opacity"
-                              >
-                                <Sliders className="h-3 w-3" />
-                              </button>
                             </>
                           )}
-
-                          {/* Layer Order */}
                           <button
                             type="button"
                             onClick={() => {
-                              const reordered = ElementEngine.bringForward(activeSlide.elements, el.id);
-                              updateActiveSlide({ ...activeSlide, elements: reordered });
+                              const nextRot = ((el.transform.rotation || 0) + 90) % 360;
+                              handleUpdateSelectedElement({ transform: { ...el.transform, rotation: nextRot } });
                             }}
                             className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
-                            title="Bring Forward"
+                            title="Rotate 90°"
                           >
-                            <ArrowUpSquare className="h-3 w-3" />
+                            <RotateCw className="h-3 w-3" />
                           </button>
-
                           <button
                             type="button"
-                            onClick={() => {
-                              const reordered = ElementEngine.sendBackward(activeSlide.elements, el.id);
-                              updateActiveSlide({ ...activeSlide, elements: reordered });
-                            }}
+                            onClick={handleDuplicateSelectedElement}
                             className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
-                            title="Send Backward"
-                          >
-                            <ArrowDownSquare className="h-3 w-3" />
-                          </button>
-
-                          {/* Duplicate */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const duplicateEl = {
-                                ...el,
-                                id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-                                transform: { ...el.transform, x: el.transform.x + 20, y: el.transform.y + 20 },
-                              };
-                              updateActiveSlide({
-                                ...activeSlide,
-                                elements: [...activeSlide.elements, duplicateEl],
-                              });
-                              setSelectedElementId(duplicateEl.id);
-                            }}
-                            className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
-                            title="Duplicate Element (Ctrl+D)"
+                            title="Duplicate (Ctrl+D)"
                           >
                             <Copy className="h-3 w-3" />
                           </button>
-
-                          {/* Delete */}
                           <button
                             type="button"
-                            onClick={() => handleDeleteElement(el.id)}
+                            onClick={handleDeleteSelectedElement}
                             className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive text-xs"
-                            title="Delete Element (Delete)"
+                            title="Delete Element"
                           >
                             <Trash2 className="h-3 w-3" />
                           </button>
@@ -804,65 +597,94 @@ export function PresentationCanvas({
                   </div>
                 );
               })}
-
-              {/* Slide Number Badge */}
-              <div className="absolute bottom-3 right-4 font-mono text-xs opacity-50 select-none text-foreground">
-                {safeActiveIndex + 1} / {validSlides.length}
-              </div>
             </div>
           </div>
 
-          {/* Speaker Notes Drawer */}
-          {showNotesDrawer && (
-            <div className="h-24 sm:h-28 bg-card border-t border-border p-2 sm:p-3 flex flex-col shrink-0">
-              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground mb-1">
-                <span className="flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 text-primary" /> Speaker Notes (Slide {safeActiveIndex + 1})
-                </span>
-                <span className="text-[10px] italic hidden sm:inline">Visible only in Presenter Mode</span>
-              </div>
-              <textarea
-                value={activeSlide.speakerNotes || ''}
-                onChange={e => updateActiveSlide({ ...activeSlide, speakerNotes: e.target.value })}
-                placeholder="Type speaker notes to guide your talk during fullscreen presentation..."
-                className="flex-1 bg-muted/40 border border-border rounded-lg p-1.5 sm:p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none font-sans"
-              />
-            </div>
-          )}
-
-          {/* Mobile Bottom Horizontal Carousel (< 768px) */}
-          <div className="md:hidden h-20 bg-card border-t border-border flex items-center px-3 gap-2 overflow-x-auto shrink-0 select-none no-scrollbar">
-            {validSlides.map((s, idx) => {
-              const isActive = idx === safeActiveIndex;
-              const slideBg = s.gradient || s.background || settings.theme?.backgroundColor || '#ffffff';
-              return (
-                <div
-                  key={s.id}
-                  onClick={() => onChangeActiveSlideIndex(idx)}
-                  style={{ background: slideBg }}
-                  className={`h-14 aspect-video rounded-lg border-2 shrink-0 p-1 flex flex-col justify-between cursor-pointer transition-all ${
-                    isActive ? 'border-primary ring-2 ring-primary/30 scale-105 shadow-md' : 'border-border/70 opacity-70'
-                  }`}
-                >
-                  <span className="text-[9px] font-bold font-mono text-foreground drop-shadow-xs">{idx + 1}</span>
-                  <span className="text-[8px] truncate font-medium text-foreground drop-shadow-xs">{s.title}</span>
-                </div>
-              );
-            })}
-
-            <button
-              type="button"
-              onClick={() => handleAddSlide('title-content')}
-              className="h-14 aspect-video rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 text-primary flex flex-col items-center justify-center gap-0.5 shrink-0 text-xs font-semibold hover:bg-primary/10 active:scale-95 transition-all"
+          {/* ── Expandable Speaker Notes Drawer ──────────────────────────────── */}
+          <div className="border-t border-border bg-card/90 backdrop-blur shrink-0 transition-all select-none">
+            <div
+              className="h-8 px-4 flex items-center justify-between cursor-pointer hover:bg-muted/40"
+              onClick={() => setShowNotesDrawer(!showNotesDrawer)}
             >
-              <Plus className="h-4 w-4" />
-              <span className="text-[9px]">Add</span>
-            </button>
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                <span>Speaker Notes</span>
+                <span className="text-[10px] text-muted-foreground/80 font-mono">
+                  ({(activeSlide.speakerNotes || '').trim().split(/\s+/).filter(Boolean).length} words)
+                </span>
+              </div>
+              <button type="button" className="text-muted-foreground hover:text-foreground">
+                {showNotesDrawer ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              </button>
+            </div>
+
+            {showNotesDrawer && (
+              <div className="p-3 pt-0">
+                <textarea
+                  value={activeSlide.speakerNotes || ''}
+                  onChange={e => updateActiveSlide({ ...activeSlide, speakerNotes: e.target.value })}
+                  placeholder="Type notes and key presentation talking points here..."
+                  className="w-full h-20 text-xs p-2.5 rounded-lg border border-border bg-background text-foreground resize-none focus:border-primary outline-none transition-all leading-relaxed"
+                />
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Right Properties & Layers Panel */}
+        <PresentationPropertiesPanel
+          activeSlide={activeSlide}
+          selectedElement={selectedElement}
+          settings={settings}
+          onChangeSlide={updateActiveSlide}
+          onChangeSettings={onChangeSettings}
+          onUpdateSelectedElement={handleUpdateSelectedElement}
+          onOpenImageUploadModal={() => setImageUploadOpen(true)}
+          onOpenCropModal={() => selectedElement && setCropTarget(selectedElement)}
+          onBringForward={() => {
+            if (selectedElementId) {
+              const reordered = ElementEngine.bringForward(activeSlide.elements, selectedElementId);
+              updateActiveSlide({ ...activeSlide, elements: reordered });
+            }
+          }}
+          onSendBackward={() => {
+            if (selectedElementId) {
+              const reordered = ElementEngine.sendBackward(activeSlide.elements, selectedElementId);
+              updateActiveSlide({ ...activeSlide, elements: reordered });
+            }
+          }}
+          onDeleteElement={handleDeleteSelectedElement}
+        />
       </div>
 
-      {/* Presenter Fullscreen Modal */}
+      {/* ── Modals & Uploaders ──────────────────────────────────────────────── */}
+      <ImageUploadModal
+        open={imageUploadOpen}
+        onClose={() => setImageUploadOpen(false)}
+        onInsertImage={({ src }) => {
+          const newEl = ElementEngine.createElement('image', {
+            transform: { x: 180, y: 100, width: 440, height: 300, rotation: 0 },
+            content: src,
+            style: { cornerRadius: 8 },
+          });
+          updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, newEl] });
+          setSelectedElementId(newEl.id);
+        }}
+      />
+
+      {cropTarget && (
+        <ImageCropModal
+          open={!!cropTarget}
+          onClose={() => setCropTarget(null)}
+          imageSrc={cropTarget.content || ''}
+          onApplyCrop={(croppedUrl: string) => {
+            handleUpdateSelectedElement({ content: croppedUrl });
+            setCropTarget(null);
+          }}
+        />
+      )}
+
+      {/* Fullscreen Presenter Mode Modal */}
       <PresenterModal
         open={presenterOpen}
         onClose={() => setPresenterOpen(false)}
@@ -871,29 +693,98 @@ export function PresentationCanvas({
         settings={settings}
       />
 
+      {/* ── Mobile Touch-First Presentation Bottom Toolbar & Sheets ───────── */}
+      <MobilePresentationToolbar
+        slides={validSlides}
+        activeSlideIndex={safeActiveIndex}
+        activeSlide={activeSlide}
+        selectedElement={selectedElement}
+        settings={settings}
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < history.length - 1}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onChangeActiveSlideIndex={onChangeActiveSlideIndex}
+        onAddSlide={handleAddSlide}
+        onDuplicateSlide={handleDuplicateSlide}
+        onDeleteSlide={handleDeleteSlide}
+        onLoadProjectDeck={handleLoadProjectDeck}
+        onAddText={handleAddTextElement}
+        onAddImage={() => setImageUploadOpen(true)}
+        onAddShape={handleAddShapeElement}
+        onAddTable={handleAddTableElement}
+        onOpenChartModal={onOpenChartModal}
+        onOpenDiagramModal={onOpenDiagramModal}
+        onOpenQRCodeModal={onOpenQRCodeModal}
+        onApplyGradient={(preset, applyToAll) => {
+          if (applyToAll) {
+            const next = validSlides.map(s => ({ ...s, gradient: preset.gradient, background: undefined }));
+            pushHistory(next);
+            onChangeSlides(next);
+          } else {
+            updateActiveSlide({ ...activeSlide, gradient: preset.gradient, background: undefined });
+          }
+        }}
+        onClearGradient={(applyToAll) => {
+          if (applyToAll) {
+            const next = validSlides.map(s => ({ ...s, gradient: undefined, background: settings.theme.backgroundColor }));
+            pushHistory(next);
+            onChangeSlides(next);
+          } else {
+            updateActiveSlide({ ...activeSlide, gradient: undefined, background: settings.theme.backgroundColor });
+          }
+        }}
+        onChangeTheme={(th, applyToAll = true) => {
+          onChangeSettings({ ...settings, theme: th });
+          if (applyToAll) {
+            const updated = PresentationEngine.applyThemeToAllSlides(validSlides, th);
+            pushHistory(updated);
+            onChangeSlides(updated);
+          }
+        }}
+        onApplyFontToAll={(fontFamily) => {
+          const updated = PresentationEngine.applyFontToAllSlides(validSlides, fontFamily, 'all');
+          pushHistory(updated);
+          onChangeSlides(updated);
+        }}
+        onApplyTextColorToAll={(color) => {
+          const updated = PresentationEngine.applyTextColorToAllSlides(validSlides, color, 'all');
+          pushHistory(updated);
+          onChangeSlides(updated);
+        }}
+        onFormatText={handleFormatText}
+        onUpdateSelectedElement={handleUpdateSelectedElement}
+        onBringForward={() => {
+          if (selectedElementId) {
+            const reordered = ElementEngine.bringForward(activeSlide.elements, selectedElementId);
+            updateActiveSlide({ ...activeSlide, elements: reordered });
+          }
+        }}
+        onSendBackward={() => {
+          if (selectedElementId) {
+            const reordered = ElementEngine.sendBackward(activeSlide.elements, selectedElementId);
+            updateActiveSlide({ ...activeSlide, elements: reordered });
+          }
+        }}
+        onDeleteSelectedElement={handleDeleteSelectedElement}
+        onChangeSpeakerNotes={(notes) => updateActiveSlide({ ...activeSlide, speakerNotes: notes })}
+        onPresent={() => setPresenterOpen(true)}
+      />
+
       {/* Hidden File Input for Image Replacement */}
       <input
         ref={replaceFileInputRef}
         type="file"
         accept="image/*"
-        onChange={handleReplaceSlideImage}
         className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (file && selectedElementId) {
+            const asset = await ImageAssetEngine.createInstantAsset(file);
+            handleUpdateSelectedElement({ content: asset.previewUrl });
+          }
+        }}
       />
-
-      <ImageUploadModal
-        open={imageUploadOpen}
-        onClose={() => setImageUploadOpen(false)}
-        onInsertImage={handleInsertImageToSlide}
-      />
-
-      {cropTarget && (
-        <ImageCropModal
-          open={Boolean(cropTarget)}
-          onClose={() => setCropTarget(null)}
-          imageSrc={cropTarget.content || ''}
-          onApplyCrop={handleApplySlideCrop}
-        />
-      )}
     </div>
   );
 }

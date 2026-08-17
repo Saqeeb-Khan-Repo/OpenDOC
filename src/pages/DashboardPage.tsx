@@ -1,10 +1,10 @@
-import React from 'react'
-import { useNavigate } from 'react-router-dom'
-import { FileText, Plus, Clock, Star, Upload, Layers, HardDrive } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useDocumentsStore } from '@/store/documentsStore'
-import { useToastStore } from '@/store/toastStore'
-import { cn, formatRelative, getFileTypeColor, getFileTypeLabel } from '@/utils/cn'
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Presentation, GitFork, UserCheck, FileText, Clock, Star, HardDrive, Plus, Layers } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useDocumentsStore } from '@/store/documentsStore';
+import { useToastStore } from '@/store/toastStore';
+import { cn, formatRelative, getFileTypeColor, getFileTypeLabel } from '@/utils/cn';
 
 function StatCard({ icon: Icon, label, value, color }: { icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>, label: string, value: number | string, color: string }) {
   return (
@@ -17,31 +17,44 @@ function StatCard({ icon: Icon, label, value, color }: { icon: React.ComponentTy
         <p className="text-[11px] sm:text-xs text-muted-foreground">{label}</p>
       </div>
     </div>
-  )
+  );
 }
 
 export function DashboardPage() {
-  const navigate = useNavigate()
-  const { createDocument, getActiveDocuments, getRecentDocuments, getStarredDocuments } = useDocumentsStore()
-  const toast = useToastStore()
+  const navigate = useNavigate();
+  const { createDocument, getActiveDocuments, getRecentDocuments, getStarredDocuments } = useDocumentsStore();
+  const toast = useToastStore();
 
-  const allDocs = getActiveDocuments()
-  const recent = getRecentDocuments(6)
-  const starred = getStarredDocuments()
+  const allDocs = getActiveDocuments();
+  const recent = getRecentDocuments(6);
+  const starred = getStarredDocuments();
 
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-
-  const handleNewDoc = () => {
-    const doc = createDocument()
-    navigate(`/editor/${doc.id}`)
-  }
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   const quickActions = [
-    { label: 'New Document', icon: FileText, color: '#3B82F6', onClick: handleNewDoc },
-    { label: 'Import File', icon: Upload, color: '#8B5CF6', onClick: () => navigate('/import') },
-    { label: 'Use Template', icon: Layers, color: '#10B981', onClick: () => navigate('/templates') },
-  ]
+    {
+      label: 'Presentation',
+      icon: Presentation,
+      color: '#8B5CF6',
+      onClick: () => {
+        const doc = createDocument({ title: 'Untitled Presentation', mode: 'presentation' });
+        navigate(`/editor/${doc.id}`);
+      },
+    },
+    {
+      label: 'Flowchart',
+      icon: GitFork,
+      color: '#3B82F6',
+      onClick: () => navigate('/flowchart'),
+    },
+    {
+      label: 'Resume Builder',
+      icon: UserCheck,
+      color: '#10B981',
+      onClick: () => navigate('/resume'),
+    },
+  ];
 
   return (
     <div className="px-3.5 sm:px-6 py-6 sm:py-8 max-w-6xl mx-auto space-y-6 sm:space-y-8">
@@ -61,7 +74,8 @@ export function DashboardPage() {
             <button
               key={action.label}
               onClick={action.onClick}
-              className="group flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-6 rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-200 text-center"
+              aria-label={`Launch ${action.label}`}
+              className="group flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-6 rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-200 text-center cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             >
               <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110" style={{ backgroundColor: action.color + '15' }}>
                 <action.icon className="h-5 w-5 sm:h-6 sm:w-6" style={{ color: action.color }} />
@@ -142,13 +156,13 @@ export function DashboardPage() {
             <FileText className="h-10 w-10 text-muted-foreground opacity-40" />
           </div>
           <h3 className="font-bold text-xl mb-2">Welcome to DocFlow!</h3>
-          <p className="text-muted-foreground mb-6 max-w-xs">Create your first document or import an existing file to get started.</p>
+          <p className="text-muted-foreground mb-6 max-w-xs">Create your first presentation, flowchart, or resume to get started.</p>
           <div className="flex gap-3">
-            <Button onClick={handleNewDoc} className="gap-2"><Plus className="h-4 w-4" />New Document</Button>
+            <Button onClick={() => { const d = createDocument(); navigate(`/editor/${d.id}`); }} className="gap-2"><Plus className="h-4 w-4" />New Document</Button>
             <Button variant="outline" onClick={() => navigate('/templates')} className="gap-2"><Layers className="h-4 w-4" />Browse Templates</Button>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }
