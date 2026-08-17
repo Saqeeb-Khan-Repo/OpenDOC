@@ -1,0 +1,291 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+
+    --radius: 0.625rem;
+
+    --sidebar-background: 0 0% 99%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 95%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 221 83% 53%;
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 7%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 96%;
+
+    --destructive: 0 63% 53%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 14%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 217 33% 14%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    @apply scroll-smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+@layer components {
+  /* Tiptap editor styles */
+  .tiptap-editor {
+    @apply min-h-full outline-none;
+  }
+
+  .tiptap-editor .ProseMirror {
+    @apply outline-none min-h-[700px] text-[15px] leading-relaxed text-foreground;
+  }
+
+  .tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    @apply float-left h-0 pointer-events-none text-muted-foreground/50;
+  }
+
+  .tiptap-editor .ProseMirror h1 {
+    @apply text-2xl sm:text-3xl font-bold mt-6 mb-3 text-foreground tracking-tight;
+  }
+
+  .tiptap-editor .ProseMirror h2 {
+    @apply text-xl sm:text-2xl font-semibold mt-5 mb-2.5 text-foreground;
+  }
+
+  .tiptap-editor .ProseMirror h3 {
+    @apply text-lg sm:text-xl font-semibold mt-4 mb-2 text-foreground;
+  }
+
+  .tiptap-editor .ProseMirror h4 {
+    @apply text-base font-semibold mt-3 mb-1.5 text-foreground;
+  }
+
+  .tiptap-editor .ProseMirror p {
+    @apply mb-3 text-foreground/90;
+  }
+
+  .tiptap-editor .ProseMirror ul {
+    @apply list-disc pl-6 mb-4 space-y-1 text-foreground/90;
+  }
+
+  .tiptap-editor .ProseMirror ol {
+    @apply list-decimal pl-6 mb-4 space-y-1 text-foreground/90;
+  }
+
+  .tiptap-editor .ProseMirror blockquote {
+    @apply border-l-4 border-primary/60 pl-4 italic text-muted-foreground my-4 bg-muted/20 py-1 rounded-r;
+  }
+
+  .tiptap-editor .ProseMirror code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground border border-border/50;
+  }
+
+  .tiptap-editor .ProseMirror pre {
+    @apply bg-zinc-950 text-zinc-100 rounded-xl p-4 my-4 overflow-x-auto font-mono text-sm border border-border;
+  }
+
+  .tiptap-editor .ProseMirror pre code {
+    @apply bg-transparent p-0 text-inherit border-0;
+  }
+
+  .tiptap-editor .ProseMirror hr {
+    @apply border-border my-6;
+  }
+
+  .tiptap-editor .ProseMirror a {
+    @apply text-primary underline underline-offset-2 hover:text-primary/80 transition-colors;
+  }
+
+  .tiptap-editor .ProseMirror img {
+    @apply rounded-xl max-w-full h-auto my-4 shadow-sm border border-border/40;
+  }
+
+  .tiptap-editor .ProseMirror table {
+    @apply w-full border-collapse my-4 rounded-lg overflow-hidden border border-border;
+  }
+
+  .tiptap-editor .ProseMirror table td,
+  .tiptap-editor .ProseMirror table th {
+    @apply border border-border px-3.5 py-2.5 text-sm;
+  }
+
+  .tiptap-editor .ProseMirror table th {
+    @apply bg-muted/80 font-bold text-foreground;
+  }
+
+  .tiptap-editor .ProseMirror table tr:nth-child(even) td {
+    @apply bg-muted/20;
+  }
+
+  /* Math equation classes */
+  .math-equation {
+    @apply font-mono inline-block;
+  }
+
+  /* Page Break Visual Node in Editor */
+  .page-break-node {
+    @apply my-8 relative flex items-center justify-center select-none;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .page-break-node::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, #94a3b8 0, #94a3b8 6px, transparent 6px, transparent 12px);
+  }
+
+  .page-break-node span {
+    @apply relative bg-background px-3 py-0.5 text-[11px] font-mono text-muted-foreground rounded-full border border-border/80 shadow-sm uppercase tracking-wider;
+  }
+
+  /* Dark mode explicit high-contrast overrides */
+  .dark .tiptap-editor .ProseMirror {
+    color: #f1f5f9;
+  }
+  .dark .tiptap-editor .ProseMirror h1,
+  .dark .tiptap-editor .ProseMirror h2,
+  .dark .tiptap-editor .ProseMirror h3,
+  .dark .tiptap-editor .ProseMirror h4 {
+    color: #ffffff;
+  }
+  .dark .tiptap-editor .ProseMirror p,
+  .dark .tiptap-editor .ProseMirror li {
+    color: #e2e8f0;
+  }
+  .dark .tiptap-editor .ProseMirror td,
+  .dark .tiptap-editor .ProseMirror th {
+    color: #f1f5f9;
+    border-color: #334155;
+  }
+  .dark .tiptap-editor .ProseMirror table {
+    border-color: #334155;
+  }
+}
+
+/* Mobile Safe Area & Touch Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.touch-pan-y {
+  touch-action: pan-y;
+}
+
+.touch-pan-x {
+  touch-action: pan-x;
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: transparent !important;
+    color: #000 !important;
+  }
+
+  header, aside, .no-print {
+    display: none !important;
+  }
+
+  .page-break-node {
+    display: none !important;
+  }
+}
