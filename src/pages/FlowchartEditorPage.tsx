@@ -42,28 +42,91 @@ const NODE_PALETTE: { type: FlowchartNodeType; label: string; icon: React.Compon
   { type: 'subprocess', label: 'Subprocess', icon: Layers },
 ];
 
+const FLOWCHART_STORAGE_KEY = 'docpro_flowchart_document';
+
+interface PersistedFlowchartState {
+  id: string;
+  title: string;
+  diagram: DiagramData;
+  selectedThemeId: string;
+  viewport?: Viewport;
+  history: DiagramData[];
+  historyIndex: number;
+  updatedAt: string;
+}
+
 export function FlowchartEditorPage() {
   const navigate = useNavigate();
   const responsive = useResponsiveEditor();
   const { createDocument } = useDocumentsStore();
 
-  // ── Diagram State ──────────────────────────────────────────────────────────
-  const [diagramName, setDiagramName] = useState('System Architecture Flowchart');
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [diagram, setDiagram] = useState<DiagramData>(() => DiagramEngine.createDefaultFlowchart());
-  const [selectedTheme, setSelectedTheme] = useState<FlowchartTheme>(DIAGRAM_THEMES[0]);
+  // ── Load Initial Persisted State or Fallback ──────────────────────────────
+  const initialData = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(FLOWCHART_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.diagram && Array.isArray(parsed.diagram.nodes)) {
+          const theme = DIAGRAM_THEMES.find(t => t.id === parsed.selectedThemeId) || DIAGRAM_THEMES[0];
+          const historyArr = Array.isArray(parsed.history) && parsed.history.length > 0
+            ? parsed.history
+            : [parsed.diagram];
+          const histIdx = typeof parsed.historyIndex === 'number' && parsed.historyIndex >= 0 && parsed.historyIndex < historyArr.length
+            ? parsed.historyIndex
+            : historyArr.length - 1;
 
-  // History Stack for 1-step Undo / Redo
-  const [history, setHistory] = useState<DiagramData[]>([diagram]);
-  const [historyIndex, setHistoryIndex] = useState(0);
+          return {
+            title: parsed.title || 'System Architecture Flowchart',
+            diagram: parsed.diagram,
+            theme,
+            history: historyArr,
+            historyIndex: histIdx,
+            viewport: parsed.viewport || { x: 40, y: 40, zoom: 1 },
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load flowchart state:', e);
+    }
+    const def = DiagramEngine.createDefaultFlowchart();
+    return {
+      title: 'System Architecture Flowchart',
+      diagram: def,
+      theme: DIAGRAM_THEMES[0],
+      history: [def],
+      historyIndex: 0,
+      viewport: { x: 40, y: 40, zoom: 1 },
+    };
+  }, []);
+
+  // ── Diagram State ──────────────────────────────────────────────────────────
+  const [diagramName, setDiagramName] = useState<string>(initialData.title);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [diagram, setDiagram] = useState<DiagramData>(initialData.diagram);
+  const [selectedTheme, setSelectedTheme] = useState<FlowchartTheme>(initialData.theme);
+
+  // Complete Multi-Step History Stack (Past, Present, Future)
+  const [history, setHistory] = useState<DiagramData[]>(initialData.history);
+  const [historyIndex, setHistoryIndex] = useState<number>(initialData.historyIndex);
+
+  // Keep a fresh reference to diagram for drag-end accuracy
+  const currentDiagramRef = useRef(diagram);
+  currentDiagramRef.current = diagram;
 
   const pushHistory = useCallback((nextDiagram: DiagramData) => {
     setHistory(prev => {
+      // Invalidate redo branch when new change is committed
       const upToCurrent = prev.slice(0, historyIndex + 1);
-      return [...upToCurrent, nextDiagram];
+      const combined = [...upToCurrent, nextDiagram];
+      // Cap at 50 to maintain memory efficiency while providing generous undo history
+      return combined.length > 50 ? combined.slice(combined.length - 50) : combined;
     });
-    setHistoryIndex(prev => prev + 1);
-  }, [historyIndex]);
+    setHistoryIndex(prev => {
+      const upToCurrent = history.slice(0, prev + 1);
+      const combinedLength = upToCurrent.length + 1;
+      return combinedLength > 50 ? 49 : prev + 1;
+    });
+  }, [historyIndex, history]);
 
   const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
@@ -84,7 +147,30 @@ export function FlowchartEditorPage() {
   // ── Viewport & Canvas Container Sizing ──────────────────────────────────────
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
-  const [viewport, setViewport] = useState<Viewport>({ x: 40, y: 40, zoom: 1 });
+  const [viewport, setViewport] = useState<Viewport>(initialData.viewport);
+
+  // ── Debounced Auto-Persistence to LocalStorage ─────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const payload: PersistedFlowchartState = {
+          id: 'flowchart-main',
+          title: diagramName,
+          diagram,
+          selectedThemeId: selectedTheme.id,
+          viewport,
+          history,
+          historyIndex,
+          updatedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(FLOWCHART_STORAGE_KEY, JSON.stringify(payload));
+      } catch (err) {
+        console.warn('Flowchart save failed:', err);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [diagramName, diagram, selectedTheme.id, viewport, history, historyIndex]);
 
   // Measure container dimensions reactively
   useEffect(() => {
@@ -221,7 +307,7 @@ Update Inventory DB -> End: Delivery Tracking Active`);
     const handleMouseUp = () => {
       if (draggingNodeId) {
         setDraggingNodeId(null);
-        pushHistory(diagram);
+        pushHistory(currentDiagramRef.current);
       }
       isCanvasPanning.current = false;
     };
@@ -273,7 +359,7 @@ Update Inventory DB -> End: Delivery Tracking Active`);
     const handleTouchEnd = () => {
       if (draggingNodeId) {
         setDraggingNodeId(null);
-        pushHistory(diagram);
+        pushHistory(currentDiagramRef.current);
       }
       isCanvasPanning.current = false;
       touchDistanceStart.current = null;
@@ -852,6 +938,49 @@ Update Inventory DB -> End: Delivery Tracking Active`);
             }
           }}
         >
+          {/* Floating Zoom Controls for Mobile & Quick Access */}
+          <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-30 flex items-center gap-1 bg-background/90 backdrop-blur-md border border-border rounded-xl p-1 shadow-md select-none">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewport(v => ({ ...v, zoom: Math.max(0.35, Number((v.zoom - 0.1).toFixed(1))) }));
+              }}
+              className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+              title="Zoom Out"
+              aria-label="Zoom out"
+            >
+              <ZoomOut className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-[11px] font-mono font-semibold px-1 min-w-[36px] text-center text-muted-foreground">
+              {Math.round(viewport.zoom * 100)}%
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewport(v => ({ ...v, zoom: Math.min(2.5, Number((v.zoom + 0.1).toFixed(1))) }));
+              }}
+              className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+              title="Zoom In"
+              aria-label="Zoom in"
+            >
+              <ZoomIn className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleFitDiagram();
+              }}
+              className="h-7 px-2 rounded-lg text-[10px] font-semibold text-primary hover:bg-primary/10 active:scale-95 transition-all border-l border-border ml-0.5"
+              title="Fit to Screen"
+              aria-label="Fit diagram"
+            >
+              Fit
+            </button>
+          </div>
+
           {/* Transformed Stage with World Coordinates */}
           <div
             className="absolute inset-0 origin-top-left transition-transform duration-75"
@@ -1158,45 +1287,91 @@ Update Inventory DB -> End: Delivery Tracking Active`);
         )}
       </div>
 
-      {/* ── 5. MOBILE 4-BUTTON BOTTOM TOOLBAR (RESERVES CANVAS SPACE) ───────── */}
+      {/* ── 5. MOBILE 5-BUTTON BOTTOM TOOLBAR: [ Node ] [ Connect ] [ Text ] [ Delete ] [ More ] ── */}
       <div
-        className="h-12 border-t border-border bg-background/95 backdrop-blur flex md:hidden items-center justify-around shrink-0 z-30 select-none"
-        style={{ paddingBottom: 'max(4px, env(safe-area-inset-bottom))' }}
+        className="h-13 border-t border-border bg-background/98 backdrop-blur-md flex md:hidden items-center justify-around shrink-0 z-30 select-none px-1"
+        style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}
       >
+        {/* 1. Node */}
         <button
           type="button"
           onClick={() => setActiveMobileSheet('add')}
-          className="flex flex-col items-center justify-center min-w-[60px] h-11 text-xs text-primary font-semibold active:scale-95 transition-transform"
+          aria-label="Add node"
+          className="flex flex-col items-center justify-center min-w-[54px] h-12 text-xs text-primary font-semibold active:scale-95 transition-all cursor-pointer rounded-xl hover:bg-primary/10"
         >
           <Plus className="h-4 w-4" />
-          <span className="text-[10px] mt-0.5">Add</span>
+          <span className="text-[10px] mt-0.5">Node</span>
         </button>
 
+        {/* 2. Connect (2-tap node connection) */}
         <button
           type="button"
-          onClick={() => connectModeActive ? handleCancelConnectMode() : handleStartConnectMode()}
+          onClick={() => {
+            if (connectModeActive) {
+              handleCancelConnectMode();
+            } else {
+              handleStartConnectMode();
+            }
+          }}
+          aria-label="Connect nodes"
           className={cn(
-            'flex flex-col items-center justify-center min-w-[60px] h-11 text-xs font-semibold active:scale-95 transition-transform',
-            connectModeActive ? 'text-primary animate-pulse' : 'text-muted-foreground'
+            'flex flex-col items-center justify-center min-w-[54px] h-12 text-xs font-semibold active:scale-95 transition-all cursor-pointer rounded-xl',
+            connectModeActive ? 'text-primary font-bold bg-primary/15 animate-pulse' : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
           )}
         >
           <Link2 className="h-4 w-4" />
-          <span className="text-[10px] mt-0.5">{connectModeActive ? 'Connecting' : 'Connect'}</span>
+          <span className="text-[10px] mt-0.5">{connectModeActive ? 'Linking' : 'Connect'}</span>
         </button>
 
+        {/* 3. Text (Edit node label) */}
         <button
           type="button"
-          onClick={() => setActiveMobileSheet('layout')}
-          className="flex flex-col items-center justify-center min-w-[60px] h-11 text-xs text-muted-foreground active:scale-95 transition-transform"
+          onClick={() => {
+            if (primarySelectedNode) {
+              setEditingNodeId(primarySelectedNode.id);
+              setEditingNodeText(primarySelectedNode.text);
+              setMobileNodeEditModalOpen(true);
+            } else {
+              setActiveMobileSheet('style');
+            }
+          }}
+          aria-label="Edit node text"
+          className={cn(
+            'flex flex-col items-center justify-center min-w-[54px] h-12 text-xs font-semibold active:scale-95 transition-all cursor-pointer rounded-xl',
+            primarySelectedNode ? 'text-blue-500 hover:bg-blue-500/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+          )}
         >
-          <Layers className="h-4 w-4 text-indigo-500" />
-          <span className="text-[10px] mt-0.5">Layout</span>
+          <Type className="h-4 w-4" />
+          <span className="text-[10px] mt-0.5">Text</span>
         </button>
 
+        {/* 4. Delete */}
+        <button
+          type="button"
+          onClick={() => {
+            if (selectedNodeIds.length > 0) {
+              handleDeleteSelectedNodes();
+            } else if (selectedConnectorId) {
+              handleDeleteConnector(selectedConnectorId);
+            }
+          }}
+          disabled={selectedNodeIds.length === 0 && !selectedConnectorId}
+          aria-label="Delete selected node or connection"
+          className={cn(
+            'flex flex-col items-center justify-center min-w-[54px] h-12 text-xs font-semibold active:scale-95 transition-all cursor-pointer rounded-xl',
+            selectedNodeIds.length > 0 || selectedConnectorId ? 'text-destructive hover:bg-destructive/10' : 'text-muted-foreground/40 cursor-not-allowed'
+          )}
+        >
+          <Trash2 className="h-4 w-4" />
+          <span className="text-[10px] mt-0.5">Delete</span>
+        </button>
+
+        {/* 5. More */}
         <button
           type="button"
           onClick={() => setActiveMobileSheet('more')}
-          className="flex flex-col items-center justify-center min-w-[60px] h-11 text-xs text-muted-foreground active:scale-95 transition-transform"
+          aria-label="More flowchart options"
+          className="flex flex-col items-center justify-center min-w-[54px] h-12 text-xs text-muted-foreground hover:text-foreground active:scale-95 transition-all cursor-pointer rounded-xl hover:bg-muted/40"
         >
           <Sliders className="h-4 w-4 text-amber-500" />
           <span className="text-[10px] mt-0.5">More</span>

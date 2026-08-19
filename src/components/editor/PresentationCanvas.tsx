@@ -11,6 +11,7 @@ import { PresentationSidebar } from './PresentationSidebar';
 import { PresentationToolbar } from './PresentationToolbar';
 import { PresentationPropertiesPanel } from './PresentationPropertiesPanel';
 import { MobilePresentationToolbar } from './MobilePresentationToolbar';
+import { PresentationThemeModal } from './PresentationThemeModal';
 import { PresenterModal } from './PresenterModal';
 import { ImageUploadModal } from './ImageUploadModal';
 import { ImageCropModal } from './ImageCropModal';
@@ -21,7 +22,8 @@ import {
   Image as ImageIcon, BarChart3, GitFork, QrCode, FileText, ChevronDown,
   ArrowUp, ArrowDown, Sparkles, Undo2, Redo2, Layers, Check,
   Move, RotateCcw, Crop, RefreshCw, RotateCw, Sliders, ArrowUpSquare,
-  ArrowDownSquare, ChevronUp, ChevronRight, ChevronLeft, Minus
+  ArrowDownSquare, ChevronUp, ChevronRight, ChevronLeft, Minus,
+  ZoomIn, ZoomOut, Maximize2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/cn';
@@ -60,13 +62,19 @@ export function PresentationCanvas({
   const activeSlide = validSlides[safeActiveIndex] || validSlides[0];
 
   const [presenterOpen, setPresenterOpen] = useState(false);
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
+  const selectedElementId = selectedElementIds[0] || null;
+  const setSelectedElementId = useCallback((id: string | null) => {
+    setSelectedElementIds(id ? [id] : []);
+  }, []);
+
   const [showNotesDrawer, setShowNotesDrawer] = useState(true);
   const [imageUploadOpen, setImageUploadOpen] = useState(false);
+  const [themeModalOpen, setThemeModalOpen] = useState(false);
   const [cropTarget, setCropTarget] = useState<CanvasElement | null>(null);
-  const [clipboardElement, setClipboardElement] = useState<CanvasElement | null>(null);
+  const [zoomMultiplier, setZoomMultiplier] = useState<number>(1);
   const replaceFileInputRef = useRef<HTMLInputElement>(null);
+  const thumbnailStripRef = useRef<HTMLDivElement>(null);
 
   // Undo / Redo History
   const [history, setHistory] = useState<Slide[][]>([validSlides]);
@@ -98,6 +106,7 @@ export function PresentationCanvas({
     }
   }, [history, historyIndex, onChangeSlides, onChangeActiveSlideIndex, safeActiveIndex]);
 
+  const selectedElements = activeSlide.elements.filter(el => selectedElementIds.includes(el.id));
   const selectedElement = activeSlide.elements.find(el => el.id === selectedElementId) || null;
 
   // ── Responsive Viewport & Proportional Scale Observer ───────────────────────
@@ -125,14 +134,17 @@ export function PresentationCanvas({
 
   const SLIDE_CANONICAL_WIDTH = 960;
   const SLIDE_CANONICAL_HEIGHT = 540;
-  const stagePadding = responsive.isMobile ? 8 : 24;
-  const navButtonsWidth = responsive.isMobile ? 64 : 110;
+
+  const stagePadding = responsive.isMobile ? 12 : 36;
+  const navButtonsWidth = responsive.isMobile ? 0 : 120; // on mobile buttons are below canvas
+
   const availWidth = Math.max(120, containerSize.width - stagePadding * 2 - navButtonsWidth);
-  const availHeight = Math.max(120, containerSize.height - stagePadding * 2);
-  const computedScale = Math.min(
+  const availHeight = Math.max(120, containerSize.height - stagePadding * 2 - (responsive.isMobile ? 60 : 0));
+  const baseScale = Math.min(
     availWidth / SLIDE_CANONICAL_WIDTH,
     availHeight / SLIDE_CANONICAL_HEIGHT
   );
+  const computedScale = Math.max(0.2, baseScale * zoomMultiplier);
 
   // ── Slide Navigation Boundaries & Handlers ──────────────────────────────────
   const hasPrev = safeActiveIndex > 0;
@@ -152,7 +164,17 @@ export function PresentationCanvas({
     }
   }, [safeActiveIndex, validSlides.length, onChangeActiveSlideIndex]);
 
-  // Keyboard navigation (ArrowLeft/ArrowRight/PageUp/PageDown)
+  // Scroll active thumbnail into view
+  useEffect(() => {
+    if (thumbnailStripRef.current) {
+      const activeEl = thumbnailStripRef.current.children[safeActiveIndex] as HTMLElement;
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }
+  }, [safeActiveIndex]);
+
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement;
@@ -180,212 +202,265 @@ export function PresentationCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [safeActiveIndex, validSlides.length, handlePrevSlide, handleNextSlide]);
 
-  // ── Update Helper ───────────────────────────────────────────────────────────
-  const updateActiveSlide = (newSlide: Slide) => {
-    const nextSlides = validSlides.map((s, idx) => idx === safeActiveIndex ? newSlide : s);
-    pushHistory(nextSlides);
-    onChangeSlides(nextSlides);
-  };
+  // ── Slide Mutators ─────────────────────────────────────────────────────────
+  const updateActiveSlide = useCallback((updated: Slide) => {
+    const next = [...validSlides];
+    next[safeActiveIndex] = updated;
+    pushHistory(next);
+    onChangeSlides(next);
+  }, [validSlides, safeActiveIndex, pushHistory, onChangeSlides]);
 
-  // ── Slide Actions ───────────────────────────────────────────────────────────
-  const handleAddSlide = (layout: SlideLayout = 'title-content', gradient?: string) => {
+  const handleAddSlide = useCallback((layout: SlideLayout = 'title-content', gradient?: string) => {
     const newSlide = PresentationEngine.createSlide(
       layout,
       settings.theme || PRESENTATION_THEMES[0],
       gradient || activeSlide.gradient
     );
+    const next = [...validSlides, newSlide];
+    pushHistory(next);
+    onChangeSlides(next);
+    onChangeActiveSlideIndex(next.length - 1);
+  }, [validSlides, settings.theme, activeSlide.gradient, pushHistory, onChangeSlides, onChangeActiveSlideIndex]);
 
-    const nextSlides = [...validSlides];
-    const insertIndex = safeActiveIndex + 1;
-    nextSlides.splice(insertIndex, 0, newSlide);
-
-    pushHistory(nextSlides);
-    onChangeSlides(nextSlides);
-    onChangeActiveSlideIndex(insertIndex);
-  };
-
-  const handleDuplicateSlide = (idx: number) => {
-    const target = validSlides[idx];
-    if (!target) return;
-
-    const duplicatedElements = target.elements.map(el => ({
-      ...el,
-      id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-    }));
-
-    const duplicatedSlide: Slide = {
-      ...target,
+  const handleDuplicateSlide = useCallback((idx: number) => {
+    const original = validSlides[idx];
+    const duplicated: Slide = {
+      ...original,
       id: `slide_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      title: `${target.title} (Copy)`,
-      elements: duplicatedElements,
+      title: `${original.title} (Copy)`,
+      elements: original.elements.map(el => ({
+        ...el,
+        id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      })),
     };
-
-    const nextSlides = [...validSlides];
-    nextSlides.splice(idx + 1, 0, duplicatedSlide);
-
-    pushHistory(nextSlides);
-    onChangeSlides(nextSlides);
+    const next = [...validSlides.slice(0, idx + 1), duplicated, ...validSlides.slice(idx + 1)];
+    pushHistory(next);
+    onChangeSlides(next);
     onChangeActiveSlideIndex(idx + 1);
-  };
+  }, [validSlides, pushHistory, onChangeSlides, onChangeActiveSlideIndex]);
 
-  const handleDeleteSlide = (idx: number) => {
+  const handleDeleteSlide = useCallback((idx: number) => {
     if (validSlides.length <= 1) return;
-    const nextSlides = validSlides.filter((_, i) => i !== idx);
-    pushHistory(nextSlides);
-    onChangeSlides(nextSlides);
-    onChangeActiveSlideIndex(Math.max(0, idx - 1));
-  };
+    const next = validSlides.filter((_, i) => i !== idx);
+    pushHistory(next);
+    onChangeSlides(next);
+    onChangeActiveSlideIndex(Math.min(safeActiveIndex, next.length - 1));
+  }, [validSlides, safeActiveIndex, pushHistory, onChangeSlides, onChangeActiveSlideIndex]);
 
-  const handleLoadProjectDeck = () => {
-    const deck = PresentationEngine.createProjectDeck(
-      'Autonomous Intelligent Document Studio',
-      'Team DocProEditor',
-      settings.theme || PRESENTATION_THEMES[0],
-      PRESENTATION_GRADIENTS[0].gradient
+  const handleLoadProjectDeck = useCallback(() => {
+    const templateSlides = PresentationEngine.createProjectDeck(
+      'Autonomous Document Studio',
+      'Engineering Team',
+      settings.theme || PRESENTATION_THEMES[0]
     );
-    pushHistory(deck);
-    onChangeSlides(deck);
+    pushHistory(templateSlides);
+    onChangeSlides(templateSlides);
     onChangeActiveSlideIndex(0);
-  };
+  }, [settings.theme, pushHistory, onChangeSlides, onChangeActiveSlideIndex]);
 
-  // ── Element Actions ─────────────────────────────────────────────────────────
-  const handleAddTextElement = () => {
-    const newEl = ElementEngine.createElement('text', {
-      transform: { x: 100, y: 150, width: 450, height: 80, rotation: 0 },
-      content: '<p style="font-size: 24px; color: inherit;">Click to edit text...</p>',
-      style: { fontFamily: settings.theme?.bodyFont || 'Inter' },
-    });
-    updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, newEl] });
-    setSelectedElementId(newEl.id);
-  };
+  // ── Canvas Element Mutators ────────────────────────────────────────────────
+  const handleUpdateSelectedElement = useCallback((patch: Partial<CanvasElement>) => {
+    if (selectedElementIds.length === 0) return;
+    let nextElements: CanvasElement[];
 
-  const handleAddShapeElement = (shapeType: ShapeType = 'rounded-rectangle') => {
-    const newEl = ElementEngine.createElement('shape', {
-      shapeType,
-      transform: { x: 200, y: 180, width: 160, height: 120, rotation: 0 },
-      style: {
-        fill: settings.theme?.primaryColor || '#2563EB',
-        stroke: '#ffffff',
-        strokeWidth: 0,
-        cornerRadius: shapeType === 'circle' ? 999 : 8,
-        opacity: 0.95,
+    if (patch.style?.fontSize) {
+      const valid = Math.min(144, Math.max(8, Math.round(patch.style.fontSize)));
+      nextElements = activeSlide.elements.map(el => {
+        if (selectedElementIds.includes(el.id)) {
+          const withPatch: CanvasElement = {
+            ...el,
+            ...patch,
+            style: { ...el.style, ...patch.style },
+            transform: patch.transform ? { ...el.transform, ...patch.transform } : el.transform,
+          };
+          return ElementEngine.updateElementFontSize(withPatch, valid);
+        }
+        return el;
+      });
+    } else {
+      nextElements = activeSlide.elements.map(el =>
+        selectedElementIds.includes(el.id)
+          ? {
+              ...el,
+              ...patch,
+              style: patch.style ? { ...el.style, ...patch.style } : el.style,
+              transform: patch.transform ? { ...el.transform, ...patch.transform } : el.transform,
+            }
+          : el
+      );
+    }
+    updateActiveSlide({ ...activeSlide, elements: nextElements });
+  }, [selectedElementIds, activeSlide, updateActiveSlide]);
+
+  const handleDeleteSelectedElement = useCallback(() => {
+    if (selectedElementIds.length === 0) return;
+    const nextElements = activeSlide.elements.filter(el => !selectedElementIds.includes(el.id));
+    updateActiveSlide({ ...activeSlide, elements: nextElements });
+    setSelectedElementIds([]);
+  }, [selectedElementIds, activeSlide, updateActiveSlide]);
+
+  const handleDuplicateSelectedElement = useCallback(() => {
+    if (!selectedElement) return;
+    const duplicated: CanvasElement = {
+      ...selectedElement,
+      id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      transform: {
+        ...selectedElement.transform,
+        x: selectedElement.transform.x + 30,
+        y: selectedElement.transform.y + 30,
       },
+    };
+    updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, duplicated] });
+    setSelectedElementIds([duplicated.id]);
+  }, [selectedElement, activeSlide, updateActiveSlide]);
+
+  const handleAddTextElement = useCallback(() => {
+    const newEl = ElementEngine.createElement('text', {
+      transform: { x: 100, y: 160, width: 760, height: 120, rotation: 0 },
+      content: '<h2 style="font-size:32px;font-weight:700;">Add Heading Text Here</h2><p style="font-size:18px;">Click to edit this body paragraph on the slide.</p>',
     });
     updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, newEl] });
-    setSelectedElementId(newEl.id);
-  };
+    setSelectedElementIds([newEl.id]);
+  }, [activeSlide, updateActiveSlide]);
 
-  const handleAddTableElement = (rows = 3, cols = 3) => {
-    let tableHtml = '<table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: left;">';
+  const handleAddShapeElement = useCallback((shape: ShapeType) => {
+    const newEl = ElementEngine.createElement('shape', {
+      shapeType: shape,
+      transform: { x: 380, y: 170, width: 200, height: 200, rotation: 0 },
+      style: { fill: '#3b82f6', cornerRadius: shape === 'rounded-rectangle' ? 16 : 0 },
+    });
+    updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, newEl] });
+    setSelectedElementIds([newEl.id]);
+  }, [activeSlide, updateActiveSlide]);
+
+  const handleAddTableElement = useCallback((rows = 3, cols = 3) => {
+    let tableHtml = '<table style="width:100%;border-collapse:collapse;font-size:16px;">';
     for (let r = 0; r < rows; r++) {
       tableHtml += '<tr>';
       for (let c = 0; c < cols; c++) {
-        if (r === 0) {
-          tableHtml += `<th style="border: 1px solid rgba(255,255,255,0.2); padding: 8px 12px; background: rgba(37,99,235,0.2); font-weight: bold;">Header ${c + 1}</th>`;
-        } else {
-          tableHtml += `<td style="border: 1px solid rgba(255,255,255,0.15); padding: 8px 12px;">Cell ${r},${c + 1}</td>`;
-        }
+        tableHtml += `<td style="border:1px solid rgba(255,255,255,0.3);padding:8px 12px;">${r === 0 ? `Header ${c + 1}` : `Data ${r},${c + 1}`}</td>`;
       }
       tableHtml += '</tr>';
     }
     tableHtml += '</table>';
 
     const newEl = ElementEngine.createElement('table', {
-      transform: { x: 120, y: 140, width: 600, height: 200, rotation: 0 },
+      transform: { x: 120, y: 120, width: 720, height: 260, rotation: 0 },
       content: tableHtml,
-      style: { backgroundColor: 'rgba(255,255,255,0.05)', padding: 8, cornerRadius: 6 },
+      style: { backgroundColor: 'rgba(0,0,0,0.2)', cornerRadius: 8 },
     });
     updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, newEl] });
-    setSelectedElementId(newEl.id);
-  };
+    setSelectedElementIds([newEl.id]);
+  }, [activeSlide, updateActiveSlide]);
 
-  const handleUpdateSelectedElement = (patch: Partial<CanvasElement>) => {
-    if (!selectedElementId) return;
-    const nextEls = activeSlide.elements.map(el => el.id === selectedElementId ? { ...el, ...patch } : el);
-    updateActiveSlide({ ...activeSlide, elements: nextEls });
-  };
-
-  const handleDeleteSelectedElement = () => {
-    if (!selectedElementId) return;
-    const nextEls = activeSlide.elements.filter(el => el.id !== selectedElementId);
-    updateActiveSlide({ ...activeSlide, elements: nextEls });
-    setSelectedElementId(null);
-  };
-
-  const handleDuplicateSelectedElement = () => {
-    if (!selectedElement) return;
-    const dup: CanvasElement = {
-      ...selectedElement,
-      id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      transform: {
-        ...selectedElement.transform,
-        x: selectedElement.transform.x + 20,
-        y: selectedElement.transform.y + 20,
-      },
-    };
-    updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, dup] });
-    setSelectedElementId(dup.id);
-  };
-
-  // ── Rich Text Formatting on Selection ───────────────────────────────────────
-  const handleFormatText = (command: string, value?: string) => {
-    if (typeof window !== 'undefined') {
-      document.execCommand(command, false, value);
+  // Gradient & Theme Mutators
+  const handleApplyGradient = useCallback((preset: GradientPreset, applyToAll = false) => {
+    if (applyToAll) {
+      const next = validSlides.map(s => ({ ...s, gradient: preset.gradient }));
+      pushHistory(next);
+      onChangeSlides(next);
+    } else {
+      updateActiveSlide({ ...activeSlide, gradient: preset.gradient });
     }
-  };
+  }, [validSlides, activeSlide, pushHistory, onChangeSlides, updateActiveSlide]);
 
-  // ── Keyboard Shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+D, Ctrl+C, Ctrl+V, Delete) ────
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isInput = ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName);
-      if (isInput) return;
+  const handleClearGradient = useCallback((applyToAll = false) => {
+    if (applyToAll) {
+      const next = validSlides.map(s => ({ ...s, gradient: undefined }));
+      pushHistory(next);
+      onChangeSlides(next);
+    } else {
+      updateActiveSlide({ ...activeSlide, gradient: undefined });
+    }
+  }, [validSlides, activeSlide, pushHistory, onChangeSlides, updateActiveSlide]);
 
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      } else if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) {
-        e.preventDefault();
-        handleRedo();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && selectedElement) {
-        e.preventDefault();
-        handleDuplicateSelectedElement();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && selectedElement) {
-        setClipboardElement(selectedElement);
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && clipboardElement) {
-        e.preventDefault();
-        const pasted: CanvasElement = {
-          ...clipboardElement,
-          id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          transform: {
-            ...clipboardElement.transform,
-            x: clipboardElement.transform.x + 24,
-            y: clipboardElement.transform.y + 24,
-          },
-        };
-        updateActiveSlide({ ...activeSlide, elements: [...activeSlide.elements, pasted] });
-        setSelectedElementId(pasted.id);
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId && !(e.target as HTMLElement)?.isContentEditable) {
-        e.preventDefault();
-        handleDeleteSelectedElement();
-      } else if (e.key === 'ArrowUp' && safeActiveIndex > 0) {
-        onChangeActiveSlideIndex(safeActiveIndex - 1);
-      } else if (e.key === 'ArrowDown' && safeActiveIndex < validSlides.length - 1) {
-        onChangeActiveSlideIndex(safeActiveIndex + 1);
-      }
-    };
+  const handleChangeTheme = useCallback((theme: SlideTheme, applyToAll = true) => {
+    onChangeSettings({ ...settings, theme });
+    if (applyToAll) {
+      const next = PresentationEngine.applyThemeToSlides(validSlides, theme);
+      pushHistory(next);
+      onChangeSlides(next);
+    } else {
+      const updated = PresentationEngine.applyThemeToSlides([activeSlide], theme)[0];
+      updateActiveSlide(updated);
+    }
+  }, [settings, onChangeSettings, validSlides, activeSlide, pushHistory, onChangeSlides, updateActiveSlide]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [safeActiveIndex, validSlides.length, selectedElement, selectedElementId, clipboardElement, handleUndo, handleRedo]);
+  const handleChangeFontSize = useCallback((fontSize: number) => {
+    const targetIds = selectedElementIds.length > 0
+      ? selectedElementIds
+      : (selectedElementId ? [selectedElementId] : []);
+    if (targetIds.length === 0) return;
 
-  const currentSlideBackground = activeSlide.gradient || activeSlide.background || settings.theme?.backgroundColor || '#ffffff';
+    const valid = Math.min(144, Math.max(8, Math.round(fontSize)));
+    if (isNaN(valid)) return;
+
+    const nextElements = ElementEngine.updateElementsFontSize(activeSlide.elements, targetIds, valid);
+    const updatedSlide = { ...activeSlide, elements: nextElements };
+    const nextSlides = validSlides.map((s, idx) => idx === safeActiveIndex ? updatedSlide : s);
+    pushHistory(nextSlides);
+    onChangeSlides(nextSlides);
+  }, [selectedElementIds, selectedElementId, activeSlide, validSlides, safeActiveIndex, pushHistory, onChangeSlides]);
+
+  const handleApplyFontToAll = useCallback((fontFamily: string) => {
+    const next = validSlides.map(s => ({
+      ...s,
+      elements: s.elements.map(el =>
+        el.type === 'text'
+          ? { ...el, style: { ...el.style, fontFamily } }
+          : el
+      ),
+    }));
+    pushHistory(next);
+    onChangeSlides(next);
+  }, [validSlides, pushHistory, onChangeSlides]);
+
+  const handleApplyTextColorToAll = useCallback((color: string) => {
+    const next = validSlides.map(s => ({
+      ...s,
+      elements: s.elements.map(el =>
+        el.type === 'text'
+          ? { ...el, style: { ...el.style, color } }
+          : el
+      ),
+    }));
+    pushHistory(next);
+    onChangeSlides(next);
+  }, [validSlides, pushHistory, onChangeSlides]);
+
+  // Current Slide background
+  const currentSlideBackground = activeSlide.gradient
+    ? activeSlide.gradient
+    : activeSlide.background || settings.theme?.backgroundColor || '#0F172A';
 
   return (
-    <div className="flex flex-col h-full bg-[#f1f5f9] dark:bg-[#090d16] overflow-hidden relative select-none">
-      {/* ── Top Ribbon Toolbar ──────────────────────────────────────────────── */}
+    <div className="flex flex-col h-full w-full overflow-hidden bg-background select-none">
+      {/* ── Hidden File Inputs ───────────────────────────────────────────────── */}
+      <input
+        ref={replaceFileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && selectedElement) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              if (event.target?.result) {
+                handleUpdateSelectedElement({ content: event.target.result as string });
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+          e.target.value = '';
+        }}
+      />
+
+      {/* ── Desktop Presentation Toolbar (Visible md+) ──────────────────────── */}
       <PresentationToolbar
         activeSlide={activeSlide}
         selectedElement={selectedElement}
+        selectedElements={selectedElements}
         settings={settings}
         canUndo={historyIndex > 0}
         canRedo={historyIndex < history.length - 1}
@@ -400,44 +475,17 @@ export function PresentationCanvas({
         onOpenDiagramModal={onOpenDiagramModal}
         onOpenQRCodeModal={onOpenQRCodeModal}
         onOpenSignatureModal={() => {}}
-        onApplyGradient={(preset, applyToAll) => {
-          if (applyToAll) {
-            const next = validSlides.map(s => ({ ...s, gradient: preset.gradient, background: undefined }));
-            pushHistory(next);
-            onChangeSlides(next);
-          } else {
-            updateActiveSlide({ ...activeSlide, gradient: preset.gradient, background: undefined });
-          }
+        onOpenThemeModal={() => setThemeModalOpen(true)}
+        onApplyGradient={handleApplyGradient}
+        onClearGradient={handleClearGradient}
+        onChangeTheme={handleChangeTheme}
+        onApplyFontToAll={handleApplyFontToAll}
+        onApplyTextColorToAll={handleApplyTextColorToAll}
+        onFormatText={(cmd, val) => {
+          document.execCommand(cmd, false, val);
         }}
-        onClearGradient={(applyToAll) => {
-          if (applyToAll) {
-            const next = validSlides.map(s => ({ ...s, gradient: undefined, background: settings.theme.backgroundColor }));
-            pushHistory(next);
-            onChangeSlides(next);
-          } else {
-            updateActiveSlide({ ...activeSlide, gradient: undefined, background: settings.theme.backgroundColor });
-          }
-        }}
-        onChangeTheme={(th, applyToAll = true) => {
-          onChangeSettings({ ...settings, theme: th });
-          if (applyToAll) {
-            const updated = PresentationEngine.applyThemeToAllSlides(validSlides, th);
-            pushHistory(updated);
-            onChangeSlides(updated);
-          }
-        }}
-        onApplyFontToAll={(fontFamily) => {
-          const updated = PresentationEngine.applyFontToAllSlides(validSlides, fontFamily, 'all');
-          pushHistory(updated);
-          onChangeSlides(updated);
-        }}
-        onApplyTextColorToAll={(color) => {
-          const updated = PresentationEngine.applyTextColorToAllSlides(validSlides, color, 'all');
-          pushHistory(updated);
-          onChangeSlides(updated);
-        }}
-        onFormatText={handleFormatText}
         onUpdateSelectedElement={handleUpdateSelectedElement}
+        onChangeFontSize={handleChangeFontSize}
         onBringForward={() => {
           if (selectedElementId) {
             const reordered = ElementEngine.bringForward(activeSlide.elements, selectedElementId);
@@ -459,14 +507,64 @@ export function PresentationCanvas({
         onPresent={() => setPresenterOpen(true)}
       />
 
+      {/* ── Mobile Presentation 5-Tool Bottom Toolbar ───────────────────────── */}
+      <MobilePresentationToolbar
+        slides={validSlides}
+        activeSlideIndex={safeActiveIndex}
+        activeSlide={activeSlide}
+        selectedElement={selectedElement}
+        selectedElements={selectedElements}
+        settings={settings}
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < history.length - 1}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onChangeActiveSlideIndex={onChangeActiveSlideIndex}
+        onAddSlide={handleAddSlide}
+        onDuplicateSlide={handleDuplicateSlide}
+        onDeleteSlide={handleDeleteSlide}
+        onLoadProjectDeck={handleLoadProjectDeck}
+        onAddText={handleAddTextElement}
+        onAddImage={() => setImageUploadOpen(true)}
+        onAddShape={handleAddShapeElement}
+        onAddTable={handleAddTableElement}
+        onOpenChartModal={onOpenChartModal}
+        onOpenDiagramModal={onOpenDiagramModal}
+        onOpenQRCodeModal={onOpenQRCodeModal}
+        onApplyGradient={handleApplyGradient}
+        onClearGradient={handleClearGradient}
+        onChangeTheme={handleChangeTheme}
+        onApplyFontToAll={handleApplyFontToAll}
+        onApplyTextColorToAll={handleApplyTextColorToAll}
+        onFormatText={(cmd, val) => {
+          document.execCommand(cmd, false, val);
+        }}
+        onUpdateSelectedElement={handleUpdateSelectedElement}
+        onBringForward={() => {
+          if (selectedElementId) {
+            const reordered = ElementEngine.bringForward(activeSlide.elements, selectedElementId);
+            updateActiveSlide({ ...activeSlide, elements: reordered });
+          }
+        }}
+        onSendBackward={() => {
+          if (selectedElementId) {
+            const reordered = ElementEngine.sendBackward(activeSlide.elements, selectedElementId);
+            updateActiveSlide({ ...activeSlide, elements: reordered });
+          }
+        }}
+        onDeleteSelectedElement={handleDeleteSelectedElement}
+        onChangeSpeakerNotes={(notes) => updateActiveSlide({ ...activeSlide, speakerNotes: notes })}
+        onPresent={() => setPresenterOpen(true)}
+      />
+
       {/* ── Main Workspace Body: Left Sidebar + Center Stage + Right Inspector ─ */}
-      <div className="flex-1 flex overflow-hidden relative w-full">
-        {/* Slide Navigator Sidebar */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative w-full">
+        {/* Desktop Slide Navigator Sidebar */}
         <PresentationSidebar
           slides={validSlides}
           activeSlideIndex={safeActiveIndex}
           settings={settings}
-          onChangeSlides={(s) => {
+          onChangeSlides={(s: Slide[]) => {
             pushHistory(s);
             onChangeSlides(s);
           }}
@@ -477,18 +575,92 @@ export function PresentationCanvas({
           onLoadProjectDeck={handleLoadProjectDeck}
         />
 
+        {/* ── Mobile Horizontal Slide Thumbnail Strip (md:hidden) ───────────── */}
+        <div className="flex md:hidden items-center gap-1.5 px-3 py-1.5 bg-muted/40 border-b border-border/80 overflow-x-auto no-scrollbar whitespace-nowrap shrink-0">
+          <div ref={thumbnailStripRef} className="flex items-center gap-1.5">
+            {validSlides.map((s, idx) => (
+              <button
+                key={s.id || idx}
+                type="button"
+                onClick={() => onChangeActiveSlideIndex(idx)}
+                className={cn(
+                  'h-8 px-2.5 rounded-lg border text-xs font-bold font-mono shrink-0 transition-all flex items-center gap-1 cursor-pointer',
+                  safeActiveIndex === idx
+                    ? 'bg-primary text-white border-primary shadow-xs ring-2 ring-primary/20'
+                    : 'bg-card text-muted-foreground border-border hover:text-foreground'
+                )}
+                aria-label={`Go to Slide ${idx + 1}`}
+              >
+                <span>{idx + 1}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => handleAddSlide('title-content')}
+              className="h-8 w-8 rounded-lg border border-dashed border-border bg-card/60 flex items-center justify-center text-primary hover:bg-primary/10 shrink-0 cursor-pointer"
+              title="Add Slide"
+              aria-label="Add slide"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
         {/* Center Stage & Speaker Notes */}
         <div className="flex-1 flex flex-col overflow-hidden relative bg-muted/20">
           {/* Main Slide Canvas Viewport with Canonical Proportional Scaling */}
           <div
             ref={stageContainerRef}
-            className="flex-1 flex items-center justify-center p-2 sm:p-6 overflow-y-auto overflow-x-hidden relative touch-pan-y overscroll-y-contain pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-6"
+            className="flex-1 flex items-center justify-center p-2 sm:p-6 overflow-y-auto overflow-x-hidden relative touch-pan-y overscroll-y-contain pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] md:pb-6"
             style={{ WebkitOverflowScrolling: 'touch' }}
-            onClick={() => setSelectedElementId(null)}
+            onClick={() => setSelectedElementIds([])}
           >
-            {/* ── Slide Stage Row with Left & Right Navigation Buttons ──────── */}
-            <div className="flex items-center justify-center gap-1.5 sm:gap-3 md:gap-5 w-full max-w-full relative select-none">
-              {/* ◀ Left: Previous Slide Button */}
+            {/* ── Floating Zoom Controls (Safely positioned above bottom toolbar) ── */}
+            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-30 flex items-center gap-1 bg-background/90 backdrop-blur-md border border-border rounded-xl p-1 shadow-md select-none">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoomMultiplier(z => Math.max(0.4, Number((z - 0.1).toFixed(1))));
+                }}
+                className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+                title="Zoom Out"
+                aria-label="Zoom out"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </button>
+              <span className="text-[11px] font-mono font-semibold px-1 min-w-[36px] text-center text-muted-foreground">
+                {Math.round(zoomMultiplier * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoomMultiplier(z => Math.min(2.5, Number((z + 0.1).toFixed(1))));
+                }}
+                className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+                title="Zoom In"
+                aria-label="Zoom in"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoomMultiplier(1);
+                }}
+                className="h-7 px-2 rounded-lg text-[10px] font-semibold text-primary hover:bg-primary/10 active:scale-95 transition-all border-l border-border ml-0.5"
+                title="Fit to Screen"
+                aria-label="Fit to screen"
+              >
+                Fit
+              </button>
+            </div>
+
+            {/* ── Slide Stage Row with Navigation Buttons ────────────────────── */}
+            <div className="flex flex-col md:flex-row items-center justify-center gap-2 sm:gap-4 md:gap-6 w-full max-w-full relative select-none">
+              {/* Desktop Left: Previous Slide Button */}
               <button
                 type="button"
                 onClick={(e) => {
@@ -499,119 +671,147 @@ export function PresentationCanvas({
                 aria-label="Previous slide"
                 title={hasPrev ? `Previous Slide (Slide ${safeActiveIndex} of ${validSlides.length})` : 'First Slide'}
                 className={cn(
-                  "h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12 rounded-full border border-border bg-background/90 backdrop-blur-md shadow-md flex items-center justify-center transition-all z-20 shrink-0 select-none",
+                  "hidden md:flex h-12 w-12 rounded-full border border-border bg-background/90 backdrop-blur-md shadow-md items-center justify-center transition-all z-20 shrink-0 select-none",
                   hasPrev
                     ? "text-foreground hover:bg-primary hover:text-white hover:border-primary active:scale-95 cursor-pointer hover:shadow-lg"
                     : "text-muted-foreground/30 border-border/40 bg-background/40 cursor-not-allowed opacity-30 pointer-events-none"
                 )}
               >
-                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                <ChevronLeft className="h-6 w-6" />
               </button>
 
-              {/* Canonical 960x540 Slide Canvas with Uniform Transform Scale */}
-              <div
-                style={{
-                  width: '960px',
-                  height: '540px',
-                  transform: `scale(${computedScale})`,
-                  transformOrigin: 'center center',
-                  background: currentSlideBackground,
-                }}
-                className="rounded-xl shadow-2xl border border-black/10 dark:border-white/10 relative shrink-0 transition-transform duration-75 group/stage select-text"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedElementId(null);
-                }}
-              >
-                {activeSlide.elements.map(el => {
-                  const isSelected = selectedElementId === el.id;
+            {/* Canonical 960x540 Slide Canvas with Uniform Transform Scale */}
+            <div
+              style={{
+                width: '960px',
+                height: '540px',
+                transform: `scale(${computedScale})`,
+                transformOrigin: 'center center',
+                background: currentSlideBackground,
+              }}
+              className="rounded-xl shadow-2xl border border-black/10 dark:border-white/10 relative shrink-0 transition-transform duration-75 group/stage select-text"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedElementIds([]);
+              }}
+            >
+              {activeSlide.elements.map(el => {
+                const isSelected = selectedElementIds.includes(el.id) || selectedElementId === el.id;
+                const elFontSize = ElementEngine.getElementFontSize(el);
 
-                  return (
-                    <div
-                      key={el.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedElementId(el.id);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        left: `${el.transform.x}px`,
-                        top: `${el.transform.y}px`,
-                        width: `${el.transform.width}px`,
-                        height: `${el.transform.height}px`,
-                        transform: el.transform.rotation ? `rotate(${el.transform.rotation}deg)` : undefined,
-                        border: isSelected ? '2px solid #2563EB' : '1px solid transparent',
-                        ...el.style,
-                      }}
-                      className={`group/el relative ${isSelected ? 'shadow-lg ring-2 ring-primary/40' : ''}`}
-                    >
-                      {/* Element Type Rendering */}
-                      {el.type === 'image' ? (
-                        <div className="w-full h-full overflow-hidden flex items-center justify-center pointer-events-none">
-                          <img
-                            src={el.content || ''}
-                            alt="Slide Image"
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'contain',
-                              borderRadius: el.style?.cornerRadius || 8,
-                              opacity: el.style?.opacity ?? 1,
-                            }}
-                          />
-                        </div>
-                      ) : el.type === 'shape' ? (
-                        <div
-                          className="w-full h-full flex items-center justify-center p-2 text-center"
+                return (
+                  <div
+                    key={el.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (e.shiftKey || e.metaKey || e.ctrlKey) {
+                        setSelectedElementIds(prev =>
+                          prev.includes(el.id) ? prev.filter(id => id !== el.id) : [...prev, el.id]
+                        );
+                      } else {
+                        setSelectedElementIds([el.id]);
+                      }
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: `${el.transform.x}px`,
+                      top: `${el.transform.y}px`,
+                      width: `${el.transform.width}px`,
+                      height: `${el.transform.height}px`,
+                      transform: el.transform.rotation ? `rotate(${el.transform.rotation}deg)` : undefined,
+                      border: isSelected ? '2px solid #2563EB' : '1px solid transparent',
+                      touchAction: 'none',
+                      fontSize: `${elFontSize}px`,
+                      fontFamily: el.style?.fontFamily || settings.theme?.bodyFont,
+                      color: el.style?.color || settings.theme?.textColor,
+                      ...el.style,
+                    }}
+                    className={`group/el relative ${isSelected ? 'shadow-lg ring-2 ring-primary/40' : ''}`}
+                  >
+                    {/* Element Type Rendering */}
+                    {el.type === 'image' ? (
+                      <div className="w-full h-full overflow-hidden flex items-center justify-center pointer-events-none">
+                        <img
+                          src={el.content || ''}
+                          alt="Slide Image"
                           style={{
-                            backgroundColor: el.style?.fill || '#2563eb',
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
                             borderRadius: el.style?.cornerRadius || 8,
-                            border: el.style?.stroke ? `${el.style.strokeWidth || 1}px solid ${el.style.stroke}` : undefined,
                             opacity: el.style?.opacity ?? 1,
                           }}
-                        >
-                          {el.content ? (
-                            <div
-                              contentEditable
-                              suppressContentEditableWarning
-                              onBlur={e => {
-                                const nextEls = activeSlide.elements.map(item =>
-                                  item.id === el.id ? { ...item, content: e.currentTarget.innerHTML } : item
-                                );
-                                updateActiveSlide({ ...activeSlide, elements: nextEls });
-                              }}
-                              dangerouslySetInnerHTML={{ __html: el.content }}
-                              className="w-full h-full outline-none select-text"
-                            />
-                          ) : null}
-                        </div>
-                      ) : (
-                        /* Rich Text Box / Table / KaTeX */
-                        <div
-                          contentEditable
-                          suppressContentEditableWarning
-                          onBlur={e => {
-                            const nextEls = activeSlide.elements.map(item =>
-                              item.id === el.id ? { ...item, content: e.currentTarget.innerHTML } : item
-                            );
-                            updateActiveSlide({ ...activeSlide, elements: nextEls });
-                          }}
-                          dangerouslySetInnerHTML={{ __html: el.content || '' }}
-                          className="w-full h-full outline-none select-text"
                         />
-                      )}
+                      </div>
+                    ) : el.type === 'shape' ? (
+                      <div
+                        className="w-full h-full flex items-center justify-center p-2 text-center"
+                        style={{
+                          backgroundColor: el.style?.fill || '#2563eb',
+                          borderRadius: el.style?.cornerRadius || 8,
+                          border: el.style?.stroke ? `${el.style.strokeWidth || 1}px solid ${el.style.stroke}` : undefined,
+                          opacity: el.style?.opacity ?? 1,
+                        }}
+                      >
+                        {el.content ? (
+                          <div
+                            contentEditable
+                            suppressContentEditableWarning
+                            style={{
+                              fontSize: `${elFontSize}px`,
+                              lineHeight: el.style?.lineHeight || 1.3,
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }}
+                            onBlur={e => {
+                              const nextEls = activeSlide.elements.map(item =>
+                                item.id === el.id ? { ...item, content: e.currentTarget.innerHTML } : item
+                              );
+                              updateActiveSlide({ ...activeSlide, elements: nextEls });
+                            }}
+                            dangerouslySetInnerHTML={{ __html: el.content }}
+                            className="w-full h-full outline-none select-text"
+                          />
+                        ) : null}
+                      </div>
+                    ) : (
+                      /* Rich Text Box / Table / KaTeX */
+                      <div
+                        contentEditable
+                        suppressContentEditableWarning
+                        style={{
+                          fontSize: `${elFontSize}px`,
+                          lineHeight: el.style?.lineHeight || 1.3,
+                          fontFamily: el.style?.fontFamily || settings.theme?.bodyFont,
+                          color: el.style?.color || settings.theme?.textColor,
+                          textAlign: el.style?.textAlign,
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }}
+                        onBlur={e => {
+                          const nextEls = activeSlide.elements.map(item =>
+                            item.id === el.id ? { ...item, content: e.currentTarget.innerHTML } : item
+                          );
+                          updateActiveSlide({ ...activeSlide, elements: nextEls });
+                        }}
+                        dangerouslySetInnerHTML={{ __html: el.content || '' }}
+                        className="w-full h-full outline-none select-text"
+                      />
+                    )}
 
                       {/* Transform Handles when selected */}
                       {isSelected && (
                         <>
-                          <div className="absolute -top-1.5 -left-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
-                          <div className="absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
-                          <div className="absolute -bottom-1.5 -left-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
-                          <div className="absolute -bottom-1.5 -right-1.5 h-3 w-3 rounded-full bg-primary border-2 border-white pointer-events-none shadow-xs" />
+                          <div className="absolute -top-2 -left-2 h-4 w-4 rounded-full bg-primary border-2 border-white pointer-events-none shadow-md" />
+                          <div className="absolute -top-2 -right-2 h-4 w-4 rounded-full bg-primary border-2 border-white pointer-events-none shadow-md" />
+                          <div className="absolute -bottom-2 -left-2 h-4 w-4 rounded-full bg-primary border-2 border-white pointer-events-none shadow-md" />
+                          <div className="absolute -bottom-2 -right-2 h-4 w-4 rounded-full bg-primary border-2 border-white pointer-events-none shadow-md" />
 
                           {/* Contextual Action Bar Floating Above Element */}
                           <div
-                            className="absolute -top-9 left-0 bg-background/95 backdrop-blur border border-border shadow-lg rounded-md px-1.5 py-0.5 flex items-center gap-1 z-30 select-none"
+                            className="absolute -top-10 left-0 bg-background/98 backdrop-blur border border-border shadow-xl rounded-lg px-2 py-1 flex items-center gap-1.5 z-30 select-none"
                             onClick={e => e.stopPropagation()}
                           >
                             {el.type === 'image' && (
@@ -622,7 +822,7 @@ export function PresentationCanvas({
                                   className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
                                   title="Crop Image"
                                 >
-                                  <Crop className="h-3 w-3" />
+                                  <Crop className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   type="button"
@@ -630,7 +830,7 @@ export function PresentationCanvas({
                                   className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
                                   title="Replace Image"
                                 >
-                                  <RefreshCw className="h-3 w-3" />
+                                  <RefreshCw className="h-3.5 w-3.5" />
                                 </button>
                               </>
                             )}
@@ -643,15 +843,15 @@ export function PresentationCanvas({
                               className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
                               title="Rotate 90°"
                             >
-                              <RotateCw className="h-3 w-3" />
+                              <RotateCw className="h-3.5 w-3.5" />
                             </button>
                             <button
                               type="button"
                               onClick={handleDuplicateSelectedElement}
                               className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground text-xs"
-                              title="Duplicate (Ctrl+D)"
+                              title="Duplicate"
                             >
-                              <Copy className="h-3 w-3" />
+                              <Copy className="h-3.5 w-3.5" />
                             </button>
                             <button
                               type="button"
@@ -659,7 +859,7 @@ export function PresentationCanvas({
                               className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive text-xs"
                               title="Delete Element"
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         </>
@@ -669,7 +869,7 @@ export function PresentationCanvas({
                 })}
               </div>
 
-              {/* ▶ Right: Next Slide Button */}
+              {/* Desktop Right: Next Slide Button */}
               <button
                 type="button"
                 onClick={(e) => {
@@ -680,19 +880,56 @@ export function PresentationCanvas({
                 aria-label="Next slide"
                 title={hasNext ? `Next Slide (Slide ${safeActiveIndex + 2} of ${validSlides.length})` : 'Last Slide'}
                 className={cn(
-                  "h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12 rounded-full border border-border bg-background/90 backdrop-blur-md shadow-md flex items-center justify-center transition-all z-20 shrink-0 select-none",
+                  "hidden md:flex h-12 w-12 rounded-full border border-border bg-background/90 backdrop-blur-md shadow-md items-center justify-center transition-all z-20 shrink-0 select-none",
                   hasNext
                     ? "text-foreground hover:bg-primary hover:text-white hover:border-primary active:scale-95 cursor-pointer hover:shadow-lg"
                     : "text-muted-foreground/30 border-border/40 bg-background/40 cursor-not-allowed opacity-30 pointer-events-none"
                 )}
               >
-                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                <ChevronRight className="h-6 w-6" />
               </button>
             </div>
           </div>
 
-          {/* ── Expandable Speaker Notes Drawer ──────────────────────────────── */}
-          <div className="border-t border-border bg-card/90 backdrop-blur shrink-0 transition-all select-none">
+          {/* ── Mobile Dedicated Slide Navigation Bar (Below Canvas, md:hidden) ── */}
+          <div className="flex md:hidden items-center justify-between gap-3 px-4 py-2 bg-background/95 backdrop-blur border-t border-border/80 shrink-0 select-none z-20">
+            <button
+              type="button"
+              onClick={handlePrevSlide}
+              disabled={!hasPrev}
+              className={cn(
+                "h-11 px-4 rounded-xl border border-border font-semibold text-xs flex items-center gap-1.5 transition-all shadow-xs",
+                hasPrev
+                  ? "bg-card text-foreground hover:bg-muted active:scale-95 cursor-pointer"
+                  : "bg-muted/30 text-muted-foreground/40 border-border/30 opacity-40 cursor-not-allowed"
+              )}
+              aria-label="Previous slide"
+            >
+              <ChevronLeft className="h-4 w-4" /> Previous
+            </button>
+
+            <span className="text-xs font-mono font-bold text-foreground">
+              Slide {safeActiveIndex + 1} / {validSlides.length}
+            </span>
+
+            <button
+              type="button"
+              onClick={handleNextSlide}
+              disabled={!hasNext}
+              className={cn(
+                "h-11 px-4 rounded-xl border border-border font-semibold text-xs flex items-center gap-1.5 transition-all shadow-xs",
+                hasNext
+                  ? "bg-card text-foreground hover:bg-muted active:scale-95 cursor-pointer"
+                  : "bg-muted/30 text-muted-foreground/40 border-border/30 opacity-40 cursor-not-allowed"
+              )}
+              aria-label="Next slide"
+            >
+              Next <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* ── Expandable Speaker Notes Drawer (Desktop md+) ───────────────── */}
+          <div className="hidden md:block border-t border-border bg-card/90 backdrop-blur shrink-0 transition-all select-none">
             <div
               className="h-8 px-4 flex items-center justify-between cursor-pointer hover:bg-muted/40"
               onClick={() => setShowNotesDrawer(!showNotesDrawer)}
@@ -778,103 +1015,18 @@ export function PresentationCanvas({
       {/* Fullscreen Presenter Mode Modal */}
       <PresenterModal
         open={presenterOpen}
-        onClose={() => setPresenterOpen(false)}
         slides={validSlides}
         initialSlideIndex={safeActiveIndex}
         settings={settings}
+        onClose={() => setPresenterOpen(false)}
       />
 
-      {/* ── Mobile Touch-First Presentation Bottom Toolbar & Sheets ───────── */}
-      <MobilePresentationToolbar
-        slides={validSlides}
-        activeSlideIndex={safeActiveIndex}
-        activeSlide={activeSlide}
-        selectedElement={selectedElement}
-        settings={settings}
-        canUndo={historyIndex > 0}
-        canRedo={historyIndex < history.length - 1}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        onChangeActiveSlideIndex={onChangeActiveSlideIndex}
-        onAddSlide={handleAddSlide}
-        onDuplicateSlide={handleDuplicateSlide}
-        onDeleteSlide={handleDeleteSlide}
-        onLoadProjectDeck={handleLoadProjectDeck}
-        onAddText={handleAddTextElement}
-        onAddImage={() => setImageUploadOpen(true)}
-        onAddShape={handleAddShapeElement}
-        onAddTable={handleAddTableElement}
-        onOpenChartModal={onOpenChartModal}
-        onOpenDiagramModal={onOpenDiagramModal}
-        onOpenQRCodeModal={onOpenQRCodeModal}
-        onApplyGradient={(preset, applyToAll) => {
-          if (applyToAll) {
-            const next = validSlides.map(s => ({ ...s, gradient: preset.gradient, background: undefined }));
-            pushHistory(next);
-            onChangeSlides(next);
-          } else {
-            updateActiveSlide({ ...activeSlide, gradient: preset.gradient, background: undefined });
-          }
-        }}
-        onClearGradient={(applyToAll) => {
-          if (applyToAll) {
-            const next = validSlides.map(s => ({ ...s, gradient: undefined, background: settings.theme.backgroundColor }));
-            pushHistory(next);
-            onChangeSlides(next);
-          } else {
-            updateActiveSlide({ ...activeSlide, gradient: undefined, background: settings.theme.backgroundColor });
-          }
-        }}
-        onChangeTheme={(th, applyToAll = true) => {
-          onChangeSettings({ ...settings, theme: th });
-          if (applyToAll) {
-            const updated = PresentationEngine.applyThemeToAllSlides(validSlides, th);
-            pushHistory(updated);
-            onChangeSlides(updated);
-          }
-        }}
-        onApplyFontToAll={(fontFamily) => {
-          const updated = PresentationEngine.applyFontToAllSlides(validSlides, fontFamily, 'all');
-          pushHistory(updated);
-          onChangeSlides(updated);
-        }}
-        onApplyTextColorToAll={(color) => {
-          const updated = PresentationEngine.applyTextColorToAllSlides(validSlides, color, 'all');
-          pushHistory(updated);
-          onChangeSlides(updated);
-        }}
-        onFormatText={handleFormatText}
-        onUpdateSelectedElement={handleUpdateSelectedElement}
-        onBringForward={() => {
-          if (selectedElementId) {
-            const reordered = ElementEngine.bringForward(activeSlide.elements, selectedElementId);
-            updateActiveSlide({ ...activeSlide, elements: reordered });
-          }
-        }}
-        onSendBackward={() => {
-          if (selectedElementId) {
-            const reordered = ElementEngine.sendBackward(activeSlide.elements, selectedElementId);
-            updateActiveSlide({ ...activeSlide, elements: reordered });
-          }
-        }}
-        onDeleteSelectedElement={handleDeleteSelectedElement}
-        onChangeSpeakerNotes={(notes) => updateActiveSlide({ ...activeSlide, speakerNotes: notes })}
-        onPresent={() => setPresenterOpen(true)}
-      />
-
-      {/* Hidden File Input for Image Replacement */}
-      <input
-        ref={replaceFileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (file && selectedElementId) {
-            const asset = await ImageAssetEngine.createInstantAsset(file);
-            handleUpdateSelectedElement({ content: asset.previewUrl });
-          }
-        }}
+      {/* Visual Theme Selection Modal */}
+      <PresentationThemeModal
+        open={themeModalOpen}
+        onClose={() => setThemeModalOpen(false)}
+        currentThemeId={settings.theme?.id || 'professional'}
+        onSelectTheme={(th) => handleChangeTheme(th, true)}
       />
     </div>
   );

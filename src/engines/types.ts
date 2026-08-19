@@ -65,6 +65,7 @@ export type ShapeType =
   | 'circle'
   | 'ellipse'
   | 'triangle'
+  | 'diamond'
   | 'star'
   | 'arrow-right'
   | 'arrow-left'
@@ -183,28 +184,39 @@ export type SlideLayout =
   | 'title'
   | 'title-content'
   | 'two-columns'
+  | 'split-screen'
   | 'image-text'
+  | 'title-image'
+  | 'image-hero'
+  | 'three-cards'
   | 'section-header'
   | 'comparison'
   | 'timeline'
+  | 'process'
   | 'statistics'
   | 'full-image'
   | 'quote'
   | 'diagram'
-  | 'closing';
+  | 'closing'
+  | 'conclusion';
 
 export type SlideTransition = 'none' | 'fade' | 'slide-left' | 'slide-right' | 'zoom';
 
 export interface SlideTheme {
   id: string;
   name: string;
+  category?: 'professional' | 'modern' | 'creative' | 'technology' | 'premium' | 'academic';
+  description?: string;
   headingFont: string;
   bodyFont: string;
   primaryColor: string;
+  secondaryColor?: string;
   accentColor: string;
   textColor: string;
   backgroundColor: string;
   gradientBackground?: string;
+  cardBackground?: string;
+  borderColor?: string;
 }
 
 export interface Slide {

@@ -34,7 +34,18 @@ export function DashboardPage() {
 
   const quickActions = [
     {
+      label: 'Document',
+      description: 'Word-style rich editor',
+      icon: FileText,
+      color: '#2563EB',
+      onClick: () => {
+        const doc = createDocument({ title: 'Untitled Document', mode: 'document' });
+        navigate(`/editor/${doc.id}`);
+      },
+    },
+    {
       label: 'Presentation',
+      description: '16:9 slides & themes',
       icon: Presentation,
       color: '#8B5CF6',
       onClick: () => {
@@ -44,12 +55,14 @@ export function DashboardPage() {
     },
     {
       label: 'Flowchart',
+      description: 'Smart diagramming',
       icon: GitFork,
-      color: '#3B82F6',
+      color: '#06B6D4',
       onClick: () => navigate('/flowchart'),
     },
     {
-      label: 'Resume Builder',
+      label: 'Resume',
+      description: 'ATS-ready professional CV',
       icon: UserCheck,
       color: '#10B981',
       onClick: () => navigate('/resume'),
@@ -71,7 +84,7 @@ export function DashboardPage() {
             const doc = createDocument({ title: 'Untitled Document', mode: 'document' });
             navigate(`/editor/${doc.id}`);
           }}
-          className="gap-2 shadow-sm font-semibold h-10 px-4"
+          className="gap-2 shadow-sm font-semibold h-10 px-4 cursor-pointer"
           aria-label="Create Document"
         >
           <Plus className="h-4 w-4" />
@@ -82,18 +95,19 @@ export function DashboardPage() {
       {/* Quick actions */}
       <div>
         <h2 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">Quick Actions</h2>
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {quickActions.map(action => (
             <button
               key={action.label}
               onClick={action.onClick}
               aria-label={`Launch ${action.label}`}
-              className="group flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-6 rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-200 text-center cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+              className="group flex flex-col items-center gap-2 p-3.5 sm:p-5 rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/30 transition-all duration-200 text-center cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             >
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110" style={{ backgroundColor: action.color + '15' }}>
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs" style={{ backgroundColor: action.color + '18' }}>
                 <action.icon className="h-5 w-5 sm:h-6 sm:w-6" style={{ color: action.color }} />
               </div>
-              <span className="font-medium text-xs sm:text-sm">{action.label}</span>
+              <span className="font-semibold text-xs sm:text-sm text-foreground">{action.label}</span>
+              <span className="text-[10px] text-muted-foreground hidden sm:block truncate w-full">{action.description}</span>
             </button>
           ))}
         </div>

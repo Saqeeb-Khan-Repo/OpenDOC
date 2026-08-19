@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Slide, SlideLayout, SlideTheme, PresentationSettings, CanvasElement, ShapeType } from '@/engines/types';
 import { PRESENTATION_THEMES, PRESENTATION_GRADIENTS, GradientPreset } from '@/engines/PresentationEngine';
+import { ElementEngine } from '@/engines/ElementEngine';
 import {
   Play, Plus, Copy, Trash2, Undo2, Redo2, Type, Image as ImageIcon,
   Square, Circle, Triangle, Star, ArrowRight, Minus, MessageSquare,
@@ -20,6 +21,7 @@ import { cn } from '@/utils/cn';
 interface PresentationToolbarProps {
   activeSlide: Slide;
   selectedElement: CanvasElement | null;
+  selectedElements?: CanvasElement[];
   settings: PresentationSettings;
   canUndo: boolean;
   canRedo: boolean;
@@ -33,7 +35,8 @@ interface PresentationToolbarProps {
   onOpenChartModal: () => void;
   onOpenDiagramModal: () => void;
   onOpenQRCodeModal: () => void;
-  onOpenSignatureModal: () => void;
+  onOpenSignatureModal?: () => void;
+  onOpenThemeModal?: () => void;
   onApplyGradient: (preset: GradientPreset, applyToAll: boolean) => void;
   onClearGradient: (applyToAll: boolean) => void;
   onChangeTheme: (theme: SlideTheme, applyToAll?: boolean) => void;
@@ -41,6 +44,7 @@ interface PresentationToolbarProps {
   onApplyTextColorToAll: (color: string) => void;
   onFormatText: (command: string, value?: string) => void;
   onUpdateSelectedElement: (patch: Partial<CanvasElement>) => void;
+  onChangeFontSize?: (size: number) => void;
   onBringForward: () => void;
   onSendBackward: () => void;
   onAlignElements: (alignment: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => void;
@@ -52,11 +56,14 @@ const FONT_FAMILIES = [
   'JetBrains Mono', 'Georgia', 'Arial'
 ];
 
+const FONT_SIZES = [10, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 96];
+
 const RECENT_COLORS = ['#000000', '#ffffff', '#2563eb', '#1e3a8a', '#7c3aed', '#db2777', '#dc2626', '#16a34a'];
 
 export function PresentationToolbar({
   activeSlide,
   selectedElement,
+  selectedElements,
   settings,
   canUndo,
   canRedo,
@@ -71,6 +78,7 @@ export function PresentationToolbar({
   onOpenDiagramModal,
   onOpenQRCodeModal,
   onOpenSignatureModal,
+  onOpenThemeModal,
   onApplyGradient,
   onClearGradient,
   onChangeTheme,
@@ -78,14 +86,38 @@ export function PresentationToolbar({
   onApplyTextColorToAll,
   onFormatText,
   onUpdateSelectedElement,
+  onChangeFontSize,
   onBringForward,
   onSendBackward,
   onAlignElements,
   onPresent,
 }: PresentationToolbarProps) {
-  const isTextElement = selectedElement?.type === 'text';
-  const isImageElement = selectedElement?.type === 'image';
-  const isShapeElement = selectedElement?.type === 'shape';
+  const selectedList = selectedElements && selectedElements.length > 0
+    ? selectedElements
+    : selectedElement ? [selectedElement] : [];
+
+  const isTextElement = selectedList.some(el => el.type === 'text');
+  const isImageElement = selectedList.some(el => el.type === 'image');
+  const isShapeElement = selectedList.some(el => el.type === 'shape');
+
+  // Compute effective font size across all selected text elements
+  const textElements = selectedList.filter(el => el.type === 'text');
+  const fontSizes = textElements.map(el => ElementEngine.getElementFontSize(el));
+  const isMixed = fontSizes.length > 1 && !fontSizes.every(s => s === fontSizes[0]);
+  const currentFontSize: number | 'Mixed' = isMixed ? 'Mixed' : (fontSizes[0] || (selectedElement ? ElementEngine.getElementFontSize(selectedElement) : 24));
+  const [customSizeInput, setCustomSizeInput] = useState<string>('');
+
+  const handleApplySize = (val: number) => {
+    const valid = Math.min(144, Math.max(8, Math.round(val)));
+    if (isNaN(valid)) return;
+    if (onChangeFontSize) {
+      onChangeFontSize(valid);
+    } else {
+      onUpdateSelectedElement({
+        style: { ...selectedElement?.style, fontSize: valid },
+      });
+    }
+  };
 
   return (
     <div className="h-10 bg-background/95 backdrop-blur border-b border-border px-3 hidden md:flex items-center justify-between shrink-0 z-20 select-none overflow-x-auto gap-2">
@@ -104,10 +136,11 @@ export function PresentationToolbar({
         {/* ── CONTEXT 1: TEXT SELECTED ───────────────────────────────────────── */}
         {isTextElement ? (
           <div className="flex items-center gap-1">
+            {/* Font Family Picker */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-xs px-2 gap-1 font-normal max-w-[100px] truncate">
-                  <span>{settings.theme?.bodyFont || 'Inter'}</span>
+                <Button variant="outline" size="sm" className="h-7 text-xs px-2 gap-1 font-normal max-w-[110px] truncate">
+                  <span>{selectedElement?.style?.fontFamily || settings.theme?.bodyFont || 'Inter'}</span>
                   <ChevronDown className="h-2.5 w-2.5 opacity-60 shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
@@ -116,15 +149,21 @@ export function PresentationToolbar({
                 {FONT_FAMILIES.map(f => (
                   <DropdownMenuItem
                     key={f}
-                    onClick={() => onFormatText('fontName', f)}
+                    onClick={() => {
+                      onUpdateSelectedElement({ style: { ...selectedElement?.style, fontFamily: f } });
+                      onFormatText('fontName', f);
+                    }}
                     className="flex justify-between items-center"
                   >
-                    <span>{f}</span>
+                    <span style={{ fontFamily: f }}>{f}</span>
+                    {(selectedElement?.style?.fontFamily || settings.theme?.bodyFont) === f && (
+                      <Check className="h-3.5 w-3.5 text-primary" />
+                    )}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => onApplyFontToAll(settings.theme?.bodyFont || 'Inter')}
+                  onClick={() => onApplyFontToAll(selectedElement?.style?.fontFamily || settings.theme?.bodyFont || 'Inter')}
                   className="text-primary font-semibold flex items-center gap-1.5"
                 >
                   <Globe className="h-3.5 w-3.5" />
@@ -133,6 +172,71 @@ export function PresentationToolbar({
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* Font Size Selector (Dropdown + Custom Input) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-xs px-2 gap-1 font-mono font-semibold min-w-[52px]">
+                  <span>{currentFontSize}</span>
+                  <ChevronDown className="h-2.5 w-2.5 opacity-60 shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48 p-2 text-xs">
+                <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase">Font Size</DropdownMenuLabel>
+                
+                {/* Custom numeric input */}
+                <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-border">
+                  <span className="text-[10px] text-muted-foreground font-semibold">Custom:</span>
+                  <input
+                    type="number"
+                    min={8}
+                    max={144}
+                    placeholder={String(currentFontSize)}
+                    value={customSizeInput}
+                    onChange={e => setCustomSizeInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && customSizeInput) {
+                        handleApplySize(Number(customSizeInput));
+                        setCustomSizeInput('');
+                      }
+                    }}
+                    className="w-14 h-6 px-1.5 text-xs font-mono font-bold bg-background border border-border rounded outline-none focus:border-primary"
+                  />
+                  <Button
+                    size="sm"
+                    className="h-6 px-2 text-[10px] font-bold"
+                    onClick={() => {
+                      if (customSizeInput) {
+                        handleApplySize(Number(customSizeInput));
+                        setCustomSizeInput('');
+                      }
+                    }}
+                  >
+                    Set
+                  </Button>
+                </div>
+
+                {/* Preset Font Sizes */}
+                <div className="grid grid-cols-4 gap-1 max-h-48 overflow-y-auto">
+                  {FONT_SIZES.map(sz => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => handleApplySize(sz)}
+                      className={cn(
+                        'h-7 rounded text-xs font-mono font-medium transition-colors flex items-center justify-center cursor-pointer',
+                        currentFontSize === sz
+                          ? 'bg-primary text-primary-foreground font-bold'
+                          : 'hover:bg-accent text-foreground'
+                      )}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Basic Text Formatting */}
             <div className="flex items-center gap-0.5 bg-muted/40 p-0.5 rounded border border-border">
               <Button variant="ghost" size="icon-sm" className="h-6 w-6" onClick={() => onFormatText('bold')} title="Bold"><Bold className="h-3 w-3" /></Button>
               <Button variant="ghost" size="icon-sm" className="h-6 w-6" onClick={() => onFormatText('italic')} title="Italic"><Italic className="h-3 w-3" /></Button>
@@ -143,8 +247,8 @@ export function PresentationToolbar({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 px-1 text-xs gap-0.5" title="Color">
-                  <span className="font-bold underline" style={{ textDecorationColor: '#2563eb' }}>A</span>
-                  <div className="h-2 w-2 rounded-xs bg-primary" />
+                  <span className="font-bold underline" style={{ textDecorationColor: selectedElement?.style?.color || '#2563eb' }}>A</span>
+                  <div className="h-2 w-2 rounded-xs" style={{ backgroundColor: selectedElement?.style?.color || '#2563eb' }} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-52 p-2 text-xs">
@@ -154,15 +258,18 @@ export function PresentationToolbar({
                     <button
                       key={c}
                       type="button"
-                      onClick={() => onFormatText('foreColor', c)}
+                      onClick={() => {
+                        onUpdateSelectedElement({ style: { ...selectedElement?.style, color: c } });
+                        onFormatText('foreColor', c);
+                      }}
                       style={{ backgroundColor: c }}
-                      className="h-5 rounded border border-black/10 hover:scale-110"
+                      className="h-6 rounded border border-black/10 hover:scale-110"
                     />
                   ))}
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => onApplyTextColorToAll(RECENT_COLORS[2])}
+                  onClick={() => onApplyTextColorToAll(selectedElement?.style?.color || RECENT_COLORS[2])}
                   className="text-primary font-semibold flex items-center gap-1.5"
                 >
                   <Globe className="h-3.5 w-3.5" />
@@ -283,25 +390,59 @@ export function PresentationToolbar({
               <span className="hidden sm:inline">{settings.theme?.name || 'Theme'}</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52 text-xs">
-            <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase">Presentation Themes</DropdownMenuLabel>
-            {PRESENTATION_THEMES.map(th => (
-              <DropdownMenuItem
-                key={th.id}
-                onClick={() => onChangeTheme(th, true)}
-                className="flex items-center justify-between"
-              >
-                <span>{th.name}</span>
-                {settings.theme?.id === th.id && <Check className="h-3.5 w-3.5 text-primary" />}
-              </DropdownMenuItem>
-            ))}
+          <DropdownMenuContent align="end" className="w-56 text-xs">
+            <div className="flex items-center justify-between px-2 py-1.5 border-b border-border">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase">Presentation Themes</span>
+              {onOpenThemeModal && (
+                <button
+                  type="button"
+                  onClick={onOpenThemeModal}
+                  className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+                >
+                  <Sparkles className="h-3 w-3" /> Visual Gallery
+                </button>
+              )}
+            </div>
+
+            <div className="max-h-60 overflow-y-auto py-1">
+              {PRESENTATION_THEMES.map(th => (
+                <DropdownMenuItem
+                  key={th.id}
+                  onClick={() => onChangeTheme(th, true)}
+                  className="flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="h-3 w-3 rounded-full border border-black/20"
+                      style={{ backgroundColor: th.primaryColor }}
+                    />
+                    <span>{th.name}</span>
+                  </div>
+                  {settings.theme?.id === th.id && <Check className="h-3.5 w-3.5 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+            </div>
+
+            {onOpenThemeModal && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={onOpenThemeModal}
+                  className="text-primary font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Palette className="h-3.5 w-3.5" />
+                  <span>Browse Themes with Previews...</span>
+                </DropdownMenuItem>
+              </>
+            )}
+
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => {
                 const currentG = PRESENTATION_GRADIENTS.find(g => g.gradient === activeSlide.gradient) || PRESENTATION_GRADIENTS[0];
                 onApplyGradient(currentG, true);
               }}
-              className="text-primary font-semibold flex items-center gap-1.5"
+              className="text-primary font-semibold flex items-center gap-1.5 cursor-pointer"
             >
               <Globe className="h-3.5 w-3.5" />
               <span>Apply Gradient to All Slides</span>

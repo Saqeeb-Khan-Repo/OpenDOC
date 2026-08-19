@@ -18,6 +18,17 @@ export class ElementEngine {
       rotation: 0,
     };
 
+    let initialFontSize = 24;
+    if (overrides?.style?.fontSize) {
+      initialFontSize = overrides.style.fontSize;
+    } else if (typeof overrides?.content === 'string') {
+      const match = overrides.content.match(/font-size:\s*(\d+)px/i);
+      if (match && match[1]) {
+        const parsed = parseInt(match[1], 10);
+        if (!isNaN(parsed) && parsed > 0) initialFontSize = parsed;
+      }
+    }
+
     const defaultStyle: ElementStyle = {
       fill: type === 'shape' ? '#3B82F6' : '#ffffff',
       stroke: type === 'shape' ? '#1D4ED8' : '#e2e8f0',
@@ -26,7 +37,7 @@ export class ElementEngine {
       cornerRadius: 8,
       opacity: 1,
       fontFamily: 'Inter',
-      fontSize: 16,
+      fontSize: initialFontSize,
       color: '#1e293b',
       textAlign: 'left',
       padding: 12,
@@ -36,7 +47,11 @@ export class ElementEngine {
       id,
       type,
       transform: defaultTransform,
-      style: defaultStyle,
+      style: {
+        ...defaultStyle,
+        ...overrides?.style,
+        fontSize: overrides?.style?.fontSize || initialFontSize,
+      },
       zIndex: 1,
       locked: false,
       hidden: false,
@@ -162,6 +177,69 @@ export class ElementEngine {
       if (alignment === 'middle') newT.y = targetValue - newT.height / 2;
 
       return { ...el, transform: newT };
+    });
+  }
+
+  /**
+   * Retrieves the effective font size of an element, prioritizing style.fontSize,
+   * falling back to parsed inline HTML styles, and defaulting to 24px.
+   */
+  static getElementFontSize(el: CanvasElement | null | undefined): number {
+    if (!el) return 24;
+    if (typeof el.style?.fontSize === 'number' && el.style.fontSize > 0) {
+      return el.style.fontSize;
+    }
+    if (typeof el.content === 'string') {
+      const match = el.content.match(/font-size:\s*(\d+)px/i);
+      if (match && match[1]) {
+        const parsed = parseInt(match[1], 10);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    }
+    return 24;
+  }
+
+  /**
+   * Updates the font size of a canvas element both in its style object
+   * AND by rewriting any inline HTML style attributes inside content.
+   * This guarantees immediate, reliable canvas and DOM rendering without CSS conflicts.
+   */
+  static updateElementFontSize(el: CanvasElement, newFontSize: number): CanvasElement {
+    const validSize = Math.min(144, Math.max(8, Math.round(newFontSize)));
+    if (isNaN(validSize)) return el;
+
+    let nextContent = el.content;
+    if (typeof nextContent === 'string' && nextContent.trim().length > 0) {
+      if (/font-size:\s*[^;"]+/i.test(nextContent)) {
+        nextContent = nextContent.replace(/font-size:\s*[^;"]+/gi, `font-size: ${validSize}px`);
+      } else {
+        nextContent = `<div style="font-size: ${validSize}px;">${nextContent}</div>`;
+      }
+    }
+
+    return {
+      ...el,
+      content: nextContent,
+      style: {
+        ...el.style,
+        fontSize: validSize,
+      },
+    };
+  }
+
+  /**
+   * Batch updates font size across all matching element IDs (e.g. for multi-selection).
+   */
+  static updateElementsFontSize(
+    elements: CanvasElement[],
+    targetIds: string[],
+    newFontSize: number
+  ): CanvasElement[] {
+    return elements.map(el => {
+      if (targetIds.includes(el.id)) {
+        return this.updateElementFontSize(el, newFontSize);
+      }
+      return el;
     });
   }
 }
