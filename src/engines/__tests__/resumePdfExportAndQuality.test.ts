@@ -16,7 +16,7 @@ describe('Resume PDF Export & Quality Audit Comprehensive Tests', () => {
     });
 
     expect(isolatedPrintHtml).toContain('Alex Chen');
-    expect(isolatedPrintHtml).toContain('size: A4 portrait;');
+    expect(isolatedPrintHtml).toContain('size: 210mm 297mm portrait;');
     expect(isolatedPrintHtml).toContain('210mm');
     expect(isolatedPrintHtml).toContain('297mm');
 

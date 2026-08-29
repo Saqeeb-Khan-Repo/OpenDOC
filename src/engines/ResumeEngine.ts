@@ -188,6 +188,39 @@ export interface ResumeSpacing {
   lineHeight: number;
 }
 
+export type ResumePageSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'Executive' | 'Custom';
+export type ResumePageUnit = 'mm' | 'cm' | 'in' | 'px';
+export type ResumeOrientation = 'portrait' | 'landscape';
+export type ResumeMarginPreset = 'narrow' | 'normal' | 'wide' | 'custom';
+
+export interface ResumePageSettings {
+  pageSize: ResumePageSize;
+  customWidth?: number;
+  customHeight?: number;
+  unit: ResumePageUnit;
+  orientation: ResumeOrientation;
+  marginTop: number;
+  marginBottom: number;
+  marginLeft: number;
+  marginRight: number;
+  linkedMargins: boolean;
+  marginPreset: ResumeMarginPreset;
+}
+
+export const DEFAULT_PAGE_SETTINGS: ResumePageSettings = {
+  pageSize: 'A4',
+  customWidth: 210,
+  customHeight: 297,
+  unit: 'mm',
+  orientation: 'portrait',
+  marginTop: 15,
+  marginBottom: 15,
+  marginLeft: 15,
+  marginRight: 15,
+  linkedMargins: true,
+  marginPreset: 'normal',
+};
+
 export interface ResumeDesignConfig {
   headerLayout: ResumeHeaderLayout;
   fontFamily: string;
@@ -204,6 +237,7 @@ export interface ResumeDesignConfig {
   spacingPreset: 'compact' | 'balanced' | 'comfortable' | 'custom';
   spacing: ResumeSpacing;
   paperSize: 'A4' | 'Letter';
+  pageSettings?: ResumePageSettings;
   skillsStyle: 'grid' | 'list' | 'tags' | 'columns' | 'categories' | 'compact-rows';
   bulletStyle: 'dot' | 'dash' | 'arrow' | 'check' | 'minimal';
   headingStyle: 'underline' | 'left-border' | 'banner' | 'minimal-uppercase' | 'bold-divider' | 'centered';
@@ -232,6 +266,7 @@ export interface ResumeData {
   customSections?: ResumeCustomSection[];
   sectionOrder?: ResumeSectionConfig[];
   design?: ResumeDesignConfig;
+  pageSettings?: ResumePageSettings;
 }
 
 export interface ResumeTemplateMeta {
@@ -540,6 +575,79 @@ export const RESUME_TEMPLATES_METADATA: ResumeTemplateMeta[] = [
     description: 'High-contrast tinted sidebar for contact, education, and skills with clean main experience column.',
     thumbnailColor: '#0f172a',
     layout: 'two-column',
+  },
+  // Specialized Engineering & Analyst Role Templates
+  {
+    id: 'tmpl_dotnet_dev',
+    name: '.NET & C# Enterprise Architect',
+    category: 'Developer',
+    description: 'Specialized enterprise layout with C# .NET core competencies, microservices, and database highlights.',
+    thumbnailColor: '#512bd4',
+    layout: 'technical',
+  },
+  {
+    id: 'tmpl_backend_dev',
+    name: 'Backend & Distributed Systems',
+    category: 'Developer',
+    description: 'Tailored for backend engineers focusing on APIs, cloud architecture, throughput, and database optimization.',
+    thumbnailColor: '#0d9488',
+    layout: 'technical',
+  },
+  {
+    id: 'tmpl_frontend_dev',
+    name: 'Frontend & UI Engineer',
+    category: 'Developer',
+    description: 'Clean visual hierarchy showcasing modern web frameworks, component libraries, and performance metrics.',
+    thumbnailColor: '#06b6d4',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_fullstack_dev',
+    name: 'Full Stack Engineer Stack',
+    category: 'Developer',
+    description: 'Balanced dual-focus layout highlighting both client-side and cloud/server implementations.',
+    thumbnailColor: '#2563eb',
+    layout: 'technical',
+  },
+  {
+    id: 'tmpl_data_analyst',
+    name: 'Data Analyst & BI Specialist',
+    category: 'Professional',
+    description: 'Structured layout emphasizing SQL, visualization dashboards, statistical modeling, and insights.',
+    thumbnailColor: '#d97706',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_data_scientist',
+    name: 'Data Scientist & ML Engineer',
+    category: 'Developer',
+    description: 'Highlights predictive algorithms, Python/PyTorch pipelines, publications, and ML metrics.',
+    thumbnailColor: '#7c3aed',
+    layout: 'technical',
+  },
+  {
+    id: 'tmpl_ai_ml',
+    name: 'AI / LLM Research Engineer',
+    category: 'Developer',
+    description: 'Designed for deep learning, transformer fine-tuning, neural networks, and research contributions.',
+    thumbnailColor: '#4f46e5',
+    layout: 'technical',
+  },
+  {
+    id: 'tmpl_internship',
+    name: 'Internship & Co-op Candidate',
+    category: 'Student',
+    description: 'Optimized for university students and interns highlighting coursework, hackathons, and projects.',
+    thumbnailColor: '#14b8a6',
+    layout: 'academic',
+  },
+  {
+    id: 'tmpl_professional_minimal',
+    name: 'Professional Minimal ATS',
+    category: 'ATS',
+    description: 'Ultra-clean single column layout with standard headings for automated ATS screening.',
+    thumbnailColor: '#334155',
+    layout: 'single-column',
   },
 ];
 
@@ -970,6 +1078,14 @@ export class ResumeEngine {
     `;
   }
 
+  static getPaddingCss(design: ResumeDesignConfig): string {
+    const ps = design.pageSettings;
+    if (ps) {
+      return `${ps.marginTop}mm ${ps.marginRight}mm ${ps.marginBottom}mm ${ps.marginLeft}mm`;
+    }
+    return `${design.spacing.pageMargin}px`;
+  }
+
   // ── Section 1: Template Renderer (Single Column / ATS Standard) ─────────────
   private static renderSingleColumnTemplate(
     d: ResumeData,
@@ -979,9 +1095,10 @@ export class ResumeEngine {
     const { colors, fontFamily } = design;
     const p = d.personalInfo;
     const sections = d.sectionOrder || DEFAULT_SECTION_ORDER;
+    const paddingStyle = this.getPaddingCss(design);
 
     let html = `
-<div class="resume-document" style="font-family: '${fontFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: ${design.spacing.lineHeight}; color: ${colors.body}; background-color: ${colors.background}; padding: ${design.spacing.pageMargin}px; max-width: 100%; box-sizing: border-box;">
+<div class="resume-document" style="font-family: '${fontFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: ${design.spacing.lineHeight}; color: ${colors.body}; background-color: ${colors.background}; padding: ${paddingStyle}; max-width: 100%; box-sizing: border-box;">
   ${this.renderHeader(p, design)}
 `;
 
@@ -1175,7 +1292,7 @@ export class ResumeEngine {
     const p = d.personalInfo;
 
     return `
-<div class="resume-document" style="font-family: '${fontFamily}', -apple-system, sans-serif; line-height: ${design.spacing.lineHeight}; color: ${colors.body}; background-color: ${colors.background}; padding: ${design.spacing.pageMargin}px; box-sizing: border-box;">
+<div class="resume-document" style="font-family: '${fontFamily}', -apple-system, sans-serif; line-height: ${design.spacing.lineHeight}; color: ${colors.body}; background-color: ${colors.background}; padding: ${this.getPaddingCss(design)}; box-sizing: border-box;">
   ${this.renderHeader(p, design)}
   <div style="display: grid; grid-template-columns: 32% 64%; gap: 4%;">
     <!-- Left Column: Contact, Skills, Education, Certifications -->

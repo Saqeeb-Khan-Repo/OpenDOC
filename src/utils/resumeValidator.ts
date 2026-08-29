@@ -348,4 +348,121 @@ export class ResumeValidator {
       invalidLinksCount: invalidLinks,
     };
   }
+
+  /**
+   * Analyze Resume against Job Description
+   */
+  static matchJobDescription(data: ResumeData, jobDescription: string): {
+    matchScore: number;
+    matchedKeywords: string[];
+    missingKeywords: string[];
+    suggestedAreas: string[];
+  } {
+    if (!jobDescription || jobDescription.trim().length < 20) {
+      return {
+        matchScore: 0,
+        matchedKeywords: [],
+        missingKeywords: [],
+        suggestedAreas: ['Paste a complete job description to analyze keyword coverage and ATS alignment.'],
+      };
+    }
+
+    // Common technical and professional keywords dictionary
+    const knownTerms = [
+      'c#', '.net', 'asp.net', 'react', 'typescript', 'javascript', 'python', 'java', 'c++', 'go', 'golang',
+      'rust', 'sql', 'postgresql', 'mysql', 'mongodb', 'redis', 'kafka', 'docker', 'kubernetes', 'aws',
+      'azure', 'gcp', 'rest api', 'graphql', 'ci/cd', 'microservices', 'git', 'linux', 'node.js', 'html',
+      'css', 'tailwind', 'redux', 'next.js', 'vue', 'angular', 'django', 'fastapi', 'flask', 'spring boot',
+      'agile', 'scrum', 'tdd', 'unit testing', 'system design', 'distributed systems', 'data structures',
+      'algorithms', 'machine learning', 'deep learning', 'pytorch', 'tensorflow', 'nlp', 'llm', 'etl',
+      'spark', 'tableau', 'power bi', 'excel', 'security', 'oauth', 'jwt', 'devops', 'terraform', 'ansible'
+    ];
+
+    const jdLower = jobDescription.toLowerCase();
+
+    // Extract terms present in Job Description
+    const jdTerms = new Set<string>();
+    knownTerms.forEach(term => {
+      // Word boundary regex check
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(^|[^a-zA-Z0-9_#+])${escaped}([^a-zA-Z0-9_#+]|$)`, 'i');
+      if (regex.test(jdLower)) {
+        jdTerms.add(term);
+      }
+    });
+
+    // Also extract capitalized acronyms or nouns from JD (e.g. CKA, AWS, SaaS)
+    const customWords = jobDescription.match(/\b[A-Z][a-zA-Z0-9_+#.]{2,15}\b/g) || [];
+    customWords.forEach(w => {
+      const clean = w.toLowerCase();
+      if (clean.length >= 3 && !['the', 'and', 'for', 'with', 'you', 'will', 'our', 'are', 'this', 'that', 'from'].includes(clean)) {
+        jdTerms.add(clean);
+      }
+    });
+
+    // Build resume text corpus
+    const resumeCorpusParts: string[] = [
+      data.personalInfo.name || '',
+      data.personalInfo.title || '',
+      data.summary || '',
+      data.objective || '',
+    ];
+
+    (data.skillCategories || []).forEach(sc => {
+      resumeCorpusParts.push(sc.category);
+      resumeCorpusParts.push(...sc.skills);
+    });
+
+    (data.experience || []).forEach(exp => {
+      resumeCorpusParts.push(exp.title, exp.company, exp.location, ...exp.highlights);
+    });
+
+    (data.projects || []).forEach(pr => {
+      resumeCorpusParts.push(pr.name, pr.role, ...(pr.techStack || []), ...pr.highlights);
+    });
+
+    (data.education || []).forEach(edu => {
+      resumeCorpusParts.push(edu.degree, edu.school, edu.details || '');
+    });
+
+    (data.certifications || []).forEach(c => {
+      resumeCorpusParts.push(c.name, c.issuer);
+    });
+
+    const resumeCorpus = resumeCorpusParts.join(' ').toLowerCase();
+
+    const matchedKeywords: string[] = [];
+    const missingKeywords: string[] = [];
+
+    Array.from(jdTerms).forEach(term => {
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(^|[^a-zA-Z0-9_#+])${escaped}([^a-zA-Z0-9_#+]|$)`, 'i');
+      if (regex.test(resumeCorpus)) {
+        matchedKeywords.push(term);
+      } else {
+        missingKeywords.push(term);
+      }
+    });
+
+    const total = jdTerms.size;
+    const matchScore = total > 0 ? Math.min(100, Math.round((matchedKeywords.length / total) * 100)) : 70;
+
+    const suggestedAreas: string[] = [];
+    if (missingKeywords.length > 0) {
+      suggestedAreas.push(`Consider highlighting relevant experience with: ${missingKeywords.slice(0, 5).join(', ')} (if you possess these skills).`);
+    }
+    if (matchedKeywords.length >= 5) {
+      suggestedAreas.push(`Strong keyword alignment with core JD requirements (${matchedKeywords.length} matching terms detected).`);
+    } else {
+      suggestedAreas.push('Incorporate standard industry terminology from the job description in your project and experience highlights.');
+    }
+
+    return {
+      matchScore,
+      matchedKeywords,
+      missingKeywords,
+      suggestedAreas,
+    };
+  }
 }
+

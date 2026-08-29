@@ -1,26 +1,116 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { ResumeData, ResumeEngine } from './ResumeEngine';
+import {
+  ResumeData, ResumeEngine, ResumePageSettings, ResumePageSize, ResumeOrientation,
+  DEFAULT_PAGE_SETTINGS
+} from './ResumeEngine';
 
 export interface ResumeExportOptions {
   html: string;
   title?: string;
-  paperSize?: 'A4' | 'Letter';
+  paperSize?: ResumePageSize;
+  orientation?: ResumeOrientation;
+  pageSettings?: ResumePageSettings;
+  pageRange?: string; // e.g. 'all' | 'current' | '1-2' | '1,3-5' | '2'
+  currentPage?: number;
   quality?: 'standard' | 'high';
   clickableLinks?: boolean;
 }
 
 export class ResumeExportEngine {
   /**
+   * Helper: Parse page range string into array of 1-based page indices
+   * Supports: 'all', 'current', '1', '1-2', '1,3-5', '2-4,7'
+   */
+  static parsePageRange(rangeStr?: string, totalPages: number = 1, currentPage: number = 1): number[] {
+    if (!rangeStr || rangeStr.trim().toLowerCase() === 'all') {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    if (rangeStr.trim().toLowerCase() === 'current') {
+      return [Math.max(1, Math.min(totalPages, currentPage))];
+    }
+
+    const pages = new Set<number>();
+    const tokens = rangeStr.split(',').map(t => t.trim()).filter(Boolean);
+
+    tokens.forEach(token => {
+      if (token.includes('-')) {
+        const [startStr, endStr] = token.split('-').map(s => parseInt(s.trim(), 10));
+        if (!isNaN(startStr) && !isNaN(endStr)) {
+          const start = Math.max(1, Math.min(startStr, endStr));
+          const end = Math.min(totalPages, Math.max(startStr, endStr));
+          for (let p = start; p <= end; p++) {
+            pages.add(p);
+          }
+        }
+      } else {
+        const pageNum = parseInt(token, 10);
+        if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+          pages.add(pageNum);
+        }
+      }
+    });
+
+    const result = Array.from(pages).sort((a, b) => a - b);
+    return result.length > 0 ? result : [1];
+  }
+
+  /**
+   * Helper: Get physical page dimensions in mm
+   */
+  static getPageDimensionsMm(
+    paperSize: ResumePageSize = 'A4',
+    customWidth?: number,
+    customHeight?: number,
+    unit: string = 'mm',
+    orientation: ResumeOrientation = 'portrait'
+  ): { widthMm: number; heightMm: number } {
+    let width = 210;
+    let height = 297;
+
+    switch (paperSize) {
+      case 'Letter':
+        width = 215.9; height = 279.4; break;
+      case 'Legal':
+        width = 215.9; height = 355.6; break;
+      case 'Executive':
+        width = 184.1; height = 266.7; break;
+      case 'A3':
+        width = 297; height = 420; break;
+      case 'A5':
+        width = 148; height = 210; break;
+      case 'Custom':
+        if (customWidth && customHeight) {
+          // Convert unit to mm
+          const factor = unit === 'cm' ? 10 : unit === 'in' ? 25.4 : unit === 'px' ? 0.264583 : 1;
+          width = customWidth * factor;
+          height = customHeight * factor;
+        }
+        break;
+      case 'A4':
+      default:
+        width = 210; height = 297; break;
+    }
+
+    if (orientation === 'landscape') {
+      return { widthMm: Math.max(width, height), heightMm: Math.min(width, height) };
+    }
+    return { widthMm: Math.min(width, height), heightMm: Math.max(width, height) };
+  }
+
+  /**
    * Generates an isolated HTML document string containing ONLY the resume.
-   * Useful for text/markup inspection, test validation, and headless renderers.
    */
   static getIsolatedPrintHtml(options: ResumeExportOptions): string {
-    const paperSize = options.paperSize || 'A4';
-    const isLetter = paperSize === 'Letter';
-    const pageWidth = isLetter ? '215.9mm' : '210mm';
-    const pageMinHeight = isLetter ? '279.4mm' : '297mm';
+    const ps = options.pageSettings || DEFAULT_PAGE_SETTINGS;
+    const paperSize = options.paperSize || ps.pageSize || 'A4';
+    const orientation = options.orientation || ps.orientation || 'portrait';
     const docTitle = options.title || 'Resume';
+
+    const { widthMm, heightMm } = this.getPageDimensionsMm(
+      paperSize, ps.customWidth, ps.customHeight, ps.unit, orientation
+    );
 
     let contentHtml = options.html;
     if (options.clickableLinks === false) {
@@ -38,7 +128,7 @@ export class ResumeExportEngine {
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Merriweather:wght@400;700&family=Playfair+Display:wght@600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
     @page {
-      size: ${isLetter ? 'letter' : 'A4'} portrait;
+      size: ${widthMm}mm ${heightMm}mm ${orientation};
       margin: 0;
     }
     *, *::before, *::after {
@@ -59,15 +149,15 @@ export class ResumeExportEngine {
     }
     .resume-export-wrapper {
       width: 100%;
-      max-width: ${pageWidth};
-      min-height: ${pageMinHeight};
+      max-width: ${widthMm}mm;
+      min-height: ${heightMm}mm;
       margin: 0 auto;
       background: #ffffff !important;
       position: relative;
     }
     .resume-document {
       width: 100% !important;
-      max-width: ${pageWidth} !important;
+      max-width: ${widthMm}mm !important;
       box-sizing: border-box !important;
       box-shadow: none !important;
       border: none !important;
@@ -103,13 +193,22 @@ export class ResumeExportEngine {
   /**
    * DIRECT PDF GENERATION & DOWNLOAD.
    * Completely avoids window.print() and the browser print dialog.
-   * Generates a true A4 / Letter PDF containing ONLY the resume.
+   * Generates a true PDF containing ONLY the selected resume pages.
    */
   static async exportToPdf(options: ResumeExportOptions): Promise<boolean> {
-    const paperSize = options.paperSize || 'A4';
-    const isLetter = paperSize === 'Letter';
+    const ps = options.pageSettings || DEFAULT_PAGE_SETTINGS;
+    const paperSize = options.paperSize || ps.pageSize || 'A4';
+    const orientation = options.orientation || ps.orientation || 'portrait';
     const rawTitle = (options.title || 'Resume').replace(/\.pdf$/i, '');
     const cleanFileName = `${rawTitle.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_') || 'Resume'}.pdf`;
+
+    const { widthMm, heightMm } = this.getPageDimensionsMm(
+      paperSize, ps.customWidth, ps.customHeight, ps.unit, orientation
+    );
+
+    // Pixel container width at 96 DPI
+    const containerWidthPx = Math.round((widthMm / 25.4) * 96);
+    const containerMinHeightPx = Math.round((heightMm / 25.4) * 96);
 
     // 1. Create a dedicated off-screen isolated container for the resume ONLY
     const exportContainer = document.createElement('div');
@@ -117,8 +216,8 @@ export class ResumeExportEngine {
     exportContainer.style.position = 'fixed';
     exportContainer.style.left = '-99999px';
     exportContainer.style.top = '0';
-    exportContainer.style.width = isLetter ? '816px' : '794px';
-    exportContainer.style.minHeight = isLetter ? '1056px' : '1123px';
+    exportContainer.style.width = `${containerWidthPx}px`;
+    exportContainer.style.minHeight = `${containerMinHeightPx}px`;
     exportContainer.style.background = '#ffffff';
     exportContainer.style.color = '#0f172a';
     exportContainer.style.zIndex = '-99999';
@@ -131,7 +230,7 @@ export class ResumeExportEngine {
     }
 
     exportContainer.innerHTML = `
-      <div class="resume-export-wrapper" style="width: 100%; max-width: ${isLetter ? '816px' : '794px'}; margin: 0 auto; background: #ffffff; box-sizing: border-box;">
+      <div class="resume-export-wrapper" style="width: 100%; max-width: ${containerWidthPx}px; margin: 0 auto; background: #ffffff; box-sizing: border-box;">
         ${contentHtml}
       </div>
     `;
@@ -145,7 +244,7 @@ export class ResumeExportEngine {
       }
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      // 3. Render container to high-resolution canvas (Retina/Print quality)
+      // 3. Render container to high-resolution canvas (Print quality)
       const scale = options.quality === 'high' ? 2.5 : 2.0;
       const canvas = await (html2canvas as any)(exportContainer, {
         scale,
@@ -153,57 +252,57 @@ export class ResumeExportEngine {
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
-        windowWidth: isLetter ? 816 : 794,
+        windowWidth: containerWidthPx,
       });
-
-      // 4. Initialize jsPDF in A4/Letter portrait mode
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: isLetter ? 'letter' : 'a4',
-      });
-
-      const pdfPageWidth = isLetter ? 215.9 : 210;
-      const pdfPageHeight = isLetter ? 279.4 : 297;
 
       const imgWidthPx = canvas.width;
       const imgHeightPx = canvas.height;
 
-      // Exact pixel height of a single A4 page on this canvas
-      const pageHeightPx = (imgWidthPx * pdfPageHeight) / pdfPageWidth;
+      // Exact pixel height of a single page on this canvas
+      const pageHeightPx = (imgWidthPx * heightMm) / widthMm;
 
-      let remainingHeightPx = imgHeightPx;
-      let positionYPx = 0;
-      let pageIndex = 0;
+      // Calculate total natural pages
+      const totalNaturalPages = Math.max(1, Math.ceil(imgHeightPx / pageHeightPx));
+      const targetPages = this.parsePageRange(options.pageRange, totalNaturalPages, options.currentPage || 1);
 
-      while (remainingHeightPx > 0) {
-        if (pageIndex > 0) {
-          pdf.addPage(isLetter ? 'letter' : 'a4', 'portrait');
+      // 4. Initialize jsPDF with exact dimensions & orientation
+      const pdf = new jsPDF({
+        orientation: orientation === 'landscape' ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: [widthMm, heightMm],
+      });
+
+      let addedPageCount = 0;
+
+      for (let pageNum = 1; pageNum <= totalNaturalPages; pageNum++) {
+        // Only include pages requested by user in pageRange
+        if (targetPages.includes(pageNum)) {
+          if (addedPageCount > 0) {
+            pdf.addPage([widthMm, heightMm], orientation === 'landscape' ? 'landscape' : 'portrait');
+          }
+
+          const positionYPx = (pageNum - 1) * pageHeightPx;
+          const sliceHeightPx = Math.min(pageHeightPx, imgHeightPx - positionYPx);
+
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = imgWidthPx;
+          pageCanvas.height = pageHeightPx;
+          const ctx = pageCanvas.getContext('2d');
+
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+            ctx.drawImage(
+              canvas,
+              0, positionYPx, imgWidthPx, sliceHeightPx,
+              0, 0, imgWidthPx, sliceHeightPx
+            );
+          }
+
+          const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.98);
+          pdf.addImage(pageImgData, 'JPEG', 0, 0, widthMm, heightMm);
+          addedPageCount++;
         }
-
-        // Slice canvas for clean multi-page resumes
-        const sliceHeightPx = Math.min(remainingHeightPx, pageHeightPx);
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = imgWidthPx;
-        pageCanvas.height = pageHeightPx;
-        const ctx = pageCanvas.getContext('2d');
-
-        if (ctx) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          ctx.drawImage(
-            canvas,
-            0, positionYPx, imgWidthPx, sliceHeightPx,
-            0, 0, imgWidthPx, sliceHeightPx
-          );
-        }
-
-        const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.98);
-        pdf.addImage(pageImgData, 'JPEG', 0, 0, pdfPageWidth, pdfPageHeight);
-
-        remainingHeightPx -= sliceHeightPx;
-        positionYPx += sliceHeightPx;
-        pageIndex++;
       }
 
       // 5. Download the PDF directly (No Print Dialog!)
@@ -223,7 +322,7 @@ export class ResumeExportEngine {
   /**
    * Render purely ATS-Optimized HTML format for direct ATS parsers
    */
-  static getAtsExportHtml(data: ResumeData, paperSize: 'A4' | 'Letter' = 'A4'): string {
+  static getAtsExportHtml(data: ResumeData, paperSize: ResumePageSize = 'A4'): string {
     const atsDesign = {
       headerLayout: 'minimal' as const,
       fontFamily: 'Arial',
@@ -254,7 +353,7 @@ export class ResumeExportEngine {
         paragraphGap: 3,
         lineHeight: 1.4,
       },
-      paperSize,
+      paperSize: (paperSize === 'Letter' ? 'Letter' : 'A4') as 'A4' | 'Letter',
       skillsStyle: 'categories' as const,
       bulletStyle: 'dot' as const,
       headingStyle: 'underline' as const,

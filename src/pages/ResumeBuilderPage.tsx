@@ -12,7 +12,8 @@ import {
   Sparkles, Palette, Type, Printer, Eye, ChevronDown, ChevronUp,
   Briefcase, GraduationCap, Code2, Award, CheckCircle2, User,
   Globe, Share2, Layers, Undo2, Redo2, Sliders, ZoomIn, ZoomOut,
-  Maximize2, RefreshCw, Layout, Smartphone, ShieldCheck, FileCheck
+  Maximize2, RefreshCw, Layout, Smartphone, ShieldCheck, FileCheck,
+  UploadCloud, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,9 +28,11 @@ import { ResumeTemplateGalleryModal } from '@/components/resume/ResumeTemplateGa
 import { ResumeCustomSectionModal } from '@/components/resume/ResumeCustomSectionModal';
 import { ResumeExportModal } from '@/components/resume/ResumeExportModal';
 import { ResumeQualityCheckModal } from '@/components/resume/ResumeQualityCheckModal';
+import { ResumeImportModal } from '@/components/resume/ResumeImportModal';
+import { ResumePageSettingsModal } from '@/components/resume/ResumePageSettingsModal';
 import { ResumeMobileToolbar } from '@/components/resume/ResumeMobileToolbar';
 
-const STORAGE_KEY = 'docpro_resume_draft_v2';
+const STORAGE_KEY = 'docpro_resume_draft_v3';
 
 export function ResumeBuilderPage() {
   const navigate = useNavigate();
@@ -67,6 +70,9 @@ export function ResumeBuilderPage() {
   const [showCustomSectionModal, setShowCustomSectionModal] = useState<boolean>(false);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
   const [showQualityCheckModal, setShowQualityCheckModal] = useState<boolean>(false);
+  const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  const [showPageSettingsModal, setShowPageSettingsModal] = useState<boolean>(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [zoomScale, setZoomScale] = useState<number>(100);
 
   // ── Resume Audit & Validation ──────────────────────────────────────────────
@@ -206,6 +212,19 @@ export function ResumeBuilderPage() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Autosave Status */}
+          <div className="hidden 2xl:flex items-center gap-1 text-[11px] text-muted-foreground mr-1">
+            {saveStatus === 'saving' ? (
+              <span className="flex items-center gap-1 text-primary">
+                <Loader2 className="h-3 w-3 animate-spin" /> Saving...
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-emerald-600">
+                <Check className="h-3 w-3" /> Saved
+              </span>
+            )}
+          </div>
+
           {/* Undo / Redo */}
           <div className="hidden sm:flex items-center border border-border rounded-lg bg-background p-0.5">
             <button
@@ -227,6 +246,30 @@ export function ResumeBuilderPage() {
               <Redo2 className="h-3.5 w-3.5" />
             </button>
           </div>
+
+          {/* Import Resume Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowImportModal(true)}
+            className="h-8 text-xs gap-1.5 font-medium cursor-pointer"
+            title="Import PDF, DOCX, TXT, or JSON"
+          >
+            <UploadCloud className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden sm:inline">Import</span>
+          </Button>
+
+          {/* Page Setup & Margins Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPageSettingsModal(true)}
+            className="h-8 text-xs gap-1.5 font-medium cursor-pointer"
+            title="Configure page dimensions, orientation, and margins"
+          >
+            <Sliders className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden md:inline">Page Setup</span>
+          </Button>
 
           {/* Quality Check Trigger Button */}
           <Button
@@ -252,16 +295,6 @@ export function ResumeBuilderPage() {
             <span className="hidden sm:inline">Template: </span>
             <span className="font-semibold">{selectedTemplateMeta.name.split(' ')[0]}</span>
             <ChevronDown className="h-3 w-3 opacity-60" />
-          </Button>
-
-          {/* Edit in DocProEditor */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleOpenInEditor}
-            className="h-8 text-xs gap-1.5 hidden xl:flex font-medium cursor-pointer"
-          >
-            <FileText className="h-3.5 w-3.5 text-blue-500" /> Edit in DocProEditor
           </Button>
 
           {/* Download PDF / Export */}
@@ -522,6 +555,19 @@ export function ResumeBuilderPage() {
       )}
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
+      <ResumeImportModal
+        open={showImportModal}
+        onOpenChange={setShowImportModal}
+        onImportSuccess={data => updateResumeData(data)}
+      />
+
+      <ResumePageSettingsModal
+        open={showPageSettingsModal}
+        onOpenChange={setShowPageSettingsModal}
+        pageSettings={resumeData.pageSettings}
+        onChange={settings => updateResumeData({ ...resumeData, pageSettings: settings })}
+      />
+
       <ResumeExportModal
         open={showExportModal}
         onOpenChange={setShowExportModal}

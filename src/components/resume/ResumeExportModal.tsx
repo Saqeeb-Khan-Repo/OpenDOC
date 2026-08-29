@@ -4,12 +4,15 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ResumeData, ResumeEngine } from '@/engines/ResumeEngine';
+import {
+  ResumeData, ResumeEngine, ResumePageSettings, ResumePageSize, ResumeOrientation,
+  ResumeMarginPreset, DEFAULT_PAGE_SETTINGS
+} from '@/engines/ResumeEngine';
 import { ResumeExportEngine } from '@/engines/ResumeExportEngine';
 import { ResumeExportRenderer } from './ResumeExportRenderer';
 import {
-  Printer, Download, FileText, Sparkles, Check,
-  ShieldCheck, Globe, Sliders, ExternalLink, Loader2, Eye, Layout
+  Download, FileText, Sparkles, Check, ShieldCheck, Globe,
+  Sliders, Loader2, Eye, Layout, Link2, Unlink2, Lock
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
@@ -31,13 +34,26 @@ export function ResumeExportModal({
 
   const [activeTab, setActiveTab] = useState<'options' | 'preview'>('options');
   const [docName, setDocName] = useState<string>(defaultDocName);
-  const [paperSize, setPaperSize] = useState<'A4' | 'Letter'>(
-    resumeData.design?.paperSize || 'A4'
-  );
+
+  // Page selection
+  const [pagesMode, setPagesMode] = useState<'all' | 'current' | 'custom'>('all');
+  const [customPages, setCustomPages] = useState<string>('1-2');
+
+  // Page setup & margins
+  const [pageSettings, setPageSettings] = useState<ResumePageSettings>({
+    ...(resumeData.pageSettings || DEFAULT_PAGE_SETTINGS),
+  });
+
   const [quality, setQuality] = useState<'high' | 'standard'>('high');
   const [clickableLinks, setClickableLinks] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [previewScale, setPreviewScale] = useState<number>(0.65);
+
+  const getEffectivePageRange = (): string => {
+    if (pagesMode === 'all') return 'all';
+    if (pagesMode === 'current') return '1';
+    return customPages.trim() || '1';
+  };
 
   const handleExportStandard = async () => {
     setIsExporting(true);
@@ -45,13 +61,19 @@ export function ResumeExportModal({
       const renderedHtml = ResumeEngine.renderTemplate(
         resumeData,
         selectedTemplateId,
-        { paperSize }
+        {
+          paperSize: pageSettings.pageSize === 'Letter' ? 'Letter' : 'A4',
+          pageSettings,
+        }
       );
 
       await ResumeExportEngine.exportToPdf({
         html: renderedHtml,
         title: `${docName || 'Resume'}.pdf`,
-        paperSize,
+        paperSize: pageSettings.pageSize,
+        orientation: pageSettings.orientation,
+        pageSettings,
+        pageRange: getEffectivePageRange(),
         quality,
         clickableLinks,
       });
@@ -94,7 +116,8 @@ export function ResumeExportModal({
           paragraphGap: 3,
           lineHeight: 1.4,
         },
-        paperSize,
+        paperSize: (pageSettings.pageSize === 'Letter' ? 'Letter' : 'A4') as 'A4' | 'Letter',
+        pageSettings,
         skillsStyle: 'categories' as const,
         bulletStyle: 'dot' as const,
         headingStyle: 'underline' as const,
@@ -111,7 +134,10 @@ export function ResumeExportModal({
       await ResumeExportEngine.exportToPdf({
         html: atsRenderedHtml,
         title: `${docName || 'Resume'}_ATS.pdf`,
-        paperSize,
+        paperSize: pageSettings.pageSize,
+        orientation: pageSettings.orientation,
+        pageSettings,
+        pageRange: getEffectivePageRange(),
         quality,
         clickableLinks,
       });
@@ -121,11 +147,47 @@ export function ResumeExportModal({
     }
   };
 
+  const handleMarginChange = (side: 'top' | 'bottom' | 'left' | 'right', val: number) => {
+    const num = Math.max(0, Math.min(60, val));
+    if (pageSettings.linkedMargins) {
+      if (side === 'top' || side === 'bottom') {
+        setPageSettings(s => ({ ...s, marginTop: num, marginBottom: num, marginPreset: 'custom' }));
+      } else {
+        setPageSettings(s => ({ ...s, marginLeft: num, marginRight: num, marginPreset: 'custom' }));
+      }
+    } else {
+      setPageSettings(s => ({
+        ...s,
+        [side === 'top' ? 'marginTop' : side === 'bottom' ? 'marginBottom' : side === 'left' ? 'marginLeft' : 'marginRight']: num,
+        marginPreset: 'custom',
+      }));
+    }
+  };
+
+  const applyMarginPreset = (preset: ResumeMarginPreset) => {
+    let top = 15; let bottom = 15; let left = 15; let right = 15;
+    if (preset === 'narrow') { top = 8; bottom = 8; left = 8; right = 8; }
+    else if (preset === 'normal') { top = 15; bottom = 15; left = 15; right = 15; }
+    else if (preset === 'wide') { top = 25; bottom = 25; left = 25; right = 25; }
+
+    setPageSettings(s => ({
+      ...s,
+      marginTop: top,
+      marginBottom: bottom,
+      marginLeft: left,
+      marginRight: right,
+      marginPreset: preset,
+    }));
+  };
+
+  const summaryPagesText = pagesMode === 'all' ? 'All Pages' : pagesMode === 'current' ? 'Page 1' : `Pages: ${customPages || '1'}`;
+  const summaryMarginsText = `${pageSettings.marginTop}/${pageSettings.marginBottom}/${pageSettings.marginLeft}/${pageSettings.marginRight} mm`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
         'p-5 max-h-[90vh] flex flex-col transition-all',
-        activeTab === 'preview' ? 'sm:max-w-[780px]' : 'sm:max-w-[520px]'
+        activeTab === 'preview' ? 'sm:max-w-[780px]' : 'sm:max-w-[560px]'
       )}>
         <DialogHeader className="shrink-0">
           <div className="flex items-center justify-between">
@@ -134,14 +196,14 @@ export function ResumeExportModal({
                 <Download className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-base font-bold">Download Resume PDF</DialogTitle>
+                <DialogTitle className="text-base font-bold">Export Resume to PDF</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Direct client-side A4 PDF download with zero browser print dialogs.
+                  Direct client-side PDF download with page selection and custom margins.
                 </DialogDescription>
               </div>
             </div>
 
-            {/* Tab switch between Options and Preview */}
+            {/* Tab switch between Settings and Preview */}
             <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border border-border/60 text-xs">
               <button
                 type="button"
@@ -167,9 +229,9 @@ export function ResumeExportModal({
           </div>
         </DialogHeader>
 
-        {/* ── Tab 1: Export Options ────────────────────────────────────────── */}
+        {/* ── Tab 1: Export Settings ────────────────────────────────────────── */}
         {activeTab === 'options' && (
-          <div className="space-y-4 my-2 text-xs flex-1 overflow-y-auto pr-1">
+          <div className="space-y-3.5 my-2 text-xs flex-1 overflow-y-auto pr-1">
             {/* File Name */}
             <div>
               <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
@@ -179,100 +241,206 @@ export function ResumeExportModal({
                 <Input
                   value={docName}
                   onChange={e => setDocName(e.target.value)}
-                  placeholder="John_Doe_Resume"
+                  placeholder="Mohammed_Sirajuddin_Resume"
                   className="h-8 text-xs font-medium"
                 />
                 <span className="text-xs font-mono text-muted-foreground">.pdf</span>
               </div>
             </div>
 
-            {/* Paper Format & Quality Grid */}
+            {/* ── Page Selection ───────────────────────────────────────────── */}
+            <div className="p-3 border border-border/80 rounded-xl bg-muted/10 space-y-2">
+              <label className="text-[11px] font-bold text-foreground block">
+                Pages to Export
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { id: 'all', label: 'All Pages' },
+                  { id: 'current', label: 'Current Page' },
+                  { id: 'custom', label: 'Custom Pages' },
+                ].map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPagesMode(p.id as any)}
+                    className={cn(
+                      'py-1.5 px-2 rounded-lg text-xs font-semibold border text-center transition-all cursor-pointer',
+                      pagesMode === p.id
+                        ? 'border-primary bg-primary text-primary-foreground shadow-2xs'
+                        : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {pagesMode === 'custom' && (
+                <div className="pt-1 flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground shrink-0">Range:</span>
+                  <Input
+                    value={customPages}
+                    onChange={e => setCustomPages(e.target.value)}
+                    placeholder="e.g. 1-2 or 1,3-5"
+                    className="h-7 text-xs font-mono"
+                  />
+                  <span className="text-[10px] text-muted-foreground">Format: 1-2, 1,3</span>
+                </div>
+              )}
+            </div>
+
+            {/* ── Dimensions & Orientation Grid ────────────────────────────── */}
             <div className="grid grid-cols-2 gap-3">
               {/* Paper Size */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-muted-foreground">
-                  Paper Size
+                <label className="text-[11px] font-semibold text-muted-foreground block">
+                  Page Size
                 </label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(['A4', 'Letter'] as const).map(fmt => (
-                    <button
-                      key={fmt}
-                      type="button"
-                      onClick={() => setPaperSize(fmt)}
-                      className={cn(
-                        'py-1.5 rounded-lg text-xs font-bold border transition-all text-center cursor-pointer',
-                        paperSize === fmt
-                          ? 'border-primary bg-primary text-primary-foreground shadow-2xs'
-                          : 'border-border bg-background text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      {fmt} {fmt === 'A4' ? '(210×297mm)' : '(8.5×11in)'}
-                    </button>
-                  ))}
-                </div>
+                <select
+                  value={pageSettings.pageSize}
+                  onChange={e => setPageSettings(s => ({ ...s, pageSize: e.target.value as any }))}
+                  className="h-8 w-full text-xs font-semibold bg-background border border-border rounded-lg px-2.5 cursor-pointer"
+                >
+                  <option value="A4">A4 (210 × 297 mm)</option>
+                  <option value="Letter">Letter (8.5 × 11 in)</option>
+                  <option value="Legal">Legal (8.5 × 14 in)</option>
+                  <option value="A3">A3 (297 × 420 mm)</option>
+                  <option value="A5">A5 (148 × 210 mm)</option>
+                  <option value="Custom">Custom Size</option>
+                </select>
               </div>
 
-              {/* Quality Level */}
+              {/* Orientation */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-muted-foreground">
-                  Rendering Mode
+                <label className="text-[11px] font-semibold text-muted-foreground block">
+                  Orientation
                 </label>
                 <div className="grid grid-cols-2 gap-1.5">
-                  {(['high', 'standard'] as const).map(q => (
+                  {(['portrait', 'landscape'] as const).map(ori => (
                     <button
-                      key={q}
+                      key={ori}
                       type="button"
-                      onClick={() => setQuality(q)}
+                      onClick={() => setPageSettings(s => ({ ...s, orientation: ori }))}
                       className={cn(
-                        'py-1.5 rounded-lg text-xs font-bold border capitalize transition-all text-center cursor-pointer',
-                        quality === q
+                        'h-8 rounded-lg text-xs font-bold border capitalize transition-all text-center cursor-pointer',
+                        pageSettings.orientation === ori
                           ? 'border-primary bg-primary text-primary-foreground shadow-2xs'
                           : 'border-border bg-background text-muted-foreground hover:text-foreground'
                       )}
                     >
-                      {q === 'high' ? 'Vector High' : 'Standard'}
+                      {ori}
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Clickable Links Toggle */}
-            <div className="p-3 border border-border/80 rounded-xl bg-muted/20 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-primary" />
-                <div>
-                  <span className="font-semibold text-[11px] block">Preserve Clickable Hyperlinks</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Email, phone, LinkedIn, GitHub, and portfolio links remain clickable in PDF
-                  </span>
+            {/* ── Custom Margins Section ───────────────────────────────────── */}
+            <div className="space-y-2 p-3 border border-border/80 rounded-xl bg-muted/10">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-foreground">
+                  Page Margins (mm)
+                </label>
+                <div className="flex items-center gap-1.5">
+                  {(['narrow', 'normal', 'wide'] as const).map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => applyMarginPreset(p)}
+                      className={cn(
+                        'px-2 py-0.5 rounded text-[10px] font-medium border capitalize cursor-pointer',
+                        pageSettings.marginPreset === p
+                          ? 'border-primary bg-primary/10 text-primary font-bold'
+                          : 'border-border bg-background text-muted-foreground'
+                      )}
+                    >
+                      {p}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <input
-                type="checkbox"
-                checked={clickableLinks}
-                onChange={e => setClickableLinks(e.target.checked)}
-                className="h-4 w-4 rounded accent-primary cursor-pointer"
-              />
+
+              <div className="grid grid-cols-4 gap-2 pt-1">
+                <div>
+                  <span className="text-[10px] text-muted-foreground block mb-0.5">Top</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={pageSettings.marginTop}
+                    onChange={e => handleMarginChange('top', parseInt(e.target.value) || 0)}
+                    className="h-7 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block mb-0.5">Bottom</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={pageSettings.marginBottom}
+                    onChange={e => handleMarginChange('bottom', parseInt(e.target.value) || 0)}
+                    className="h-7 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block mb-0.5">Left</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={pageSettings.marginLeft}
+                    onChange={e => handleMarginChange('left', parseInt(e.target.value) || 0)}
+                    className="h-7 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block mb-0.5">Right</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={pageSettings.marginRight}
+                    onChange={e => handleMarginChange('right', parseInt(e.target.value) || 0)}
+                    className="h-7 text-xs font-mono"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Guarantee Badges */}
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="h-3 w-3 text-emerald-600" /> Isolated A4 Page Guarantee
-              </span>
-              <span className="flex items-center gap-1">
-                <Check className="h-3 w-3 text-emerald-600" /> Zero Editor UI Leakage
+            {/* Clickable Links & Watermark Info */}
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="p-2.5 border border-border/80 rounded-xl bg-background flex items-center justify-between">
+                <span className="font-semibold text-muted-foreground">Clickable Links</span>
+                <input
+                  type="checkbox"
+                  checked={clickableLinks}
+                  onChange={e => setClickableLinks(e.target.checked)}
+                  className="h-4 w-4 rounded accent-primary cursor-pointer"
+                />
+              </div>
+
+              <div className="p-2.5 border border-border/80 rounded-xl bg-background flex items-center justify-between">
+                <span className="font-semibold text-muted-foreground">Watermark</span>
+                <span className="font-mono text-emerald-600 font-bold">None</span>
+              </div>
+            </div>
+
+            {/* Export Summary Badge */}
+            <div className="p-2.5 bg-muted/30 border border-border/80 rounded-xl flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground font-medium">Configuration:</span>
+              <span className="font-mono font-bold text-foreground">
+                {pageSettings.pageSize} • {pageSettings.orientation} • Margins: {summaryMarginsText} • {summaryPagesText} • Watermark: None
               </span>
             </div>
           </div>
         )}
 
-        {/* ── Tab 2: Live A4 PDF Print Preview ─────────────────────────────── */}
+        {/* ── Tab 2: Live PDF Print Preview ───────────────────────────────── */}
         {activeTab === 'preview' && (
           <div className="my-2 flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center bg-muted/30 dark:bg-background/80 p-4 rounded-xl border border-border/60 min-h-[380px]">
             <div className="w-full flex items-center justify-between mb-2 text-xs text-muted-foreground px-1">
-              <span className="font-semibold text-foreground">Exact Output Preview (Page 1)</span>
+              <span className="font-semibold text-foreground">Standalone Document Preview</span>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -294,9 +462,9 @@ export function ResumeExportModal({
 
             <div className="overflow-auto max-h-[460px] w-full flex justify-center py-2">
               <ResumeExportRenderer
-                resumeData={resumeData}
+                resumeData={{ ...resumeData, pageSettings }}
                 selectedTemplateId={selectedTemplateId}
-                paperSize={paperSize}
+                paperSize={pageSettings.pageSize === 'Letter' ? 'Letter' : 'A4'}
                 scale={previewScale}
                 showPageNumbers={true}
                 className="shadow-xl"
@@ -328,11 +496,11 @@ export function ResumeExportModal({
           >
             {isExporting ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Preparing PDF...
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating PDF...
               </>
             ) : (
               <>
-                <Download className="h-3.5 w-3.5" /> Download PDF (A4)
+                <Download className="h-3.5 w-3.5" /> Download PDF
               </>
             )}
           </Button>
