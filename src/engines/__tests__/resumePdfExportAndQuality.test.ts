@@ -191,4 +191,45 @@ describe('Resume PDF Export & Quality Audit Comprehensive Tests', () => {
     expect(atsHtml).toContain('color: #000000');
     expect(atsHtml).toContain('border-bottom: 1.5px solid #cccccc');
   });
+
+  // ── STRICT EXCLUSION TEST: Zero Website UI In PDF ──────────────────────────
+  it('STRICT TEST: Export document contains ONLY the resume and zero website UI elements', () => {
+    const data = ResumeEngine.getDefaultResumeData();
+    data.personalInfo.name = 'Sarah Connor';
+    const renderedHtml = ResumeEngine.renderTemplate(data, 'tmpl_modern_pro');
+
+    const defaultTitle = `${data.personalInfo.name.replace(/\s+/g, '_')}_Resume.pdf`;
+    const exportHtml = ResumeExportEngine.getIsolatedPrintHtml({
+      html: renderedHtml,
+      title: defaultTitle,
+      paperSize: 'A4',
+      clickableLinks: true,
+      quality: 'high',
+    });
+
+    expect(exportHtml).toContain('<title>Sarah_Connor_Resume.pdf</title>');
+    expect(exportHtml).toContain('Sarah Connor');
+
+    // STRICT CHECK: Ensure ZERO website or application elements exist
+    const forbiddenStrings = [
+      'Website header',
+      'Website footer',
+      'Application logo',
+      'Resume Builder breadcrumb',
+      'Editor sidebar',
+      'Editor toolbar',
+      'Design panel',
+      'Template panel',
+      'btn-export',
+      'ZoomControls',
+      'HeaderActions',
+      'MobileNav',
+      'FooterNav',
+      'EditorControls',
+    ];
+
+    forbiddenStrings.forEach(forbidden => {
+      expect(exportHtml).not.toContain(forbidden);
+    });
+  });
 });
