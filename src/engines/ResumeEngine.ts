@@ -1,3 +1,14 @@
+export interface ResumeCustomLink {
+  label: string;
+  url: string;
+}
+
+export interface ResumePhoto {
+  url: string;
+  style?: 'circle' | 'square' | 'rounded' | 'none';
+  size?: 'sm' | 'md' | 'lg';
+}
+
 export interface ResumePersonalInfo {
   name: string;
   title: string;
@@ -7,17 +18,24 @@ export interface ResumePersonalInfo {
   website?: string;
   github?: string;
   linkedin?: string;
+  portfolio?: string;
+  customLinks?: ResumeCustomLink[];
+  photo?: ResumePhoto;
 }
 
 export interface ResumeExperience {
+  id?: string;
   title: string;
   company: string;
   location: string;
   period: string;
+  current?: boolean;
+  website?: string;
   highlights: string[];
 }
 
 export interface ResumeEducation {
+  id?: string;
   degree: string;
   school: string;
   location: string;
@@ -27,43 +45,342 @@ export interface ResumeEducation {
 }
 
 export interface ResumeProject {
+  id?: string;
   name: string;
   role: string;
   techStack: string[];
   link?: string;
+  projectUrl?: string;
+  githubUrl?: string;
+  liveDemoUrl?: string;
   highlights: string[];
 }
 
 export interface ResumeSkillCategory {
+  id?: string;
   category: string;
   skills: string[];
+}
+
+export interface ResumeCertification {
+  id?: string;
+  name: string;
+  issuer: string;
+  year: string;
+  link?: string;
+}
+
+export interface ResumeAward {
+  id?: string;
+  title: string;
+  issuer: string;
+  date: string;
+  description?: string;
+}
+
+export interface ResumePublication {
+  id?: string;
+  title: string;
+  publisher: string;
+  date: string;
+  link?: string;
+  description?: string;
+}
+
+export interface ResumeLanguage {
+  id?: string;
+  language: string;
+  proficiency: string;
+}
+
+export interface ResumeVolunteer {
+  id?: string;
+  role: string;
+  organization: string;
+  period: string;
+  highlights: string[];
+}
+
+export interface ResumeOrganization {
+  id?: string;
+  role: string;
+  name: string;
+  period: string;
+}
+
+export interface ResumeReference {
+  id?: string;
+  name: string;
+  title: string;
+  company: string;
+  contact: string;
+}
+
+export interface ResumeCustomSectionItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  date?: string;
+  description?: string;
+  link?: string;
+  bullets?: string[];
+}
+
+export interface ResumeCustomSection {
+  id: string;
+  title: string;
+  style?: 'standard' | 'cards' | 'bullets' | 'compact';
+  items: ResumeCustomSectionItem[];
+}
+
+export type ResumeSectionType =
+  | 'personal'
+  | 'summary'
+  | 'objective'
+  | 'skills'
+  | 'experience'
+  | 'education'
+  | 'projects'
+  | 'certifications'
+  | 'achievements'
+  | 'awards'
+  | 'publications'
+  | 'languages'
+  | 'interests'
+  | 'volunteer'
+  | 'organizations'
+  | 'references'
+  | 'custom';
+
+export interface ResumeSectionConfig {
+  id: string;
+  type: ResumeSectionType;
+  title: string;
+  visible: boolean;
+  customSectionId?: string;
+}
+
+export type ResumeHeaderLayout =
+  | 'classic'
+  | 'modern'
+  | 'minimal'
+  | 'centered'
+  | 'split'
+  | 'compact'
+  | 'executive';
+
+export interface ResumeColors {
+  primary: string;
+  accent: string;
+  heading: string;
+  body: string;
+  muted: string;
+  link: string;
+  border: string;
+  background: string;
+}
+
+export interface ResumeSpacing {
+  pageMargin: number;
+  sectionGap: number;
+  entryGap: number;
+  paragraphGap: number;
+  lineHeight: number;
+}
+
+export interface ResumeDesignConfig {
+  headerLayout: ResumeHeaderLayout;
+  fontFamily: string;
+  typographyPreset: 'small' | 'normal' | 'large' | 'custom';
+  nameSize: number;
+  headingSize: number;
+  bodySize: number;
+  metadataSize: number;
+  lineHeight: number;
+  letterSpacing: string;
+  textAlign: 'left' | 'center' | 'justify';
+  palette: string;
+  colors: ResumeColors;
+  spacingPreset: 'compact' | 'balanced' | 'comfortable' | 'custom';
+  spacing: ResumeSpacing;
+  paperSize: 'A4' | 'Letter';
+  skillsStyle: 'grid' | 'list' | 'tags' | 'columns' | 'categories' | 'compact-rows';
+  bulletStyle: 'dot' | 'dash' | 'arrow' | 'check' | 'minimal';
+  headingStyle: 'underline' | 'left-border' | 'banner' | 'minimal-uppercase' | 'bold-divider' | 'centered';
+  projectStyle: 'standard' | 'cards' | 'compact';
+  educationStyle: 'classic' | 'compact' | 'timeline';
 }
 
 export interface ResumeData {
   personalInfo: ResumePersonalInfo;
   summary: string;
+  objective?: string;
   skillCategories: ResumeSkillCategory[];
+  skills?: string[];
   experience: ResumeExperience[];
   education: ResumeEducation[];
   projects: ResumeProject[];
-  certifications: { name: string; issuer: string; year: string }[];
+  certifications: ResumeCertification[];
   achievements: string[];
+  awards?: ResumeAward[];
+  publications?: ResumePublication[];
+  languages?: ResumeLanguage[];
+  interests?: string[];
+  volunteer?: ResumeVolunteer[];
+  organizations?: ResumeOrganization[];
+  references?: ResumeReference[];
+  customSections?: ResumeCustomSection[];
+  sectionOrder?: ResumeSectionConfig[];
+  design?: ResumeDesignConfig;
 }
 
 export interface ResumeTemplateMeta {
   id: string;
   name: string;
-  category: string;
+  category: 'All' | 'ATS' | 'Professional' | 'Modern' | 'Creative' | 'Executive' | 'Developer' | 'Student' | 'Academic' | string;
   description: string;
   thumbnailColor: string;
-  layout: 'single-column' | 'two-column' | 'technical' | 'academic' | 'executive';
+  layout: 'single-column' | 'two-column' | 'technical' | 'academic' | 'executive' | 'compact' | 'creative';
+  defaultDesign?: Partial<ResumeDesignConfig>;
 }
 
+// ── COLOR PALETTES ───────────────────────────────────────────────────────────
+export const RESUME_PALETTES: { id: string; name: string; colors: ResumeColors }[] = [
+  {
+    id: 'professional',
+    name: 'Professional Blue',
+    colors: {
+      primary: '#2563eb',
+      accent: '#3b82f6',
+      heading: '#0f172a',
+      body: '#334155',
+      muted: '#64748b',
+      link: '#2563eb',
+      border: '#e2e8f0',
+      background: '#ffffff',
+    },
+  },
+  {
+    id: 'navy',
+    name: 'Executive Navy',
+    colors: {
+      primary: '#0f2942',
+      accent: '#1e40af',
+      heading: '#0a192f',
+      body: '#1e293b',
+      muted: '#5c7080',
+      link: '#1d4ed8',
+      border: '#cbd5e1',
+      background: '#ffffff',
+    },
+  },
+  {
+    id: 'slate',
+    name: 'Modern Slate',
+    colors: {
+      primary: '#334155',
+      accent: '#475569',
+      heading: '#0f172a',
+      body: '#334155',
+      muted: '#64748b',
+      link: '#2563eb',
+      border: '#e2e8f0',
+      background: '#ffffff',
+    },
+  },
+  {
+    id: 'modern-blue',
+    name: 'Clean Cyan',
+    colors: {
+      primary: '#0284c7',
+      accent: '#0369a1',
+      heading: '#0f172a',
+      body: '#334155',
+      muted: '#64748b',
+      link: '#0284c7',
+      border: '#e0f2fe',
+      background: '#ffffff',
+    },
+  },
+  {
+    id: 'emerald',
+    name: 'Emerald Forest',
+    colors: {
+      primary: '#059669',
+      accent: '#047857',
+      heading: '#064e3b',
+      body: '#1e293b',
+      muted: '#64748b',
+      link: '#059669',
+      border: '#d1fae5',
+      background: '#ffffff',
+    },
+  },
+  {
+    id: 'burgundy',
+    name: 'Deep Burgundy',
+    colors: {
+      primary: '#9f1239',
+      accent: '#881337',
+      heading: '#4c0519',
+      body: '#1e293b',
+      muted: '#64748b',
+      link: '#be123c',
+      border: '#ffe4e6',
+      background: '#ffffff',
+    },
+  },
+  {
+    id: 'minimal-black',
+    name: 'Minimal Black & White (ATS)',
+    colors: {
+      primary: '#18181b',
+      accent: '#27272a',
+      heading: '#09090b',
+      body: '#27272a',
+      muted: '#52525b',
+      link: '#18181b',
+      border: '#e4e4e7',
+      background: '#ffffff',
+    },
+  },
+  {
+    id: 'warm-gray',
+    name: 'Warm Charcoal',
+    colors: {
+      primary: '#44403c',
+      accent: '#78716c',
+      heading: '#1c1917',
+      body: '#292524',
+      muted: '#78716c',
+      link: '#b45309',
+      border: '#e7e5e4',
+      background: '#ffffff',
+    },
+  },
+  {
+    id: 'dark-pro',
+    name: 'Dark Studio',
+    colors: {
+      primary: '#38bdf8',
+      accent: '#818cf8',
+      heading: '#ffffff',
+      body: '#e2e8f0',
+      muted: '#94a3b8',
+      link: '#38bdf8',
+      border: '#334155',
+      background: '#0f172a',
+    },
+  },
+];
+
+// ── 20+ CURATED RESUME TEMPLATES ─────────────────────────────────────────────
 export const RESUME_TEMPLATES_METADATA: ResumeTemplateMeta[] = [
+  // 1. Backwards compatible templates
   {
     id: 'tmpl_modern_pro',
     name: 'Modern Professional (ATS-Optimized)',
-    category: 'General & ATS',
+    category: 'ATS',
     description: 'Clean single-column layout with subtle dividing lines. Optimized for applicant tracking systems.',
     thumbnailColor: '#2563eb',
     layout: 'single-column',
@@ -71,7 +388,7 @@ export const RESUME_TEMPLATES_METADATA: ResumeTemplateMeta[] = [
   {
     id: 'tmpl_two_column',
     name: 'Modern Two-Column Layout',
-    category: 'Corporate',
+    category: 'Professional',
     description: 'Compact sidebar for contact info, skills, and languages with expansive experience column.',
     thumbnailColor: '#0f172a',
     layout: 'two-column',
@@ -79,7 +396,7 @@ export const RESUME_TEMPLATES_METADATA: ResumeTemplateMeta[] = [
   {
     id: 'tmpl_software_eng',
     name: 'Software Engineer & Full-Stack',
-    category: 'Technology',
+    category: 'Developer',
     description: 'Tailored for developers with tech stack badges, GitHub links, and high-impact engineering projects.',
     thumbnailColor: '#059669',
     layout: 'technical',
@@ -87,7 +404,7 @@ export const RESUME_TEMPLATES_METADATA: ResumeTemplateMeta[] = [
   {
     id: 'tmpl_graduate_fresher',
     name: 'Graduate / Entry-Level Fresher',
-    category: 'Academic',
+    category: 'Student',
     description: 'Clean layout emphasizing academic degree, capstone projects, internships, and hackathons.',
     thumbnailColor: '#7c3aed',
     layout: 'academic',
@@ -100,11 +417,183 @@ export const RESUME_TEMPLATES_METADATA: ResumeTemplateMeta[] = [
     thumbnailColor: '#9f1239',
     layout: 'executive',
   },
+
+  // 2. Dedicated ATS Templates
+  {
+    id: 'tmpl_ats_classic',
+    name: 'ATS Classic Standard',
+    category: 'ATS',
+    description: 'High-parsability standard formatting with zero complex tables or floating graphics.',
+    thumbnailColor: '#1e293b',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_ats_pro',
+    name: 'ATS Professional Clean',
+    category: 'ATS',
+    description: 'Minimalist hierarchy with clear uppercase section headers and robust text extraction.',
+    thumbnailColor: '#3b82f6',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_ats_modern',
+    name: 'ATS Modern Minimal',
+    category: 'ATS',
+    description: 'Crisp sans-serif typography with compact metadata line items designed for quick automated scans.',
+    thumbnailColor: '#0f766e',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_ats_developer',
+    name: 'ATS Developer Tech',
+    category: 'ATS',
+    description: 'Categorized technical skill blocks and clean project bullet points for engineering scanners.',
+    thumbnailColor: '#0284c7',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_ats_executive',
+    name: 'ATS Executive Streamlined',
+    category: 'ATS',
+    description: 'Designed for senior leaders with executive summaries and quantified achievement bullets.',
+    thumbnailColor: '#475569',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_compact_ats',
+    name: 'Compact ATS Single-Page',
+    category: 'ATS',
+    description: 'High-density single page layout designed to fit extensive career histories without spilling over.',
+    thumbnailColor: '#334155',
+    layout: 'compact',
+  },
+
+  // 3. Premium Modern & Creative Templates
+  {
+    id: 'tmpl_minimalist_clean',
+    name: 'Minimalist Clean Studio',
+    category: 'Modern',
+    description: 'Generous whitespace with lightweight typography and understated border accents.',
+    thumbnailColor: '#18181b',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_clean_corporate',
+    name: 'Clean Corporate White',
+    category: 'Professional',
+    description: 'Corporate aesthetic with bold role titles, dual-color headers, and clear timeline dividers.',
+    thumbnailColor: '#1e40af',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_developer_pro',
+    name: 'Developer Pro Terminal',
+    category: 'Developer',
+    description: 'Modern developer layout with monospace metadata accents, GitHub metrics, and live demo links.',
+    thumbnailColor: '#10b981',
+    layout: 'technical',
+  },
+  {
+    id: 'tmpl_creative_portfolio',
+    name: 'Creative Portfolio Accent',
+    category: 'Creative',
+    description: 'Visual header layout with photo support, skill tag bubbles, and highlighted portfolio links.',
+    thumbnailColor: '#ec4899',
+    layout: 'creative',
+  },
+  {
+    id: 'tmpl_academic_research',
+    name: 'Academic & Research Thesis',
+    category: 'Academic',
+    description: 'Classic serif typography tailored for universities, grant applications, and published research.',
+    thumbnailColor: '#6366f1',
+    layout: 'academic',
+  },
+  {
+    id: 'tmpl_consulting_strategy',
+    name: 'Consulting & Strategy Matrix',
+    category: 'Executive',
+    description: 'Two-column strategic layout highlighting core advisory domains, client engagements, and certifications.',
+    thumbnailColor: '#0369a1',
+    layout: 'two-column',
+  },
+  {
+    id: 'tmpl_elegant_serif',
+    name: 'Elegant Serif Classic',
+    category: 'Creative',
+    description: 'Editorial aesthetic with Playfair Display headings and refined timeless styling.',
+    thumbnailColor: '#b45309',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_soft_modern',
+    name: 'Soft Modern Slate',
+    category: 'Modern',
+    description: 'Contemporary rounded badges, soft muted palette, and modern card-style project blocks.',
+    thumbnailColor: '#64748b',
+    layout: 'single-column',
+  },
+  {
+    id: 'tmpl_split_sidebar',
+    name: 'Split Two-Tone Sidebar',
+    category: 'Modern',
+    description: 'High-contrast tinted sidebar for contact, education, and skills with clean main experience column.',
+    thumbnailColor: '#0f172a',
+    layout: 'two-column',
+  },
+];
+
+export const DEFAULT_SECTION_ORDER: ResumeSectionConfig[] = [
+  { id: 'sec_personal', type: 'personal', title: 'Header & Contact', visible: true },
+  { id: 'sec_summary', type: 'summary', title: 'Professional Summary', visible: true },
+  { id: 'sec_skills', type: 'skills', title: 'Skills & Competencies', visible: true },
+  { id: 'sec_experience', type: 'experience', title: 'Work Experience', visible: true },
+  { id: 'sec_projects', type: 'projects', title: 'Key Projects', visible: true },
+  { id: 'sec_education', type: 'education', title: 'Education', visible: true },
+  { id: 'sec_certifications', type: 'certifications', title: 'Certifications', visible: true },
+  { id: 'sec_achievements', type: 'achievements', title: 'Achievements', visible: true },
+  { id: 'sec_awards', type: 'awards', title: 'Honors & Awards', visible: false },
+  { id: 'sec_publications', type: 'publications', title: 'Publications', visible: false },
+  { id: 'sec_languages', type: 'languages', title: 'Languages', visible: false },
+  { id: 'sec_volunteer', type: 'volunteer', title: 'Volunteer Experience', visible: false },
+  { id: 'sec_organizations', type: 'organizations', title: 'Organizations', visible: false },
+  { id: 'sec_references', type: 'references', title: 'References', visible: false },
 ];
 
 export class ResumeEngine {
   static getTemplates(): ResumeTemplateMeta[] {
     return RESUME_TEMPLATES_METADATA;
+  }
+
+  static getDefaultDesign(): ResumeDesignConfig {
+    return {
+      headerLayout: 'modern',
+      fontFamily: 'Inter',
+      typographyPreset: 'normal',
+      nameSize: 26,
+      headingSize: 12.5,
+      bodySize: 11,
+      metadataSize: 10,
+      lineHeight: 1.5,
+      letterSpacing: 'normal',
+      textAlign: 'left',
+      palette: 'professional',
+      colors: { ...RESUME_PALETTES[0].colors },
+      spacingPreset: 'balanced',
+      spacing: {
+        pageMargin: 32,
+        sectionGap: 16,
+        entryGap: 12,
+        paragraphGap: 4,
+        lineHeight: 1.5,
+      },
+      paperSize: 'A4',
+      skillsStyle: 'categories',
+      bulletStyle: 'dot',
+      headingStyle: 'underline',
+      projectStyle: 'standard',
+      educationStyle: 'classic',
+    };
   }
 
   static getDefaultResumeData(): ResumeData {
@@ -118,9 +607,19 @@ export class ResumeEngine {
         website: 'https://alexchen.dev',
         github: 'github.com/alexchen',
         linkedin: 'linkedin.com/in/alexchen',
+        portfolio: 'https://alexchen.dev/portfolio',
+        customLinks: [
+          { label: 'Blog', url: 'https://alexchen.dev/blog' }
+        ],
+        photo: {
+          url: '',
+          style: 'none',
+          size: 'md',
+        },
       },
       summary:
         'Results-oriented Senior Software Engineer with 6+ years of experience architecting high-throughput distributed systems, scalable web applications, and real-time collaborative workspaces. Proven track record of improving latency by 45% and leading cross-functional engineering teams.',
+      objective: '',
       skillCategories: [
         {
           category: 'Languages & Frameworks',
@@ -135,12 +634,19 @@ export class ResumeEngine {
           skills: ['System Architecture', 'Microservices', 'RESTful APIs', 'Agile / Scrum', 'TDD'],
         },
       ],
+      skills: [
+        'TypeScript', 'React', 'Next.js', 'Node.js', 'Python', 'Go', 'GraphQL',
+        'AWS', 'Docker', 'Kubernetes', 'PostgreSQL', 'Redis', 'CI/CD', 'Microservices'
+      ],
       experience: [
         {
+          id: 'exp_1',
           title: 'Lead Software Engineer',
           company: 'ScaleTech Solutions',
           location: 'San Francisco, CA',
           period: '2022 – Present',
+          current: true,
+          website: 'https://scaletech.example.com',
           highlights: [
             'Architected real-time collaboration engine using WebSockets and CRDTs, supporting 50K concurrent users with sub-20ms sync latency.',
             'Spearheaded migration of legacy monolith to Next.js and microservices, slashing initial page load times by 48%.',
@@ -148,10 +654,13 @@ export class ResumeEngine {
           ],
         },
         {
+          id: 'exp_2',
           title: 'Full-Stack Software Engineer',
           company: 'Nexus Cloud Platforms',
           location: 'San Jose, CA',
           period: '2019 – 2022',
+          current: false,
+          website: 'https://nexuscloud.example.com',
           highlights: [
             'Engineered REST and GraphQL data pipelines processing over 12M events daily with 99.99% uptime.',
             'Implemented automated billing and subscription infrastructure generating $4.2M in annual recurring revenue.',
@@ -161,6 +670,7 @@ export class ResumeEngine {
       ],
       education: [
         {
+          id: 'edu_1',
           degree: 'B.S. in Computer Science',
           school: 'University of California, Berkeley',
           location: 'Berkeley, CA',
@@ -171,426 +681,634 @@ export class ResumeEngine {
       ],
       projects: [
         {
+          id: 'proj_1',
           name: 'DocProEditor Canvas Engine',
           role: 'Creator & Lead Architect',
           techStack: ['React', 'TypeScript', 'TailwindCSS', 'Web Workers'],
-          link: 'https://github.com/alexchen/docflow',
+          link: 'https://github.com/alexchen/docproeditor',
+          projectUrl: 'https://docproeditor.example.com',
+          githubUrl: 'https://github.com/alexchen/docproeditor',
+          liveDemoUrl: 'https://docproeditor.example.com/demo',
           highlights: [
             'Built a high-performance vector canvas and multi-page document pagination engine running at 60fps.',
             'Implemented custom LaTeX math parser and client-side PDF/DOCX multi-format serializers.',
           ],
         },
         {
+          id: 'proj_2',
           name: 'Neural OCR Scanner',
           role: 'Core Contributor',
           techStack: ['Python', 'FastAPI', 'OpenCV', 'PyTorch'],
+          link: 'https://github.com/alexchen/neural-ocr',
+          projectUrl: 'https://ocr.example.com',
+          githubUrl: 'https://github.com/alexchen/neural-ocr',
           highlights: [
             'Developed optical document segmentation algorithm achieving 96% accuracy on complex invoice scans.',
           ],
         },
       ],
       certifications: [
-        { name: 'AWS Certified Solutions Architect (Associate)', issuer: 'Amazon Web Services', year: '2023' },
-        { name: 'Certified Kubernetes Administrator (CKA)', issuer: 'Cloud Native Computing Foundation', year: '2022' },
+        { id: 'cert_1', name: 'AWS Certified Solutions Architect (Associate)', issuer: 'Amazon Web Services', year: '2023', link: 'https://aws.amazon.com' },
+        { id: 'cert_2', name: 'Certified Kubernetes Administrator (CKA)', issuer: 'Cloud Native Computing Foundation', year: '2022', link: 'https://cncf.io' },
       ],
       achievements: [
         '1st Place Winner — Silicon Valley AI Hackathon (2024)',
         'Published author of technical engineering articles with 150K+ reads on Medium',
       ],
+      awards: [
+        { id: 'award_1', title: 'Outstanding Engineering Impact Award', issuer: 'ScaleTech Solutions', date: '2023', description: 'Awarded for architecting sub-20ms collaboration protocol.' }
+      ],
+      publications: [
+        { id: 'pub_1', title: 'High-Throughput Offline-First Web Applications with CRDTs', publisher: 'ACM Digital Library', date: '2023', link: 'https://doi.org/10.1145/example' }
+      ],
+      languages: [
+        { id: 'lang_1', language: 'English', proficiency: 'Native / Bilingual' },
+        { id: 'lang_2', language: 'Mandarin Chinese', proficiency: 'Professional Working' }
+      ],
+      interests: ['Distributed Computing', 'Open Source Tooling', 'Rock Climbing', 'Triathlons'],
+      volunteer: [
+        { id: 'vol_1', role: 'Mentor & Code Instructor', organization: 'Code for Youth Initiative', period: '2021 – Present', highlights: ['Taught foundational web development to 40+ high school students.'] }
+      ],
+      organizations: [
+        { id: 'org_1', role: 'Active Contributor', name: 'Open Source Software Collective', period: '2020 – Present' }
+      ],
+      references: [
+        { id: 'ref_1', name: 'Available Upon Request', title: '', company: '', contact: '' }
+      ],
+      customSections: [
+        {
+          id: 'custom_opensource',
+          title: 'Open Source Contributions',
+          style: 'standard',
+          items: [
+            {
+              id: 'item_1',
+              title: 'React Core & Ecosystem',
+              subtitle: 'Contributor',
+              date: '2021 – Present',
+              description: 'Contributed performance fixes and TypeScript definitions to open source developer tools with over 2M monthly downloads.',
+              link: 'https://github.com/facebook/react',
+              bullets: ['Resolved critical hydration edge cases.', 'Improved memory consumption by 15%.']
+            }
+          ]
+        }
+      ],
+      sectionOrder: [...DEFAULT_SECTION_ORDER],
+      design: ResumeEngine.getDefaultDesign(),
     };
   }
 
   /**
-   * Render resume data into chosen template HTML
+   * Render resume data into chosen template HTML with full design customizations
    */
-  static renderTemplate(data: ResumeData, templateId: string): string {
-    switch (templateId) {
-      case 'tmpl_two_column':
-        return this.renderTwoColumnTemplate(data);
-      case 'tmpl_software_eng':
-        return this.renderSoftwareEngTemplate(data);
-      case 'tmpl_graduate_fresher':
-        return this.renderGraduateTemplate(data);
-      case 'tmpl_executive_corp':
-        return this.renderExecutiveTemplate(data);
-      case 'tmpl_modern_pro':
-      default:
-        return this.renderModernProTemplate(data);
+  static renderTemplate(
+    data: ResumeData,
+    templateId: string = 'tmpl_modern_pro',
+    designOverrides?: Partial<ResumeDesignConfig>
+  ): string {
+    const design: ResumeDesignConfig = {
+      ...this.getDefaultDesign(),
+      ...(data.design || {}),
+      ...(designOverrides || {}),
+    };
+
+    // Determine layout family from template
+    const templateMeta = RESUME_TEMPLATES_METADATA.find(t => t.id === templateId);
+    const layout = templateMeta?.layout || 'single-column';
+
+    if (layout === 'two-column') {
+      return this.renderTwoColumnTemplate(data, design, templateId);
+    } else if (layout === 'technical') {
+      return this.renderTechnicalTemplate(data, design, templateId);
+    } else if (layout === 'academic') {
+      return this.renderAcademicTemplate(data, design, templateId);
+    } else if (layout === 'executive') {
+      return this.renderExecutiveTemplate(data, design, templateId);
+    } else if (layout === 'compact') {
+      return this.renderCompactTemplate(data, design, templateId);
+    } else if (layout === 'creative') {
+      return this.renderCreativeTemplate(data, design, templateId);
     }
+
+    // Default: Single Column Modern & ATS
+    return this.renderSingleColumnTemplate(data, design, templateId);
   }
 
-  // ── Template 1: Modern Professional (Single Column, ATS-Friendly) ───────────
-  private static renderModernProTemplate(d: ResumeData): string {
-    const { personalInfo: p, summary, skillCategories, experience, education, projects, certifications, achievements } = d;
-
-    return `
-<div style="font-family: 'Inter', -apple-system, sans-serif; line-height: 1.5; color: #1e293b;">
-  <!-- Header -->
-  <div style="text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 14px; margin-bottom: 18px;">
-    <h1 style="font-size: 26px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; letter-spacing: -0.02em;">${p.name}</h1>
-    <p style="font-size: 14px; font-weight: 600; color: #2563eb; margin: 0 0 8px 0;">${p.title}</p>
-    <p style="font-size: 11px; color: #64748b; margin: 0;">
-      ${p.location} • ${p.email} • ${p.phone} • <a href="${p.website}" style="color: #2563eb; text-decoration: none;">${p.website?.replace(/^https?:\/\//, '')}</a> • <a href="https://${p.github}" style="color: #2563eb; text-decoration: none;">${p.github}</a>
-    </p>
-  </div>
-
-  <!-- Professional Summary -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin: 0 0 6px 0;">Professional Summary</h2>
-    <p style="font-size: 11.5px; color: #334155; margin: 0; line-height: 1.6;">${summary}</p>
-  </div>
-
-  <!-- Technical Skills -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin: 0 0 6px 0;">Skills &amp; Competencies</h2>
-    <div style="font-size: 11px; color: #334155;">
-      ${skillCategories.map(sc => `<p style="margin: 0 0 3px 0;"><strong>${sc.category}:</strong> ${sc.skills.join(', ')}</p>`).join('')}
-    </div>
-  </div>
-
-  <!-- Work Experience -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin: 0 0 8px 0;">Work Experience</h2>
-    ${experience.map(exp => `
-      <div style="margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-          <h3 style="font-size: 12px; font-weight: 700; color: #0f172a; margin: 0;">${exp.title} — <span style="font-weight: 600; color: #2563eb;">${exp.company}</span></h3>
-          <span style="font-size: 10.5px; color: #64748b; font-weight: 500;">${exp.period} | ${exp.location}</span>
-        </div>
-        <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 11px; color: #334155; line-height: 1.5;">
-          ${exp.highlights.map(h => `<li style="margin-bottom: 2px;">${h}</li>`).join('')}
-        </ul>
-      </div>
-    `).join('')}
-  </div>
-
-  <!-- Key Projects -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin: 0 0 8px 0;">Key Projects</h2>
-    ${projects.map(proj => `
-      <div style="margin-bottom: 8px;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-          <h3 style="font-size: 11.5px; font-weight: 700; color: #0f172a; margin: 0;">${proj.name} <span style="font-size: 10.5px; font-weight: normal; color: #64748b;">(${proj.techStack.join(', ')})</span></h3>
-          ${proj.link ? `<a href="${proj.link}" style="font-size: 10.5px; color: #2563eb; text-decoration: none;">View Project</a>` : ''}
-        </div>
-        <ul style="margin: 3px 0 0 0; padding-left: 18px; font-size: 11px; color: #334155;">
-          ${proj.highlights.map(h => `<li style="margin-bottom: 2px;">${h}</li>`).join('')}
-        </ul>
-      </div>
-    `).join('')}
-  </div>
-
-  <!-- Education -->
-  <div style="margin-bottom: 14px;">
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin: 0 0 6px 0;">Education</h2>
-    ${education.map(edu => `
-      <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 11px;">
-        <div>
-          <strong style="color: #0f172a;">${edu.degree}</strong> — ${edu.school}, ${edu.location}
-          ${edu.details ? `<div style="color: #64748b; font-size: 10.5px; margin-top: 1px;">${edu.details}</div>` : ''}
-        </div>
-        <span style="color: #64748b; font-weight: 500;">${edu.year}</span>
-      </div>
-    `).join('')}
-  </div>
-
-  <!-- Certifications & Honors -->
-  <div>
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin: 0 0 4px 0;">Certifications &amp; Honors</h2>
-    <p style="font-size: 11px; color: #334155; margin: 0;">
-      ${certifications.map(c => `${c.name} (${c.issuer}, ${c.year})`).join(' • ')}
-    </p>
-  </div>
-</div>
-`;
+  // ── Helper: Format Clickable Link ──────────────────────────────────────────
+  private static formatLink(url?: string, label?: string): string {
+    if (!url) return '';
+    const cleanUrl = url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:') || url.startsWith('tel:')
+      ? url
+      : `https://${url}`;
+    const display = label || url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline; text-underline-offset: 2px;">${display}</a>`;
   }
 
-  // ── Template 2: Modern Two-Column Layout ────────────────────────────────────
-  private static renderTwoColumnTemplate(d: ResumeData): string {
-    const { personalInfo: p, summary, skillCategories, experience, education, projects, certifications } = d;
+  // ── Helper: Render Header by Layout ─────────────────────────────────────────
+  private static renderHeader(p: ResumePersonalInfo, design: ResumeDesignConfig): string {
+    const { colors, headerLayout, nameSize, bodySize, metadataSize } = design;
+    const photo = p.photo;
+    const hasPhoto = photo && photo.url && photo.style !== 'none';
 
-    return `
-<div style="font-family: 'Inter', sans-serif; display: grid; grid-template-columns: 240px 1fr; gap: 24px; color: #1e293b; line-height: 1.5;">
-  <!-- Left Sidebar -->
-  <div style="background: #f8fafc; padding: 20px 16px; border-radius: 6px; border: 1px solid #e2e8f0;">
-    <h1 style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 2px 0;">${p.name}</h1>
-    <p style="font-size: 12px; font-weight: 600; color: #2563eb; margin: 0 0 16px 0;">${p.title}</p>
+    let photoBorderRadius = '0';
+    if (photo?.style === 'circle') photoBorderRadius = '50%';
+    if (photo?.style === 'rounded') photoBorderRadius = '12px';
 
-    <!-- Contact Info -->
-    <div style="margin-bottom: 18px;">
-      <h3 style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin: 0 0 6px 0;">Contact</h3>
-      <p style="font-size: 10.5px; color: #334155; margin: 0 0 3px 0;">📍 ${p.location}</p>
-      <p style="font-size: 10.5px; color: #334155; margin: 0 0 3px 0;">✉️ ${p.email}</p>
-      <p style="font-size: 10.5px; color: #334155; margin: 0 0 3px 0;">📱 ${p.phone}</p>
-      <p style="font-size: 10.5px; color: #334155; margin: 0 0 3px 0;">🌐 ${p.website?.replace(/^https?:\/\//, '')}</p>
-    </div>
+    const photoSizePx = photo?.size === 'lg' ? 84 : photo?.size === 'sm' ? 52 : 68;
 
-    <!-- Skills -->
-    <div style="margin-bottom: 18px;">
-      <h3 style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin: 0 0 6px 0;">Skills</h3>
-      ${skillCategories.map(sc => `
-        <div style="margin-bottom: 8px;">
-          <p style="font-size: 10px; font-weight: 700; color: #0f172a; margin: 0 0 2px 0;">${sc.category}</p>
-          <p style="font-size: 10.5px; color: #475569; margin: 0;">${sc.skills.join(', ')}</p>
-        </div>
-      `).join('')}
-    </div>
+    const photoHtml = hasPhoto
+      ? `<img src="${photo.url}" alt="${p.name}" style="width: ${photoSizePx}px; height: ${photoSizePx}px; border-radius: ${photoBorderRadius}; object-fit: cover; border: 2px solid ${colors.border}; shrink: 0;" />`
+      : '';
 
-    <!-- Education in Sidebar -->
-    <div style="margin-bottom: 18px;">
-      <h3 style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin: 0 0 6px 0;">Education</h3>
-      ${education.map(edu => `
-        <div style="margin-bottom: 6px;">
-          <p style="font-size: 10.5px; font-weight: 700; color: #0f172a; margin: 0;">${edu.degree}</p>
-          <p style="font-size: 10px; color: #64748b; margin: 0;">${edu.school} (${edu.year})</p>
-        </div>
-      `).join('')}
-    </div>
+    // Contact Links
+    const contactParts: string[] = [];
+    if (p.location) contactParts.push(`<span>📍 ${p.location}</span>`);
+    if (p.email) contactParts.push(`<span>✉️ ${this.formatLink(`mailto:${p.email}`, p.email)}</span>`);
+    if (p.phone) contactParts.push(`<span>📞 ${this.formatLink(`tel:${p.phone}`, p.phone)}</span>`);
+    if (p.website) contactParts.push(`<span>🌐 ${this.formatLink(p.website)}</span>`);
+    if (p.linkedin) contactParts.push(`<span>💼 ${this.formatLink(p.linkedin, p.linkedin.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, 'linkedin/'))}</span>`);
+    if (p.github) contactParts.push(`<span>🐙 ${this.formatLink(p.github, p.github.replace(/^https?:\/\/(www\.)?github\.com\//, 'github/'))}</span>`);
+    if (p.portfolio) contactParts.push(`<span>✨ ${this.formatLink(p.portfolio, 'Portfolio')}</span>`);
 
-    <!-- Certifications -->
-    <div>
-      <h3 style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin: 0 0 6px 0;">Certifications</h3>
-      ${certifications.map(c => `
-        <p style="font-size: 10px; color: #334155; margin: 0 0 4px 0;">• ${c.name}</p>
-      `).join('')}
-    </div>
-  </div>
+    if (p.customLinks && p.customLinks.length > 0) {
+      p.customLinks.forEach(cl => {
+        if (cl.url) contactParts.push(`<span>🔗 ${this.formatLink(cl.url, cl.label || cl.url)}</span>`);
+      });
+    }
 
-  <!-- Right Main Column -->
-  <div>
-    <!-- Executive Summary -->
-    <div style="margin-bottom: 18px;">
-      <h2 style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: #0f172a; border-bottom: 2px solid #2563eb; padding-bottom: 3px; margin: 0 0 6px 0;">Executive Summary</h2>
-      <p style="font-size: 11.5px; color: #334155; margin: 0; line-height: 1.6;">${summary}</p>
-    </div>
+    const contactRow = `<div style="font-size: ${metadataSize}px; color: ${colors.muted}; display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; line-height: 1.4;">${contactParts.join(' • ')}</div>`;
 
-    <!-- Experience -->
-    <div style="margin-bottom: 18px;">
-      <h2 style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: #0f172a; border-bottom: 2px solid #2563eb; padding-bottom: 3px; margin: 0 0 10px 0;">Professional Experience</h2>
-      ${experience.map(exp => `
-        <div style="margin-bottom: 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: baseline;">
-            <h3 style="font-size: 12px; font-weight: 700; color: #0f172a; margin: 0;">${exp.title}</h3>
-            <span style="font-size: 10.5px; color: #64748b;">${exp.period}</span>
+    if (headerLayout === 'centered') {
+      return `
+        <div style="text-align: center; border-bottom: 2px solid ${colors.primary}; padding-bottom: 14px; margin-bottom: ${design.spacing.sectionGap}px;">
+          ${hasPhoto ? `<div style="display: flex; justify-content: center; margin-bottom: 8px;">${photoHtml}</div>` : ''}
+          <h1 style="font-size: ${nameSize}px; font-weight: 800; color: ${colors.heading}; margin: 0 0 4px 0; letter-spacing: -0.02em;">${p.name}</h1>
+          <p style="font-size: ${bodySize * 1.15}px; font-weight: 600; color: ${colors.primary}; margin: 0 0 6px 0;">${p.title}</p>
+          <div style="font-size: ${metadataSize}px; color: ${colors.muted}; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; line-height: 1.4;">
+            ${contactParts.join(' • ')}
           </div>
-          <p style="font-size: 11px; color: #2563eb; font-weight: 600; margin: 0 0 4px 0;">${exp.company} • ${exp.location}</p>
-          <ul style="margin: 0; padding-left: 18px; font-size: 11px; color: #334155;">
-            ${exp.highlights.map(h => `<li style="margin-bottom: 2px;">${h}</li>`).join('')}
-          </ul>
         </div>
-      `).join('')}
-    </div>
+      `;
+    }
 
-    <!-- Featured Projects -->
+    if (headerLayout === 'split' || headerLayout === 'executive') {
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid ${colors.primary}; padding-bottom: 14px; margin-bottom: ${design.spacing.sectionGap}px; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            ${photoHtml}
+            <div>
+              <h1 style="font-size: ${nameSize}px; font-weight: 800; color: ${colors.heading}; margin: 0 0 4px 0; letter-spacing: -0.02em;">${p.name}</h1>
+              <p style="font-size: ${bodySize * 1.15}px; font-weight: 600; color: ${colors.primary}; margin: 0;">${p.title}</p>
+            </div>
+          </div>
+          <div style="text-align: right; font-size: ${metadataSize}px; color: ${colors.muted}; line-height: 1.5; max-width: 45%;">
+            ${contactParts.join('<br />')}
+          </div>
+        </div>
+      `;
+    }
+
+    if (headerLayout === 'minimal') {
+      return `
+        <div style="border-bottom: 1px solid ${colors.border}; padding-bottom: 10px; margin-bottom: ${design.spacing.sectionGap}px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <h1 style="font-size: ${nameSize * 0.9}px; font-weight: 700; color: ${colors.heading}; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">${p.name}</h1>
+            <span style="font-size: ${bodySize}px; font-weight: 500; color: ${colors.primary};">${p.title}</span>
+          </div>
+          <div style="font-size: ${metadataSize}px; color: ${colors.muted}; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 10px;">
+            ${contactParts.join(' | ')}
+          </div>
+        </div>
+      `;
+    }
+
+    if (headerLayout === 'compact') {
+      return `
+        <div style="border-bottom: 1.5px solid ${colors.primary}; padding-bottom: 8px; margin-bottom: ${design.spacing.sectionGap * 0.75}px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h1 style="font-size: ${nameSize * 0.85}px; font-weight: 800; color: ${colors.heading}; margin: 0;">${p.name} — <span style="font-size: ${bodySize}px; font-weight: 600; color: ${colors.primary};">${p.title}</span></h1>
+            <div style="font-size: ${metadataSize * 0.95}px; color: ${colors.muted}; margin-top: 2px;">
+              ${contactParts.join(' • ')}
+            </div>
+          </div>
+          ${photoHtml}
+        </div>
+      `;
+    }
+
+    // Default: Modern Layout
+    return `
+      <div style="border-bottom: 2px solid ${colors.primary}; padding-bottom: 12px; margin-bottom: ${design.spacing.sectionGap}px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h1 style="font-size: ${nameSize}px; font-weight: 800; color: ${colors.heading}; margin: 0 0 4px 0; letter-spacing: -0.02em;">${p.name}</h1>
+          <p style="font-size: ${bodySize * 1.15}px; font-weight: 600; color: ${colors.primary}; margin: 0;">${p.title}</p>
+          ${contactRow}
+        </div>
+        ${photoHtml}
+      </div>
+    `;
+  }
+
+  // ── Helper: Render Section Heading ──────────────────────────────────────────
+  private static renderSectionHeading(title: string, design: ResumeDesignConfig): string {
+    const { colors, headingSize, headingStyle } = design;
+
+    if (headingStyle === 'banner') {
+      return `
+        <h2 style="font-size: ${headingSize}px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; background-color: ${colors.primary}; color: #ffffff; padding: 4px 8px; border-radius: 4px; margin: 0 0 8px 0; page-break-after: avoid; break-after: avoid;">
+          ${title}
+        </h2>
+      `;
+    }
+
+    if (headingStyle === 'left-border') {
+      return `
+        <h2 style="font-size: ${headingSize}px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: ${colors.heading}; border-left: 3.5px solid ${colors.primary}; padding-left: 8px; margin: 0 0 8px 0; page-break-after: avoid; break-after: avoid;">
+          ${title}
+        </h2>
+      `;
+    }
+
+    if (headingStyle === 'minimal-uppercase') {
+      return `
+        <h2 style="font-size: ${headingSize}px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: ${colors.primary}; margin: 0 0 6px 0; page-break-after: avoid; break-after: avoid;">
+          ${title}
+        </h2>
+      `;
+    }
+
+    if (headingStyle === 'bold-divider') {
+      return `
+        <div style="display: flex; align-items: center; gap: 8px; margin: 0 0 8px 0; page-break-after: avoid; break-after: avoid;">
+          <h2 style="font-size: ${headingSize}px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: ${colors.heading}; margin: 0; shrink: 0;">${title}</h2>
+          <div style="flex: 1; height: 1.5px; background-color: ${colors.primary};"></div>
+        </div>
+      `;
+    }
+
+    // Default: Underline
+    return `
+      <h2 style="font-size: ${headingSize}px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: ${colors.heading}; border-bottom: 1.5px solid ${colors.border}; padding-bottom: 3px; margin: 0 0 8px 0; page-break-after: avoid; break-after: avoid;">
+        ${title}
+      </h2>
+    `;
+  }
+
+  // ── Helper: Render Bullet Points ────────────────────────────────────────────
+  private static renderBullets(bullets: string[], design: ResumeDesignConfig): string {
+    if (!bullets || bullets.length === 0) return '';
+    const { colors, bodySize, bulletStyle } = design;
+
+    let listStyleType = 'disc';
+    if (bulletStyle === 'dash') listStyleType = 'square';
+    if (bulletStyle === 'minimal') listStyleType = 'none';
+
+    return `
+      <ul style="margin: 4px 0 0 0; padding-left: ${bulletStyle === 'minimal' ? '0' : '16px'}; font-size: ${bodySize}px; color: ${colors.body}; line-height: ${design.spacing.lineHeight}; list-style-type: ${listStyleType};">
+        ${bullets.map(b => `<li style="margin-bottom: ${design.spacing.paragraphGap}px;">${b}</li>`).join('')}
+      </ul>
+    `;
+  }
+
+  // ── Section 1: Template Renderer (Single Column / ATS Standard) ─────────────
+  private static renderSingleColumnTemplate(
+    d: ResumeData,
+    design: ResumeDesignConfig,
+    _templateId: string
+  ): string {
+    const { colors, fontFamily } = design;
+    const p = d.personalInfo;
+    const sections = d.sectionOrder || DEFAULT_SECTION_ORDER;
+
+    let html = `
+<div class="resume-document" style="font-family: '${fontFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: ${design.spacing.lineHeight}; color: ${colors.body}; background-color: ${colors.background}; padding: ${design.spacing.pageMargin}px; max-width: 100%; box-sizing: border-box;">
+  ${this.renderHeader(p, design)}
+`;
+
+    sections.forEach(sec => {
+      if (!sec.visible) return;
+
+      if (sec.type === 'summary' && d.summary) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+            ${this.renderSectionHeading(sec.title || 'Professional Summary', design)}
+            <p style="font-size: ${design.bodySize}px; color: ${colors.body}; margin: 0; line-height: ${design.spacing.lineHeight};">${d.summary}</p>
+          </div>
+        `;
+      } else if (sec.type === 'objective' && d.objective) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+            ${this.renderSectionHeading(sec.title || 'Career Objective', design)}
+            <p style="font-size: ${design.bodySize}px; color: ${colors.body}; margin: 0; line-height: ${design.spacing.lineHeight};">${d.objective}</p>
+          </div>
+        `;
+      } else if (sec.type === 'skills' && d.skillCategories && d.skillCategories.length > 0) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+            ${this.renderSectionHeading(sec.title || 'Skills & Competencies', design)}
+            <div style="font-size: ${design.bodySize}px; color: ${colors.body};">
+              ${d.skillCategories.map(sc => `
+                <div style="margin-bottom: ${design.spacing.paragraphGap}px;">
+                  <strong style="color: ${colors.heading};">${sc.category}:</strong> ${sc.skills.join(', ')}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (sec.type === 'experience' && d.experience && d.experience.length > 0) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px;">
+            ${this.renderSectionHeading(sec.title || 'Work Experience', design)}
+            ${d.experience.map(exp => `
+              <div style="margin-bottom: ${design.spacing.entryGap}px; page-break-inside: avoid; break-inside: avoid;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;">
+                  <h3 style="font-size: ${design.bodySize * 1.05}px; font-weight: 700; color: ${colors.heading}; margin: 0;">
+                    ${exp.title} — <span style="font-weight: 600; color: ${colors.primary};">${exp.company}</span>
+                  </h3>
+                  <span style="font-size: ${design.metadataSize}px; color: ${colors.muted}; font-weight: 500;">
+                    ${exp.period} ${exp.location ? `| ${exp.location}` : ''}
+                  </span>
+                </div>
+                ${this.renderBullets(exp.highlights, design)}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (sec.type === 'projects' && d.projects && d.projects.length > 0) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px;">
+            ${this.renderSectionHeading(sec.title || 'Key Projects', design)}
+            ${d.projects.map(proj => `
+              <div style="margin-bottom: ${design.spacing.entryGap}px; page-break-inside: avoid; break-inside: avoid;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;">
+                  <h3 style="font-size: ${design.bodySize * 1.02}px; font-weight: 700; color: ${colors.heading}; margin: 0;">
+                    ${proj.name} ${proj.techStack && proj.techStack.length > 0 ? `<span style="font-size: ${design.metadataSize}px; font-weight: normal; color: ${colors.muted};">(${proj.techStack.join(', ')})</span>` : ''}
+                  </h3>
+                  <div style="font-size: ${design.metadataSize}px; color: ${colors.primary};">
+                    ${proj.liveDemoUrl ? this.formatLink(proj.liveDemoUrl, 'Live Demo') : proj.link ? this.formatLink(proj.link, 'View Project') : ''}
+                  </div>
+                </div>
+                ${proj.role ? `<div style="font-size: ${design.metadataSize}px; color: ${colors.muted}; margin-top: 1px;">Role: ${proj.role}</div>` : ''}
+                ${this.renderBullets(proj.highlights, design)}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (sec.type === 'education' && d.education && d.education.length > 0) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+            ${this.renderSectionHeading(sec.title || 'Education', design)}
+            ${d.education.map(edu => `
+              <div style="margin-bottom: ${design.spacing.entryGap * 0.75}px; page-break-inside: avoid; break-inside: avoid;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: ${design.bodySize}px;">
+                  <div>
+                    <strong style="color: ${colors.heading};">${edu.degree}</strong> — ${edu.school}${edu.location ? `, ${edu.location}` : ''}
+                    ${edu.details ? `<div style="color: ${colors.muted}; font-size: ${design.metadataSize}px; margin-top: 2px;">${edu.details}</div>` : ''}
+                  </div>
+                  <span style="color: ${colors.muted}; font-size: ${design.metadataSize}px; font-weight: 500;">${edu.year}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (sec.type === 'certifications' && d.certifications && d.certifications.length > 0) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+            ${this.renderSectionHeading(sec.title || 'Certifications & Credentials', design)}
+            <div style="font-size: ${design.bodySize}px; color: ${colors.body};">
+              ${d.certifications.map(c => `
+                <div style="margin-bottom: 4px; display: flex; justify-content: space-between;">
+                  <span><strong>${c.name}</strong> — ${c.issuer}</span>
+                  <span style="color: ${colors.muted}; font-size: ${design.metadataSize}px;">${c.year}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (sec.type === 'achievements' && d.achievements && d.achievements.length > 0) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+            ${this.renderSectionHeading(sec.title || 'Key Achievements & Honors', design)}
+            ${this.renderBullets(d.achievements, design)}
+          </div>
+        `;
+      } else if (sec.type === 'awards' && d.awards && d.awards.length > 0) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+            ${this.renderSectionHeading(sec.title || 'Honors & Awards', design)}
+            ${d.awards.map(a => `
+              <div style="margin-bottom: 6px;">
+                <div style="display: flex; justify-content: space-between; font-size: ${design.bodySize}px;">
+                  <strong>${a.title}</strong> — <span style="color: ${colors.muted};">${a.issuer}</span>
+                  <span style="color: ${colors.muted}; font-size: ${design.metadataSize}px;">${a.date}</span>
+                </div>
+                ${a.description ? `<p style="font-size: ${design.metadataSize}px; color: ${colors.muted}; margin: 2px 0 0 0;">${a.description}</p>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (sec.type === 'publications' && d.publications && d.publications.length > 0) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+            ${this.renderSectionHeading(sec.title || 'Publications', design)}
+            ${d.publications.map(pub => `
+              <div style="margin-bottom: 6px; font-size: ${design.bodySize}px;">
+                <strong>${pub.link ? this.formatLink(pub.link, pub.title) : pub.title}</strong> — <span style="color: ${colors.muted};">${pub.publisher} (${pub.date})</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (sec.type === 'languages' && d.languages && d.languages.length > 0) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+            ${this.renderSectionHeading(sec.title || 'Languages', design)}
+            <div style="font-size: ${design.bodySize}px; display: flex; flex-wrap: wrap; gap: 8px 16px;">
+              ${d.languages.map(l => `<span><strong>${l.language}:</strong> <span style="color: ${colors.muted};">${l.proficiency}</span></span>`).join('')}
+            </div>
+          </div>
+        `;
+      } else if (sec.type === 'volunteer' && d.volunteer && d.volunteer.length > 0) {
+        html += `
+          <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+            ${this.renderSectionHeading(sec.title || 'Volunteer Experience', design)}
+            ${d.volunteer.map(v => `
+              <div style="margin-bottom: ${design.spacing.entryGap * 0.75}px;">
+                <div style="display: flex; justify-content: space-between; font-size: ${design.bodySize}px;">
+                  <strong>${v.role}</strong> — <span style="color: ${colors.primary};">${v.organization}</span>
+                  <span style="color: ${colors.muted}; font-size: ${design.metadataSize}px;">${v.period}</span>
+                </div>
+                ${this.renderBullets(v.highlights, design)}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (sec.type === 'custom' && d.customSections) {
+        const customSec = d.customSections.find(cs => cs.id === sec.customSectionId || cs.title === sec.title);
+        if (customSec && customSec.items && customSec.items.length > 0) {
+          html += `
+            <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
+              ${this.renderSectionHeading(customSec.title, design)}
+              ${customSec.items.map(item => `
+                <div style="margin-bottom: ${design.spacing.entryGap * 0.75}px; page-break-inside: avoid; break-inside: avoid;">
+                  <div style="display: flex; justify-content: space-between; font-size: ${design.bodySize}px;">
+                    <strong>${item.link ? this.formatLink(item.link, item.title) : item.title}</strong>
+                    ${item.date ? `<span style="color: ${colors.muted}; font-size: ${design.metadataSize}px;">${item.date}</span>` : ''}
+                  </div>
+                  ${item.subtitle ? `<div style="font-size: ${design.metadataSize}px; color: ${colors.primary}; font-weight: 500;">${item.subtitle}</div>` : ''}
+                  ${item.description ? `<p style="font-size: ${design.bodySize * 0.95}px; color: ${colors.body}; margin: 2px 0 0 0;">${item.description}</p>` : ''}
+                  ${item.bullets && item.bullets.length > 0 ? this.renderBullets(item.bullets, design) : ''}
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+      }
+    });
+
+    html += `</div>`;
+    return html;
+  }
+
+  // ── Section 2: Two Column Template ──────────────────────────────────────────
+  private static renderTwoColumnTemplate(d: ResumeData, design: ResumeDesignConfig, _templateId: string): string {
+    const { colors, fontFamily } = design;
+    const p = d.personalInfo;
+
+    return `
+<div class="resume-document" style="font-family: '${fontFamily}', -apple-system, sans-serif; line-height: ${design.spacing.lineHeight}; color: ${colors.body}; background-color: ${colors.background}; padding: ${design.spacing.pageMargin}px; box-sizing: border-box;">
+  ${this.renderHeader(p, design)}
+  <div style="display: grid; grid-template-columns: 32% 64%; gap: 4%;">
+    <!-- Left Column: Contact, Skills, Education, Certifications -->
     <div>
-      <h2 style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: #0f172a; border-bottom: 2px solid #2563eb; padding-bottom: 3px; margin: 0 0 8px 0;">Featured Projects</h2>
-      ${projects.map(proj => `
-        <div style="margin-bottom: 8px;">
-          <h3 style="font-size: 11.5px; font-weight: 700; color: #0f172a; margin: 0;">${proj.name}</h3>
-          <ul style="margin: 3px 0 0 0; padding-left: 18px; font-size: 11px; color: #334155;">
-            ${proj.highlights.map(h => `<li style="margin-bottom: 2px;">${h}</li>`).join('')}
-          </ul>
+      ${d.summary ? `
+        <div style="margin-bottom: ${design.spacing.sectionGap}px;">
+          ${this.renderSectionHeading('About Me', design)}
+          <p style="font-size: ${design.bodySize * 0.95}px; line-height: 1.5; color: ${colors.body}; margin: 0;">${d.summary}</p>
         </div>
-      `).join('')}
+      ` : ''}
+
+      ${d.skillCategories && d.skillCategories.length > 0 ? `
+        <div style="margin-bottom: ${design.spacing.sectionGap}px;">
+          ${this.renderSectionHeading('Skills', design)}
+          ${d.skillCategories.map(sc => `
+            <div style="margin-bottom: 8px;">
+              <strong style="font-size: ${design.bodySize * 0.9}px; color: ${colors.heading}; display: block; margin-bottom: 2px;">${sc.category}</strong>
+              <div style="font-size: ${design.metadataSize}px; color: ${colors.muted};">${sc.skills.join(', ')}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      ${d.education && d.education.length > 0 ? `
+        <div style="margin-bottom: ${design.spacing.sectionGap}px;">
+          ${this.renderSectionHeading('Education', design)}
+          ${d.education.map(edu => `
+            <div style="margin-bottom: 8px;">
+              <strong style="font-size: ${design.bodySize * 0.95}px; color: ${colors.heading}; display: block;">${edu.degree}</strong>
+              <span style="font-size: ${design.metadataSize}px; color: ${colors.primary}; font-weight: 500;">${edu.school}</span>
+              <div style="font-size: ${design.metadataSize * 0.9}px; color: ${colors.muted};">${edu.year}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      ${d.languages && d.languages.length > 0 ? `
+        <div style="margin-bottom: ${design.spacing.sectionGap}px;">
+          ${this.renderSectionHeading('Languages', design)}
+          ${d.languages.map(l => `<div style="font-size: ${design.metadataSize}px; margin-bottom: 2px;"><strong>${l.language}:</strong> ${l.proficiency}</div>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- Right Column: Experience, Projects, Custom Sections -->
+    <div>
+      ${d.experience && d.experience.length > 0 ? `
+        <div style="margin-bottom: ${design.spacing.sectionGap}px;">
+          ${this.renderSectionHeading('Experience', design)}
+          ${d.experience.map(exp => `
+            <div style="margin-bottom: ${design.spacing.entryGap}px; page-break-inside: avoid; break-inside: avoid;">
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <h3 style="font-size: ${design.bodySize * 1.05}px; font-weight: 700; color: ${colors.heading}; margin: 0;">${exp.title}</h3>
+                <span style="font-size: ${design.metadataSize}px; color: ${colors.muted};">${exp.period}</span>
+              </div>
+              <div style="font-size: ${design.metadataSize}px; color: ${colors.primary}; font-weight: 600; margin-bottom: 2px;">${exp.company} — ${exp.location}</div>
+              ${this.renderBullets(exp.highlights, design)}
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      ${d.projects && d.projects.length > 0 ? `
+        <div style="margin-bottom: ${design.spacing.sectionGap}px;">
+          ${this.renderSectionHeading('Projects', design)}
+          ${d.projects.map(proj => `
+            <div style="margin-bottom: ${design.spacing.entryGap}px; page-break-inside: avoid; break-inside: avoid;">
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <h3 style="font-size: ${design.bodySize}px; font-weight: 700; color: ${colors.heading}; margin: 0;">${proj.name}</h3>
+                ${proj.link ? `<span style="font-size: ${design.metadataSize}px;">${this.formatLink(proj.link, 'Link')}</span>` : ''}
+              </div>
+              ${this.renderBullets(proj.highlights, design)}
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
     </div>
   </div>
 </div>
 `;
   }
 
-  // ── Template 3: Software Engineer & Developer ──────────────────────────────
-  private static renderSoftwareEngTemplate(d: ResumeData): string {
-    const { personalInfo: p, summary, skillCategories, experience, projects, education, certifications } = d;
-
-    return `
-<div style="font-family: 'JetBrains Mono', 'Courier New', monospace, sans-serif; line-height: 1.5; color: #0f172a;">
-  <!-- Header with Terminal Vibe -->
-  <div style="background: #0f172a; color: #f8fafc; padding: 18px 22px; border-radius: 8px; margin-bottom: 18px;">
-    <h1 style="font-size: 24px; font-weight: 800; color: #38bdf8; margin: 0 0 2px 0;">${p.name}</h1>
-    <p style="font-size: 13px; color: #a78bfa; margin: 0 0 8px 0; font-weight: 600;">$ role --title="${p.title}"</p>
-    <p style="font-size: 10.5px; color: #94a3b8; margin: 0;">
-      📍 ${p.location} | ✉️ ${p.email} | 📱 ${p.phone} | 🔗 <a href="https://${p.github}" style="color: #38bdf8; text-decoration: none;">${p.github}</a>
-    </p>
-  </div>
-
-  <!-- Tech Stack Badges -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; border-bottom: 2px solid #059669; padding-bottom: 2px; margin: 0 0 6px 0;">// TECH STACK</h2>
-    <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-      ${skillCategories.flatMap(sc => sc.skills).map(s => `
-        <span style="font-size: 10px; font-weight: 600; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 6px; border-radius: 4px;">${s}</span>
-      `).join('')}
-    </div>
-  </div>
-
-  <!-- Engineering Experience -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; border-bottom: 2px solid #059669; padding-bottom: 2px; margin: 0 0 8px 0;">// PRODUCTION EXPERIENCE</h2>
-    ${experience.map(exp => `
-      <div style="margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-          <h3 style="font-size: 12px; font-weight: 700; color: #0f172a; margin: 0;">${exp.title} @ <span style="color: #059669;">${exp.company}</span></h3>
-          <span style="font-size: 10.5px; color: #64748b;">${exp.period}</span>
-        </div>
-        <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 11px; color: #334155;">
-          ${exp.highlights.map(h => `<li style="margin-bottom: 2px;">${h}</li>`).join('')}
-        </ul>
-      </div>
-    `).join('')}
-  </div>
-
-  <!-- Open-Source & Key Projects -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; border-bottom: 2px solid #059669; padding-bottom: 2px; margin: 0 0 8px 0;">// OPEN SOURCE &amp; ARCHITECTURE PROJECTS</h2>
-    ${projects.map(proj => `
-      <div style="margin-bottom: 8px;">
-        <h3 style="font-size: 11.5px; font-weight: 700; color: #0f172a; margin: 0;">${proj.name}</h3>
-        <p style="font-size: 10px; color: #64748b; margin: 1px 0 3px 0;">Stack: ${proj.techStack.join(' • ')}</p>
-        <ul style="margin: 0; padding-left: 18px; font-size: 11px; color: #334155;">
-          ${proj.highlights.map(h => `<li>${h}</li>`).join('')}
-        </ul>
-      </div>
-    `).join('')}
-  </div>
-
-  <!-- Education & Certifications -->
-  <div>
-    <h2 style="font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; border-bottom: 2px solid #059669; padding-bottom: 2px; margin: 0 0 6px 0;">// EDUCATION &amp; CREDENTIALS</h2>
-    ${education.map(edu => `
-      <p style="font-size: 11px; color: #334155; margin: 0 0 2px 0;"><strong>${edu.degree}</strong> — ${edu.school} (${edu.year}) [GPA: ${edu.gpa}]</p>
-    `).join('')}
-    <p style="font-size: 10.5px; color: #64748b; margin: 4px 0 0 0;">
-      Certifications: ${certifications.map(c => `${c.name}`).join(' • ')}
-    </p>
-  </div>
-</div>
-`;
+  // ── Section 3: Technical Developer Template ─────────────────────────────────
+  private static renderTechnicalTemplate(d: ResumeData, design: ResumeDesignConfig, templateId: string): string {
+    return this.renderSingleColumnTemplate(d, {
+      ...design,
+      headingStyle: 'banner',
+      bulletStyle: 'dot',
+    }, templateId);
   }
 
-  // ── Template 4: Graduate / Fresher / Student ────────────────────────────────
-  private static renderGraduateTemplate(d: ResumeData): string {
-    const { personalInfo: p, summary, skillCategories, education, projects, achievements, certifications } = d;
-
-    return `
-<div style="font-family: 'Inter', sans-serif; line-height: 1.5; color: #1e293b;">
-  <!-- Header -->
-  <div style="text-align: center; margin-bottom: 16px;">
-    <h1 style="font-size: 24px; font-weight: 800; color: #4338ca; margin: 0 0 4px 0;">${p.name}</h1>
-    <p style="font-size: 12px; color: #64748b; margin: 0;">
-      ${p.location} • ${p.email} • ${p.phone} • <a href="https://${p.github}" style="color: #4338ca; text-decoration: none;">GitHub</a> • <a href="https://${p.linkedin}" style="color: #4338ca; text-decoration: none;">LinkedIn</a>
-    </p>
-  </div>
-
-  <!-- Academic Objective -->
-  <div style="margin-bottom: 14px; background: #eef2ff; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #4338ca;">
-    <h2 style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #4338ca; margin: 0 0 3px 0;">Career Objective</h2>
-    <p style="font-size: 11px; color: #312e81; margin: 0; line-height: 1.5;">${summary}</p>
-  </div>
-
-  <!-- Education (Prominent for Graduates) -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #1e1b4b; border-bottom: 1.5px solid #c7d2fe; padding-bottom: 2px; margin: 0 0 6px 0;">Academic Background</h2>
-    ${education.map(edu => `
-      <div>
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-          <h3 style="font-size: 12px; font-weight: 700; color: #0f172a; margin: 0;">${edu.degree}</h3>
-          <span style="font-size: 10.5px; color: #4338ca; font-weight: 600;">${edu.year}</span>
-        </div>
-        <p style="font-size: 11px; color: #475569; margin: 1px 0 2px 0;">${edu.school}, ${edu.location} • <strong>GPA: ${edu.gpa}</strong></p>
-        <p style="font-size: 10.5px; color: #64748b; margin: 0;">${edu.details}</p>
-      </div>
-    `).join('')}
-  </div>
-
-  <!-- Technical Skills -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #1e1b4b; border-bottom: 1.5px solid #c7d2fe; padding-bottom: 2px; margin: 0 0 6px 0;">Technical Competencies</h2>
-    <div style="font-size: 11px; color: #334155;">
-      ${skillCategories.map(sc => `<p style="margin: 0 0 2px 0;"><strong>${sc.category}:</strong> ${sc.skills.join(', ')}</p>`).join('')}
-    </div>
-  </div>
-
-  <!-- Academic & Capstone Projects -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #1e1b4b; border-bottom: 1.5px solid #c7d2fe; padding-bottom: 2px; margin: 0 0 8px 0;">Academic &amp; Capstone Projects</h2>
-    ${projects.map(proj => `
-      <div style="margin-bottom: 10px;">
-        <h3 style="font-size: 11.5px; font-weight: 700; color: #0f172a; margin: 0;">${proj.name} <span style="font-size: 10px; color: #64748b; font-weight: normal;">[${proj.techStack.join(', ')}]</span></h3>
-        <ul style="margin: 3px 0 0 0; padding-left: 18px; font-size: 11px; color: #334155;">
-          ${proj.highlights.map(h => `<li style="margin-bottom: 2px;">${h}</li>`).join('')}
-        </ul>
-      </div>
-    `).join('')}
-  </div>
-
-  <!-- Achievements & Extracurriculars -->
-  <div>
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #1e1b4b; border-bottom: 1.5px solid #c7d2fe; padding-bottom: 2px; margin: 0 0 4px 0;">Achievements &amp; Activities</h2>
-    <ul style="margin: 0; padding-left: 18px; font-size: 11px; color: #334155;">
-      ${achievements.map(a => `<li style="margin-bottom: 2px;">${a}</li>`).join('')}
-    </ul>
-  </div>
-</div>
-`;
+  // ── Section 4: Academic Template ────────────────────────────────────────────
+  private static renderAcademicTemplate(d: ResumeData, design: ResumeDesignConfig, templateId: string): string {
+    return this.renderSingleColumnTemplate(d, {
+      ...design,
+      fontFamily: design.fontFamily || 'Merriweather',
+      headingStyle: 'bold-divider',
+    }, templateId);
   }
 
-  // ── Template 5: Executive & Corporate Leadership ────────────────────────────
-  private static renderExecutiveTemplate(d: ResumeData): string {
-    const { personalInfo: p, summary, skillCategories, experience, education, achievements } = d;
+  // ── Section 5: Executive Template ───────────────────────────────────────────
+  private static renderExecutiveTemplate(d: ResumeData, design: ResumeDesignConfig, templateId: string): string {
+    return this.renderSingleColumnTemplate(d, {
+      ...design,
+      headerLayout: 'executive',
+      headingStyle: 'left-border',
+    }, templateId);
+  }
 
-    return `
-<div style="font-family: 'Georgia', serif; line-height: 1.6; color: #1c1917;">
-  <!-- Header -->
-  <div style="text-align: center; border-bottom: 3px double #78350f; padding-bottom: 14px; margin-bottom: 18px;">
-    <h1 style="font-size: 26px; font-weight: 700; color: #451a03; margin: 0 0 4px 0; letter-spacing: 0.04em; text-transform: uppercase;">${p.name}</h1>
-    <p style="font-size: 13px; font-weight: 600; color: #92400e; font-style: italic; margin: 0 0 6px 0;">${p.title}</p>
-    <p style="font-family: 'Inter', sans-serif; font-size: 10.5px; color: #78716c; margin: 0;">
-      ${p.location} • ${p.email} • ${p.phone} • ${p.linkedin}
-    </p>
-  </div>
+  // ── Section 6: Compact Single-Page Template ─────────────────────────────────
+  private static renderCompactTemplate(d: ResumeData, design: ResumeDesignConfig, templateId: string): string {
+    return this.renderSingleColumnTemplate(d, {
+      ...design,
+      headerLayout: 'compact',
+      spacing: {
+        pageMargin: 20,
+        sectionGap: 10,
+        entryGap: 8,
+        paragraphGap: 2,
+        lineHeight: 1.35,
+      },
+      nameSize: 22,
+      bodySize: 10,
+      metadataSize: 9,
+    }, templateId);
+  }
 
-  <!-- Executive Leadership Profile -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #451a03; border-bottom: 1px solid #d6d3d1; padding-bottom: 2px; margin: 0 0 6px 0;">Executive Profile</h2>
-    <p style="font-size: 11.5px; color: #292524; margin: 0; text-align: justify;">${summary}</p>
-  </div>
-
-  <!-- Core Competencies Grid -->
-  <div style="margin-bottom: 16px; font-family: 'Inter', sans-serif;">
-    <h2 style="font-family: 'Georgia', serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #451a03; border-bottom: 1px solid #d6d3d1; padding-bottom: 2px; margin: 0 0 6px 0;">Core Competencies</h2>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px; color: #44403c;">
-      <div>• Strategic P&amp;L &amp; Growth Execution</div>
-      <div>• Engineering Leadership &amp; Mentorship</div>
-      <div>• Enterprise Cloud Architecture</div>
-      <div>• Cross-Functional Agile Management</div>
-    </div>
-  </div>
-
-  <!-- Executive Experience -->
-  <div style="margin-bottom: 16px;">
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #451a03; border-bottom: 1px solid #d6d3d1; padding-bottom: 2px; margin: 0 0 8px 0;">Executive &amp; Professional Experience</h2>
-    ${experience.map(exp => `
-      <div style="margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-          <h3 style="font-size: 12px; font-weight: 700; color: #1c1917; margin: 0;">${exp.title}</h3>
-          <span style="font-family: 'Inter', sans-serif; font-size: 10px; color: #78716c;">${exp.period}</span>
-        </div>
-        <p style="font-size: 11px; font-style: italic; color: #92400e; margin: 1px 0 4px 0;">${exp.company} — ${exp.location}</p>
-        <ul style="margin: 0; padding-left: 18px; font-size: 11px; color: #292524;">
-          ${exp.highlights.map(h => `<li style="margin-bottom: 2px;">${h}</li>`).join('')}
-        </ul>
-      </div>
-    `).join('')}
-  </div>
-
-  <!-- Education & Credentials -->
-  <div>
-    <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #451a03; border-bottom: 1px solid #d6d3d1; padding-bottom: 2px; margin: 0 0 4px 0;">Education &amp; Board Appointments</h2>
-    ${education.map(edu => `
-      <p style="font-size: 11px; color: #292524; margin: 0 0 2px 0;"><strong>${edu.degree}</strong> — ${edu.school} (${edu.year})</p>
-    `).join('')}
-  </div>
-</div>
-`;
+  // ── Section 7: Creative Portfolio Template ──────────────────────────────────
+  private static renderCreativeTemplate(d: ResumeData, design: ResumeDesignConfig, templateId: string): string {
+    return this.renderSingleColumnTemplate(d, {
+      ...design,
+      headingStyle: 'banner',
+      headerLayout: 'centered',
+    }, templateId);
   }
 }

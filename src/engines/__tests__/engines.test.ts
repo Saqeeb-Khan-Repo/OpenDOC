@@ -25,16 +25,19 @@ describe('PageEngine', () => {
 });
 
 describe('ResumeEngine', () => {
-  it('should provide 5 distinct professional templates', () => {
+  it('should provide distinct professional templates', () => {
     const templates = ResumeEngine.getTemplates();
-    expect(templates.length).toBe(5);
-    expect(templates.map(t => t.id)).toEqual([
+    expect(templates.length).toBeGreaterThanOrEqual(5);
+    const originalIds = [
       'tmpl_modern_pro',
       'tmpl_two_column',
       'tmpl_software_eng',
       'tmpl_graduate_fresher',
       'tmpl_executive_corp',
-    ]);
+    ];
+    originalIds.forEach(id => {
+      expect(templates.some(t => t.id === id)).toBe(true);
+    });
   });
 
   it('should render all 5 resume templates with user data without throwing', () => {

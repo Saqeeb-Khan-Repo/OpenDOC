@@ -1,15 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ResumeEngine, ResumeData, ResumeExperience, ResumeEducation,
-  ResumeProject, RESUME_TEMPLATES_METADATA
+  ResumeEngine, ResumeData, ResumeDesignConfig, RESUME_TEMPLATES_METADATA,
+  ResumeCustomSection
 } from '@/engines/ResumeEngine';
 import { useDocumentsStore } from '@/store/documentsStore';
 import {
   FileText, ArrowLeft, Download, Plus, Trash2, Edit3, Check,
   Sparkles, Palette, Type, Printer, Eye, ChevronDown, ChevronUp,
   Briefcase, GraduationCap, Code2, Award, CheckCircle2, User,
-  Globe, Share2, Layers
+  Globe, Share2, Layers, Undo2, Redo2, Sliders, ZoomIn, ZoomOut,
+  Maximize2, RefreshCw, Layout, Smartphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,109 +21,131 @@ import {
 import { cn } from '@/utils/cn';
 import { SEOHead } from '@/components/seo/SEOHead';
 
-const FONT_OPTIONS = ['Inter', 'Merriweather', 'Roboto', 'JetBrains Mono', 'Georgia'];
-const ACCENT_COLORS = ['#2563eb', '#0f172a', '#059669', '#7c3aed', '#db2777', '#d97706', '#0891b2'];
+// Modular Resume Components
+import { ResumeHeaderEditor } from '@/components/resume/ResumeHeaderEditor';
+import { ResumeSectionListEditor } from '@/components/resume/ResumeSectionListEditor';
+import { ResumeDesignPanel } from '@/components/resume/ResumeDesignPanel';
+import { ResumeTemplateGalleryModal } from '@/components/resume/ResumeTemplateGalleryModal';
+import { ResumeCustomSectionModal } from '@/components/resume/ResumeCustomSectionModal';
+import { ResumeMobileToolbar } from '@/components/resume/ResumeMobileToolbar';
+
+const STORAGE_KEY = 'docpro_resume_draft_v2';
 
 export function ResumeBuilderPage() {
   const navigate = useNavigate();
   const { createDocument } = useDocumentsStore();
 
-  const [resumeData, setResumeData] = useState<ResumeData>(() => ResumeEngine.getDefaultResumeData());
+  // ── Load Initial Resume Data ───────────────────────────────────────────────
+  const [resumeData, setResumeData] = useState<ResumeData>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.personalInfo) {
+          return {
+            ...ResumeEngine.getDefaultResumeData(),
+            ...parsed,
+            design: {
+              ...ResumeEngine.getDefaultDesign(),
+              ...(parsed.design || {}),
+            },
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load saved resume from localStorage', e);
+    }
+    return ResumeEngine.getDefaultResumeData();
+  });
+
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('tmpl_modern_pro');
-  const [fontFamily, setFontFamily] = useState<string>('Inter');
-  const [accentColor, setAccentColor] = useState<string>('#2563eb');
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
-  const [expandedSection, setExpandedSection] = useState<string>('personal');
 
-  // ── Personal Info Handlers ──────────────────────────────────────────────────
-  const updatePersonalInfo = (field: keyof typeof resumeData.personalInfo, val: string) => {
-    setResumeData(prev => ({
-      ...prev,
-      personalInfo: { ...prev.personalInfo, [field]: val },
-    }));
+  // ── UI View State ──────────────────────────────────────────────────────────
+  const [leftTab, setLeftTab] = useState<'content' | 'sections'>('content');
+  const [mobileSheet, setMobileSheet] = useState<'none' | 'content' | 'design' | 'sections' | 'templates'>('none');
+  const [showTemplateModal, setShowTemplateModal] = useState<boolean>(false);
+  const [showCustomSectionModal, setShowCustomSectionModal] = useState<boolean>(false);
+  const [zoomScale, setZoomScale] = useState<number>(100);
+
+  // ── Undo / Redo History Stack ──────────────────────────────────────────────
+  const [history, setHistory] = useState<ResumeData[]>([resumeData]);
+  const [historyIndex, setHistoryIndex] = useState<number>(0);
+  const isHistoryUpdate = useRef(false);
+
+  // Push change to history stack with debounce
+  const updateResumeData = (nextData: ResumeData | ((prev: ResumeData) => ResumeData)) => {
+    setResumeData(prev => {
+      const updated = typeof nextData === 'function' ? nextData(prev) : nextData;
+      if (!isHistoryUpdate.current) {
+        setHistory(hPrev => {
+          const sliced = hPrev.slice(0, historyIndex + 1);
+          return [...sliced, updated].slice(-30); // Keep max 30 steps
+        });
+        setHistoryIndex(prevIdx => Math.min(prevIdx + 1, 29));
+      }
+      return updated;
+    });
   };
 
-  // ── Experience Handlers ────────────────────────────────────────────────────
-  const addExperience = () => {
-    const newExp: ResumeExperience = {
-      title: 'Job Title',
-      company: 'Company Name',
-      location: 'City, Country',
-      period: '2024 – Present',
-      highlights: ['Led key initiatives and improved team productivity by 25%.'],
-    };
-    setResumeData(prev => ({ ...prev, experience: [newExp, ...prev.experience] }));
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      isHistoryUpdate.current = true;
+      const targetState = history[historyIndex - 1];
+      setHistoryIndex(historyIndex - 1);
+      setResumeData(targetState);
+      setTimeout(() => {
+        isHistoryUpdate.current = false;
+      }, 50);
+    }
   };
 
-  const updateExperience = (index: number, patch: Partial<ResumeExperience>) => {
-    setResumeData(prev => ({
-      ...prev,
-      experience: prev.experience.map((exp, i) => i === index ? { ...exp, ...patch } : exp),
-    }));
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      isHistoryUpdate.current = true;
+      const targetState = history[historyIndex + 1];
+      setHistoryIndex(historyIndex + 1);
+      setResumeData(targetState);
+      setTimeout(() => {
+        isHistoryUpdate.current = false;
+      }, 50);
+    }
   };
 
-  const removeExperience = (index: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      experience: prev.experience.filter((_, i) => i !== index),
-    }));
-  };
-
-  // ── Education Handlers ─────────────────────────────────────────────────────
-  const addEducation = () => {
-    const newEdu: ResumeEducation = {
-      degree: 'B.S. in Computer Science',
-      school: 'University Name',
-      location: 'City, State',
-      year: '2020 – 2024',
-      details: 'Major in Software Engineering and Distributed Systems.',
-    };
-    setResumeData(prev => ({ ...prev, education: [newEdu, ...prev.education] }));
-  };
-
-  const updateEducation = (index: number, patch: Partial<ResumeEducation>) => {
-    setResumeData(prev => ({
-      ...prev,
-      education: prev.education.map((edu, i) => i === index ? { ...edu, ...patch } : edu),
-    }));
-  };
-
-  const removeEducation = (index: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      education: prev.education.filter((_, i) => i !== index),
-    }));
-  };
-
-  // ── Project Handlers ───────────────────────────────────────────────────────
-  const addProject = () => {
-    const newProj: ResumeProject = {
-      name: 'Project Title',
-      role: 'Lead Architect',
-      techStack: ['React', 'TypeScript', 'Node.js'],
-      highlights: ['Designed high performance real-time architecture.'],
-    };
-    setResumeData(prev => ({ ...prev, projects: [newProj, ...prev.projects] }));
-  };
-
-  const updateProject = (index: number, patch: Partial<ResumeProject>) => {
-    setResumeData(prev => ({
-      ...prev,
-      projects: prev.projects.map((proj, i) => i === index ? { ...proj, ...patch } : proj),
-    }));
-  };
-
-  const removeProject = (index: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      projects: prev.projects.filter((_, i) => i !== index),
-    }));
-  };
+  // ── LocalStorage Autosave ──────────────────────────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(resumeData));
+      } catch (e) {
+        console.warn('Failed to auto-save resume', e);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [resumeData]);
 
   // ── Rendered HTML Preview ──────────────────────────────────────────────────
   const resumeHtml = useMemo(() => {
-    return ResumeEngine.renderTemplate(resumeData, selectedTemplateId);
+    return ResumeEngine.renderTemplate(resumeData, selectedTemplateId, resumeData.design);
   }, [resumeData, selectedTemplateId]);
+
+  // ── Custom Section Creation ────────────────────────────────────────────────
+  const handleAddCustomSection = (newSection: ResumeCustomSection) => {
+    const customSections = [...(resumeData.customSections || []), newSection];
+    const newSectionConfig = {
+      id: `sec_${newSection.id}`,
+      type: 'custom' as const,
+      title: newSection.title,
+      visible: true,
+      customSectionId: newSection.id,
+    };
+    const sectionOrder = [...(resumeData.sectionOrder || []), newSectionConfig];
+
+    updateResumeData({
+      ...resumeData,
+      customSections,
+      sectionOrder,
+    });
+  };
 
   // ── Open in Full Document Editor ───────────────────────────────────────────
   const handleOpenInEditor = () => {
@@ -134,18 +157,22 @@ export function ResumeBuilderPage() {
     navigate(`/editor/${doc.id}`);
   };
 
+  // ── Print / PDF Export ─────────────────────────────────────────────────────
   const handlePrint = () => {
     window.print();
   };
+
+  const selectedTemplateMeta = RESUME_TEMPLATES_METADATA.find(t => t.id === selectedTemplateId) || RESUME_TEMPLATES_METADATA[0];
 
   return (
     <div className="h-screen h-[100dvh] min-h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
       <SEOHead
         title="Resume Studio | DocProEditor"
-        description="DocProEditor ATS Resume Studio"
+        description="DocProEditor ATS & Professional Resume Studio"
         canonicalPath="/resume"
         noindex={true}
       />
+
       {/* ── Top Header ──────────────────────────────────────────────────────── */}
       <header className="h-12 bg-background/95 backdrop-blur border-b border-border px-3 sm:px-4 flex items-center justify-between shrink-0 z-30 select-none">
         <div className="flex items-center gap-2">
@@ -164,48 +191,55 @@ export function ResumeBuilderPage() {
 
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-foreground">Resume Builder</span>
-            <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full hidden xs:inline">
-              ATS-Optimized
+            <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full hidden sm:inline">
+              ATS-Optimized &amp; Canva-Grade
             </span>
           </div>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Template Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 font-medium">
-                <Layers className="h-3.5 w-3.5 text-primary" />
-                <span className="hidden sm:inline">Template: </span>
-                <span>{RESUME_TEMPLATES_METADATA.find(t => t.id === selectedTemplateId)?.name.split(' ')[0] || 'Modern'}</span>
-                <ChevronDown className="h-3 w-3 opacity-60" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 text-xs">
-              <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase">Curated ATS Templates</DropdownMenuLabel>
-              {RESUME_TEMPLATES_METADATA.map(t => (
-                <DropdownMenuItem
-                  key={t.id}
-                  onClick={() => setSelectedTemplateId(t.id)}
-                  className="flex flex-col items-start gap-0.5 py-2 cursor-pointer"
-                >
-                  <div className="flex items-center justify-between w-full font-semibold">
-                    <span>{t.name}</span>
-                    {selectedTemplateId === t.id && <Check className="h-3.5 w-3.5 text-primary" />}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">{t.description}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Undo / Redo */}
+          <div className="hidden sm:flex items-center border border-border rounded-lg bg-background p-0.5">
+            <button
+              type="button"
+              disabled={historyIndex <= 0}
+              onClick={handleUndo}
+              className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer rounded"
+              title="Undo change (Ctrl+Z)"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              disabled={historyIndex >= history.length - 1}
+              onClick={handleRedo}
+              className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer rounded"
+              title="Redo change (Ctrl+Y)"
+            >
+              <Redo2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Template Selector Modal Trigger */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTemplateModal(true)}
+            className="h-8 text-xs gap-1.5 font-medium cursor-pointer"
+          >
+            <Layout className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden sm:inline">Template: </span>
+            <span className="font-semibold">{selectedTemplateMeta.name.split(' ')[0]}</span>
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </Button>
 
           {/* Edit in DocProEditor */}
           <Button
             variant="outline"
             size="sm"
             onClick={handleOpenInEditor}
-            className="h-8 text-xs gap-1.5 hidden md:flex font-medium"
+            className="h-8 text-xs gap-1.5 hidden lg:flex font-medium cursor-pointer"
           >
             <FileText className="h-3.5 w-3.5 text-blue-500" /> Edit in DocProEditor
           </Button>
@@ -214,295 +248,266 @@ export function ResumeBuilderPage() {
           <Button
             size="sm"
             onClick={handlePrint}
-            className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold shadow-2xs"
+            className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold shadow-2xs cursor-pointer"
           >
-            <Printer className="h-3.5 w-3.5" /> Download PDF
+            <Printer className="h-3.5 w-3.5" />
+            <span>Download PDF</span>
           </Button>
         </div>
       </header>
 
-      {/* ── Mobile Tab Switcher (Form vs. Preview) ───────────────────────────── */}
-      <div className="flex md:hidden border-b border-border bg-muted/40 p-1 shrink-0">
-        <button
-          type="button"
-          onClick={() => setActiveTab('editor')}
-          className={cn(
-            'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all text-center',
-            activeTab === 'editor' ? 'bg-background text-primary shadow-2xs' : 'text-muted-foreground'
-          )}
-        >
-          Resume Content
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('preview')}
-          className={cn(
-            'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all text-center',
-            activeTab === 'preview' ? 'bg-background text-primary shadow-2xs' : 'text-muted-foreground'
-          )}
-        >
-          Live A4 Preview
-        </button>
-      </div>
+      {/* ── 3-Part Desktop Workspace Body / Responsive Split ─────────────────── */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* ── LEFT PANEL: Content & Sections Editor (Desktop) ───────────────── */}
+        <div className="hidden md:flex w-[380px] lg:w-[420px] xl:w-[460px] border-r border-border flex-col bg-card/30 shrink-0 select-none">
+          {/* Top Sub-tabs (Content vs Sections) */}
+          <div className="p-2 border-b border-border/80 bg-muted/20 flex gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setLeftTab('content')}
+              className={cn(
+                'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer',
+                leftTab === 'content'
+                  ? 'bg-background text-primary shadow-2xs font-bold'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <User className="h-3.5 w-3.5" /> Header &amp; Info
+            </button>
+            <button
+              type="button"
+              onClick={() => setLeftTab('sections')}
+              className={cn(
+                'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer',
+                leftTab === 'sections'
+                  ? 'bg-background text-primary shadow-2xs font-bold'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Layers className="h-3.5 w-3.5" /> Resume Sections
+            </button>
+          </div>
 
-      {/* ── Split Body: Left Structured Form + Right Live A4 Preview ─────────── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* ── LEFT: STRUCTURED FORM EDITOR ──────────────────────────────────── */}
-        <div
-          className={cn(
-            'w-full md:w-[480px] lg:w-[540px] border-r border-border overflow-y-auto p-4 space-y-4 shrink-0 bg-card/40 touch-pan-y overscroll-y-contain pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-4',
-            activeTab === 'preview' ? 'hidden md:block' : 'block'
-          )}
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
-          {/* Section 1: Personal Information */}
-          <div className="border border-border rounded-xl bg-background p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5 text-primary" /> Personal Information
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 touch-pan-y overscroll-y-contain">
+            {leftTab === 'content' ? (
+              <ResumeHeaderEditor
+                personalInfo={resumeData.personalInfo}
+                onChange={personalInfo => updateResumeData({ ...resumeData, personalInfo })}
+              />
+            ) : (
+              <ResumeSectionListEditor
+                resumeData={resumeData}
+                onChange={updateResumeData}
+                onOpenAddCustomSection={() => setShowCustomSectionModal(true)}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* ── CENTER PANEL: Live A4/Letter Multi-Page Canvas Stage ─────────── */}
+        <div className="flex-1 bg-muted/30 dark:bg-background/60 overflow-y-auto overflow-x-auto p-4 sm:p-8 flex flex-col items-center justify-start touch-pan-y overscroll-y-contain pb-20 md:pb-8">
+          {/* Stage Controls: Zoom & Paper Info */}
+          <div className="w-full max-w-[820px] flex items-center justify-between mb-3 text-xs text-muted-foreground select-none px-1">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-foreground flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-primary" /> Live Document Preview
+              </span>
+              <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-mono">
+                {resumeData.design?.paperSize || 'A4'} Portrait
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <label className="text-[10px] text-muted-foreground font-semibold">Full Name</label>
-                <Input
-                  value={resumeData.personalInfo.name}
-                  onChange={e => updatePersonalInfo('name', e.target.value)}
-                  className="h-8 text-xs mt-0.5"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground font-semibold">Professional Title</label>
-                <Input
-                  value={resumeData.personalInfo.title}
-                  onChange={e => updatePersonalInfo('title', e.target.value)}
-                  className="h-8 text-xs mt-0.5"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground font-semibold">Email</label>
-                <Input
-                  value={resumeData.personalInfo.email}
-                  onChange={e => updatePersonalInfo('email', e.target.value)}
-                  className="h-8 text-xs mt-0.5"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground font-semibold">Phone</label>
-                <Input
-                  value={resumeData.personalInfo.phone}
-                  onChange={e => updatePersonalInfo('phone', e.target.value)}
-                  className="h-8 text-xs mt-0.5"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground font-semibold">Location</label>
-                <Input
-                  value={resumeData.personalInfo.location}
-                  onChange={e => updatePersonalInfo('location', e.target.value)}
-                  className="h-8 text-xs mt-0.5"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground font-semibold">LinkedIn</label>
-                <Input
-                  value={resumeData.personalInfo.linkedin || ''}
-                  onChange={e => updatePersonalInfo('linkedin', e.target.value)}
-                  className="h-8 text-xs mt-0.5"
-                />
-              </div>
+
+            <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setZoomScale(z => Math.max(60, z - 10))}
+                className="p-1 hover:text-foreground cursor-pointer rounded"
+                title="Zoom out"
+              >
+                <ZoomOut className="h-3 w-3" />
+              </button>
+              <span className="text-[10px] font-mono font-medium px-1 w-10 text-center">
+                {zoomScale}%
+              </span>
+              <button
+                type="button"
+                onClick={() => setZoomScale(z => Math.min(150, z + 10))}
+                className="p-1 hover:text-foreground cursor-pointer rounded"
+                title="Zoom in"
+              >
+                <ZoomIn className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoomScale(100)}
+                className="text-[10px] font-medium px-1.5 py-0.5 hover:text-primary cursor-pointer border-l border-border/80"
+                title="Reset zoom"
+              >
+                100%
+              </button>
             </div>
           </div>
 
-          {/* Section 2: Summary */}
-          <div className="border border-border rounded-xl bg-background p-4 space-y-2">
-            <span className="font-bold text-xs flex items-center gap-1.5">
-              <FileText className="h-3.5 w-3.5 text-primary" /> Professional Summary
-            </span>
-            <textarea
-              value={resumeData.summary}
-              onChange={e => setResumeData(prev => ({ ...prev, summary: e.target.value }))}
-              rows={3}
-              className="w-full text-xs p-2.5 rounded-lg border border-border bg-background outline-none resize-none focus:border-primary"
+          {/* ── Scaled Resume Paper Container ─────────────────────────────── */}
+          <div
+            style={{
+              transform: `scale(${zoomScale / 100})`,
+              transformOrigin: 'top center',
+              transition: 'transform 0.15s ease-out',
+            }}
+            className="w-full flex justify-center"
+          >
+            <div
+              id="resume-print-area"
+              className={cn(
+                'w-full max-w-[794px] min-h-[1123px] bg-white text-[#0f172a] shadow-2xl rounded-sm transition-all relative border border-border/30',
+                resumeData.design?.paperSize === 'Letter' ? 'max-w-[816px] min-h-[1056px]' : 'max-w-[794px] min-h-[1123px]'
+              )}
+              dangerouslySetInnerHTML={{ __html: resumeHtml }}
             />
           </div>
-
-          {/* Section 3: Experience */}
-          <div className="border border-border rounded-xl bg-background p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs flex items-center gap-1.5">
-                <Briefcase className="h-3.5 w-3.5 text-primary" /> Work Experience ({resumeData.experience.length})
-              </span>
-              <Button size="sm" variant="outline" onClick={addExperience} className="h-7 text-[11px] gap-1">
-                <Plus className="h-3 w-3" /> Add Job
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {resumeData.experience.map((exp, idx) => (
-                <div key={idx} className="p-3 border border-border/80 rounded-lg space-y-2 bg-muted/20">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-[11px]">Role #{idx + 1}</span>
-                    <button type="button" onClick={() => removeExperience(idx)} className="text-destructive p-1">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <Input
-                      value={exp.title}
-                      placeholder="Title"
-                      onChange={e => updateExperience(idx, { title: e.target.value })}
-                      className="h-7 text-xs"
-                    />
-                    <Input
-                      value={exp.company}
-                      placeholder="Company"
-                      onChange={e => updateExperience(idx, { company: e.target.value })}
-                      className="h-7 text-xs"
-                    />
-                    <Input
-                      value={exp.period}
-                      placeholder="Period (e.g. 2022-Present)"
-                      onChange={e => updateExperience(idx, { period: e.target.value })}
-                      className="h-7 text-xs"
-                    />
-                    <Input
-                      value={exp.location}
-                      placeholder="Location"
-                      onChange={e => updateExperience(idx, { location: e.target.value })}
-                      className="h-7 text-xs"
-                    />
-                  </div>
-                  <textarea
-                    value={exp.highlights.join('\n')}
-                    placeholder="Key achievements (one per line)"
-                    onChange={e => updateExperience(idx, { highlights: e.target.value.split('\n') })}
-                    rows={2}
-                    className="w-full text-xs p-2 rounded border border-border bg-background outline-none resize-none"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Section 4: Education */}
-          <div className="border border-border rounded-xl bg-background p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs flex items-center gap-1.5">
-                <GraduationCap className="h-3.5 w-3.5 text-primary" /> Education ({resumeData.education.length})
-              </span>
-              <Button size="sm" variant="outline" onClick={addEducation} className="h-7 text-[11px] gap-1">
-                <Plus className="h-3 w-3" /> Add Degree
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {resumeData.education.map((edu, idx) => (
-                <div key={idx} className="p-3 border border-border/80 rounded-lg space-y-2 bg-muted/20">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-[11px]">Degree #{idx + 1}</span>
-                    <button type="button" onClick={() => removeEducation(idx)} className="text-destructive p-1">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <Input
-                      value={edu.degree}
-                      placeholder="Degree"
-                      onChange={e => updateEducation(idx, { degree: e.target.value })}
-                      className="h-7 text-xs"
-                    />
-                    <Input
-                      value={edu.school}
-                      placeholder="School"
-                      onChange={e => updateEducation(idx, { school: e.target.value })}
-                      className="h-7 text-xs"
-                    />
-                    <Input
-                      value={edu.year}
-                      placeholder="Year"
-                      onChange={e => updateEducation(idx, { year: e.target.value })}
-                      className="h-7 text-xs"
-                    />
-                    <Input
-                      value={edu.location}
-                      placeholder="Location"
-                      onChange={e => updateEducation(idx, { location: e.target.value })}
-                      className="h-7 text-xs"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Section 5: Technical Projects */}
-          <div className="border border-border rounded-xl bg-background p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs flex items-center gap-1.5">
-                <Code2 className="h-3.5 w-3.5 text-primary" /> Projects ({resumeData.projects.length})
-              </span>
-              <Button size="sm" variant="outline" onClick={addProject} className="h-7 text-[11px] gap-1">
-                <Plus className="h-3 w-3" /> Add Project
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {resumeData.projects.map((proj, idx) => (
-                <div key={idx} className="p-3 border border-border/80 rounded-lg space-y-2 bg-muted/20">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-[11px]">Project #{idx + 1}</span>
-                    <button type="button" onClick={() => removeProject(idx)} className="text-destructive p-1">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <Input
-                      value={proj.name}
-                      placeholder="Project Name"
-                      onChange={e => updateProject(idx, { name: e.target.value })}
-                      className="h-7 text-xs"
-                    />
-                    <Input
-                      value={proj.role}
-                      placeholder="Role"
-                      onChange={e => updateProject(idx, { role: e.target.value })}
-                      className="h-7 text-xs"
-                    />
-                  </div>
-                  <Input
-                    value={proj.techStack.join(', ')}
-                    placeholder="Tech stack (comma separated)"
-                    onChange={e => updateProject(idx, { techStack: e.target.value.split(',').map(s => s.trim()) })}
-                    className="h-7 text-xs"
-                  />
-                  <textarea
-                    value={proj.highlights.join('\n')}
-                    placeholder="Bullet points (one per line)"
-                    onChange={e => updateProject(idx, { highlights: e.target.value.split('\n') })}
-                    rows={2}
-                    className="w-full text-xs p-2 rounded border border-border bg-background outline-none resize-none"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
-        {/* ── RIGHT: LIVE INSTANT A4 RESUME PREVIEW ─────────────────────────── */}
-        <div
-          className={cn(
-            'flex-1 bg-[#0f172a]/5 dark:bg-[#020617]/50 overflow-y-auto p-4 sm:p-8 flex justify-center items-start touch-pan-y overscroll-y-contain pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-8',
-            activeTab === 'editor' ? 'hidden md:flex' : 'flex'
-          )}
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
-          <div
-            className="w-full max-w-[794px] min-h-[1123px] bg-white text-[#0f172a] shadow-xl rounded-sm p-8 sm:p-12 transition-all"
-            style={{
-              fontFamily: fontFamily === 'Merriweather' ? 'Merriweather, Georgia, serif' : 'Inter, system-ui, sans-serif',
-            }}
-            dangerouslySetInnerHTML={{ __html: resumeHtml }}
-          />
+        {/* ── RIGHT PANEL: Design, Typography, Colors & Spacing Inspector ───── */}
+        <div className="hidden lg:flex w-[320px] xl:w-[360px] border-l border-border flex-col bg-card/40 shrink-0 select-none">
+          <div className="p-3 border-b border-border/80 bg-muted/20 flex items-center justify-between shrink-0">
+            <span className="font-bold text-xs flex items-center gap-1.5 text-foreground">
+              <Palette className="h-3.5 w-3.5 text-primary" /> Design &amp; Styling
+            </span>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+              Global Tokens
+            </span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 touch-pan-y overscroll-y-contain">
+            <ResumeDesignPanel
+              design={resumeData.design || ResumeEngine.getDefaultDesign()}
+              onChange={design => updateResumeData({ ...resumeData, design })}
+            />
+          </div>
         </div>
       </div>
+
+      {/* ── MOBILE BOTTOM TOOLBAR (md:hidden) ───────────────────────────────── */}
+      <ResumeMobileToolbar
+        activeSheet={mobileSheet}
+        onSelectSheet={setMobileSheet}
+        onExportPdf={handlePrint}
+      />
+
+      {/* ── MOBILE BOTTOM SHEETS (Slide-up Overlays) ────────────────────────── */}
+      {mobileSheet !== 'none' && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end md:hidden animate-in fade-in duration-200">
+          <div
+            onClick={() => setMobileSheet('none')}
+            className="flex-1"
+          />
+          <div className="bg-background border-t border-border rounded-t-2xl max-h-[80vh] flex flex-col p-4 shadow-2xl animate-in slide-in-from-bottom duration-250">
+            <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
+              <div className="flex items-center gap-2 font-bold text-xs capitalize text-foreground">
+                {mobileSheet === 'content' && <User className="h-4 w-4 text-primary" />}
+                {mobileSheet === 'sections' && <Layers className="h-4 w-4 text-primary" />}
+                {mobileSheet === 'design' && <Palette className="h-4 w-4 text-primary" />}
+                {mobileSheet === 'templates' && <Layout className="h-4 w-4 text-primary" />}
+                <span>
+                  {mobileSheet === 'content' && 'Personal Information & Header'}
+                  {mobileSheet === 'sections' && 'Resume Sections & Items'}
+                  {mobileSheet === 'design' && 'Typography, Colors & Spacing'}
+                  {mobileSheet === 'templates' && 'Switch Template Layout'}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileSheet('none')}
+                className="h-7 text-xs font-semibold"
+              >
+                Done
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-1 pb-6 space-y-4">
+              {mobileSheet === 'content' && (
+                <ResumeHeaderEditor
+                  personalInfo={resumeData.personalInfo}
+                  onChange={personalInfo => updateResumeData({ ...resumeData, personalInfo })}
+                />
+              )}
+
+              {mobileSheet === 'sections' && (
+                <ResumeSectionListEditor
+                  resumeData={resumeData}
+                  onChange={updateResumeData}
+                  onOpenAddCustomSection={() => {
+                    setMobileSheet('none');
+                    setShowCustomSectionModal(true);
+                  }}
+                />
+              )}
+
+              {mobileSheet === 'design' && (
+                <ResumeDesignPanel
+                  design={resumeData.design || ResumeEngine.getDefaultDesign()}
+                  onChange={design => updateResumeData({ ...resumeData, design })}
+                />
+              )}
+
+              {mobileSheet === 'templates' && (
+                <div className="space-y-2">
+                  <span className="text-[11px] font-semibold text-muted-foreground block mb-2">
+                    Select a Layout (Content Preserved)
+                  </span>
+                  <div className="grid grid-cols-1 gap-2">
+                    {RESUME_TEMPLATES_METADATA.map(t => (
+                      <div
+                        key={t.id}
+                        onClick={() => {
+                          setSelectedTemplateId(t.id);
+                          setMobileSheet('none');
+                        }}
+                        className={cn(
+                          'p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all',
+                          selectedTemplateId === t.id
+                            ? 'border-primary bg-primary/10 font-bold'
+                            : 'border-border bg-card'
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className="h-3.5 w-3.5 rounded-full shrink-0"
+                            style={{ backgroundColor: t.thumbnailColor }}
+                          />
+                          <div>
+                            <h4 className="text-xs font-semibold">{t.name}</h4>
+                            <span className="text-[10px] text-muted-foreground">{t.category} • {t.layout}</span>
+                          </div>
+                        </div>
+                        {selectedTemplateId === t.id && <Check className="h-4 w-4 text-primary" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modals ─────────────────────────────────────────────────────────── */}
+      <ResumeTemplateGalleryModal
+        open={showTemplateModal}
+        onOpenChange={setShowTemplateModal}
+        selectedTemplateId={selectedTemplateId}
+        onSelectTemplate={setSelectedTemplateId}
+        resumeData={resumeData}
+      />
+
+      <ResumeCustomSectionModal
+        open={showCustomSectionModal}
+        onOpenChange={setShowCustomSectionModal}
+        onAddSection={handleAddCustomSection}
+      />
     </div>
   );
 }

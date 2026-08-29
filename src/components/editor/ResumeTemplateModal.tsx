@@ -36,7 +36,7 @@ export function ResumeTemplateModal({ open, onOpenChange, onApplyTemplate }: Res
             <div>
               <DialogTitle className="text-base font-semibold">Resume Template Library &amp; Switcher</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Switch seamlessly between 5 ATS-optimized resume layouts without losing any content or section details.
+                Switch seamlessly between 20+ ATS-optimized and Canva-grade resume layouts without losing any content.
               </DialogDescription>
             </div>
           </div>
