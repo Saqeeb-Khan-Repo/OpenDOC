@@ -1,3 +1,5 @@
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { ResumeData, ResumeEngine } from './ResumeEngine';
 
 export interface ResumeExportOptions {
@@ -10,8 +12,8 @@ export interface ResumeExportOptions {
 
 export class ResumeExportEngine {
   /**
-   * Generates a fully self-contained, isolated HTML document containing ONLY the A4/Letter resume.
-   * Completely decoupled from the editor UI, toolbars, sidebars, zoom containers, or backgrounds.
+   * Generates an isolated HTML document string containing ONLY the resume.
+   * Useful for text/markup inspection, test validation, and headless renderers.
    */
   static getIsolatedPrintHtml(options: ResumeExportOptions): string {
     const paperSize = options.paperSize || 'A4';
@@ -22,7 +24,6 @@ export class ResumeExportEngine {
 
     let contentHtml = options.html;
     if (options.clickableLinks === false) {
-      // Strip anchor tags to plain text if user opted out
       contentHtml = contentHtml.replace(/<a\b[^>]*>(.*?)<\/a>/gi, '$1');
     }
 
@@ -77,7 +78,6 @@ export class ResumeExportEngine {
       text-decoration: underline;
       text-underline-offset: 2px;
     }
-    /* Page Break Rules for Clean Multi-page Resumes */
     .page-break-avoid,
     [style*="page-break-inside: avoid"],
     [style*="break-inside: avoid"] {
@@ -90,19 +90,6 @@ export class ResumeExportEngine {
       page-break-after: avoid !important;
       break-after: avoid !important;
     }
-    @media print {
-      html, body {
-        background: #ffffff !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      .resume-export-wrapper {
-        box-shadow: none !important;
-        margin: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-      }
-    }
   </style>
 </head>
 <body>
@@ -114,79 +101,123 @@ export class ResumeExportEngine {
   }
 
   /**
-   * Executes pristine isolated PDF download/print.
-   * Spawns a sandboxed hidden iframe with ONLY the resume content, guaranteeing 0% editor UI leakage.
-   * Automatically waits for fonts and resources before triggering print.
+   * DIRECT PDF GENERATION & DOWNLOAD.
+   * Completely avoids window.print() and the browser print dialog.
+   * Generates a true A4 / Letter PDF containing ONLY the resume.
    */
-  static exportToPdf(options: ResumeExportOptions): Promise<boolean> {
-    return new Promise((resolve) => {
-      try {
-        const printHtml = this.getIsolatedPrintHtml(options);
+  static async exportToPdf(options: ResumeExportOptions): Promise<boolean> {
+    const paperSize = options.paperSize || 'A4';
+    const isLetter = paperSize === 'Letter';
+    const rawTitle = (options.title || 'Resume').replace(/\.pdf$/i, '');
+    const cleanFileName = `${rawTitle.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_') || 'Resume'}.pdf`;
 
-        // Remove any stale print iframes
-        const existing = document.getElementById('docpro-resume-export-frame');
-        if (existing && existing.parentNode) {
-          existing.parentNode.removeChild(existing);
-        }
+    // 1. Create a dedicated off-screen isolated container for the resume ONLY
+    const exportContainer = document.createElement('div');
+    exportContainer.id = 'resume-pdf-export';
+    exportContainer.style.position = 'fixed';
+    exportContainer.style.left = '-99999px';
+    exportContainer.style.top = '0';
+    exportContainer.style.width = isLetter ? '816px' : '794px';
+    exportContainer.style.minHeight = isLetter ? '1056px' : '1123px';
+    exportContainer.style.background = '#ffffff';
+    exportContainer.style.color = '#0f172a';
+    exportContainer.style.zIndex = '-99999';
+    exportContainer.style.boxSizing = 'border-box';
+    exportContainer.style.overflow = 'visible';
 
-        const iframe = document.createElement('iframe');
-        iframe.id = 'docpro-resume-export-frame';
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '210mm';
-        iframe.style.height = '297mm';
-        iframe.style.border = '0';
-        iframe.style.opacity = '0';
-        iframe.style.pointerEvents = 'none';
-        iframe.style.zIndex = '-9999';
+    let contentHtml = options.html;
+    if (options.clickableLinks === false) {
+      contentHtml = contentHtml.replace(/<a\b[^>]*>(.*?)<\/a>/gi, '$1');
+    }
 
-        document.body.appendChild(iframe);
+    exportContainer.innerHTML = `
+      <div class="resume-export-wrapper" style="width: 100%; max-width: ${isLetter ? '816px' : '794px'}; margin: 0 auto; background: #ffffff; box-sizing: border-box;">
+        ${contentHtml}
+      </div>
+    `;
 
-        const frameDoc = iframe.contentWindow?.document;
-        if (!frameDoc) {
-          console.error('Failed to access print iframe document');
-          resolve(false);
-          return;
-        }
+    document.body.appendChild(exportContainer);
 
-        frameDoc.open();
-        frameDoc.write(printHtml);
-        frameDoc.close();
-
-        const triggerPrint = () => {
-          try {
-            iframe.contentWindow?.focus();
-            iframe.contentWindow?.print();
-            resolve(true);
-          } catch (e) {
-            console.error('Print execution failed inside isolated iframe', e);
-            resolve(false);
-          } finally {
-            // Clean up iframe after print dialog completes
-            setTimeout(() => {
-              if (iframe.parentNode) {
-                iframe.parentNode.removeChild(iframe);
-              }
-            }, 3000);
-          }
-        };
-
-        // Wait for fonts to be ready inside iframe or fallback after 350ms
-        if (frameDoc.fonts && frameDoc.fonts.ready) {
-          frameDoc.fonts.ready.then(() => {
-            setTimeout(triggerPrint, 150);
-          }).catch(() => {
-            setTimeout(triggerPrint, 350);
-          });
-        } else {
-          setTimeout(triggerPrint, 350);
-        }
-      } catch (err) {
-        console.error('Error during isolated resume export', err);
-        resolve(false);
+    try {
+      // 2. Wait for fonts and images to load completely
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
       }
-    });
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // 3. Render container to high-resolution canvas (Retina/Print quality)
+      const scale = options.quality === 'high' ? 2.5 : 2.0;
+      const canvas = await (html2canvas as any)(exportContainer, {
+        scale,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: isLetter ? 816 : 794,
+      });
+
+      // 4. Initialize jsPDF in A4/Letter portrait mode
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: isLetter ? 'letter' : 'a4',
+      });
+
+      const pdfPageWidth = isLetter ? 215.9 : 210;
+      const pdfPageHeight = isLetter ? 279.4 : 297;
+
+      const imgWidthPx = canvas.width;
+      const imgHeightPx = canvas.height;
+
+      // Exact pixel height of a single A4 page on this canvas
+      const pageHeightPx = (imgWidthPx * pdfPageHeight) / pdfPageWidth;
+
+      let remainingHeightPx = imgHeightPx;
+      let positionYPx = 0;
+      let pageIndex = 0;
+
+      while (remainingHeightPx > 0) {
+        if (pageIndex > 0) {
+          pdf.addPage(isLetter ? 'letter' : 'a4', 'portrait');
+        }
+
+        // Slice canvas for clean multi-page resumes
+        const sliceHeightPx = Math.min(remainingHeightPx, pageHeightPx);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = imgWidthPx;
+        pageCanvas.height = pageHeightPx;
+        const ctx = pageCanvas.getContext('2d');
+
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0, positionYPx, imgWidthPx, sliceHeightPx,
+            0, 0, imgWidthPx, sliceHeightPx
+          );
+        }
+
+        const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.98);
+        pdf.addImage(pageImgData, 'JPEG', 0, 0, pdfPageWidth, pdfPageHeight);
+
+        remainingHeightPx -= sliceHeightPx;
+        positionYPx += sliceHeightPx;
+        pageIndex++;
+      }
+
+      // 5. Download the PDF directly (No Print Dialog!)
+      pdf.save(cleanFileName);
+      return true;
+    } catch (err) {
+      console.error('Direct PDF export error', err);
+      return false;
+    } finally {
+      // 6. Clean up isolated DOM container
+      if (exportContainer.parentNode) {
+        exportContainer.parentNode.removeChild(exportContainer);
+      }
+    }
   }
 
   /**

@@ -131,12 +131,12 @@ export function ResumeExportModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-2xs">
-                <Printer className="h-5 w-5" />
+                <Download className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-base font-bold">Export Resume to PDF</DialogTitle>
+                <DialogTitle className="text-base font-bold">Download Resume PDF</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Isolated A4 page export with zero surrounding editor UI.
+                  Direct client-side A4 PDF download with zero browser print dialogs.
                 </DialogDescription>
               </div>
             </div>
@@ -332,7 +332,7 @@ export function ResumeExportModal({
               </>
             ) : (
               <>
-                <Download className="h-3.5 w-3.5" /> Download PDF (A4 Print)
+                <Download className="h-3.5 w-3.5" /> Download PDF (A4)
               </>
             )}
           </Button>
