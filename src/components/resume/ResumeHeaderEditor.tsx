@@ -1,10 +1,11 @@
 import React from 'react';
 import { ResumePersonalInfo, ResumeCustomLink, ResumePhoto } from '@/engines/ResumeEngine';
+import { ResumeValidator } from '@/utils/resumeValidator';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   User, Mail, Phone, MapPin, Globe, Linkedin, Github,
-  Sparkles, Plus, Trash2, Image as ImageIcon, Link as LinkIcon
+  Sparkles, Plus, Trash2, Image as ImageIcon, Link as LinkIcon, AlertCircle
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
@@ -52,6 +53,12 @@ export function ResumeHeaderEditor({ personalInfo, onChange }: ResumeHeaderEdito
     onChange({ ...personalInfo, customLinks: links });
   };
 
+  const isEmailInvalid = personalInfo.email && !ResumeValidator.isValidEmail(personalInfo.email);
+  const isPhoneInvalid = personalInfo.phone && !ResumeValidator.isValidPhone(personalInfo.phone);
+  const isWebsiteInvalid = personalInfo.website && !ResumeValidator.isValidUrl(personalInfo.website);
+  const isLinkedinInvalid = personalInfo.linkedin && !ResumeValidator.isValidUrl(personalInfo.linkedin);
+  const isGithubInvalid = personalInfo.github && !ResumeValidator.isValidUrl(personalInfo.github);
+
   return (
     <div className="space-y-4">
       {/* ── Main Profile Details ────────────────────────────────────────── */}
@@ -81,26 +88,40 @@ export function ResumeHeaderEditor({ personalInfo, onChange }: ResumeHeaderEdito
         </div>
 
         <div>
-          <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 mb-1">
-            <Mail className="h-3 w-3 text-primary" /> Email Address *
+          <label className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between mb-1">
+            <span className="flex items-center gap-1.5">
+              <Mail className="h-3 w-3 text-primary" /> Email Address *
+            </span>
+            {isEmailInvalid && (
+              <span className="text-[10px] text-destructive flex items-center gap-0.5">
+                <AlertCircle className="h-2.5 w-2.5" /> Invalid
+              </span>
+            )}
           </label>
           <Input
             value={personalInfo.email}
             placeholder="alex.chen@example.com"
             onChange={e => updateField('email', e.target.value)}
-            className="h-8 text-xs"
+            className={cn('h-8 text-xs', isEmailInvalid && 'border-destructive/80 focus:border-destructive')}
           />
         </div>
 
         <div>
-          <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 mb-1">
-            <Phone className="h-3 w-3 text-primary" /> Phone Number
+          <label className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between mb-1">
+            <span className="flex items-center gap-1.5">
+              <Phone className="h-3 w-3 text-primary" /> Phone Number
+            </span>
+            {isPhoneInvalid && (
+              <span className="text-[10px] text-destructive flex items-center gap-0.5">
+                <AlertCircle className="h-2.5 w-2.5" /> Invalid
+              </span>
+            )}
           </label>
           <Input
             value={personalInfo.phone}
             placeholder="+1 (555) 234-5678"
             onChange={e => updateField('phone', e.target.value)}
-            className="h-8 text-xs"
+            className={cn('h-8 text-xs', isPhoneInvalid && 'border-destructive/80 focus:border-destructive')}
           />
         </div>
 
@@ -144,7 +165,7 @@ export function ResumeHeaderEditor({ personalInfo, onChange }: ResumeHeaderEdito
                 type="button"
                 onClick={() => updatePhoto({ style: st })}
                 className={cn(
-                  'px-2 py-0.5 rounded text-[10px] font-medium border capitalize transition-all',
+                  'px-2 py-0.5 rounded text-[10px] font-medium border capitalize transition-all cursor-pointer',
                   (personalInfo.photo?.style || 'none') === st
                     ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border bg-background text-muted-foreground hover:text-foreground'
@@ -161,7 +182,7 @@ export function ResumeHeaderEditor({ personalInfo, onChange }: ResumeHeaderEdito
                 type="button"
                 onClick={() => updatePhoto({ size: sz })}
                 className={cn(
-                  'px-2 py-0.5 rounded text-[10px] font-medium border uppercase transition-all',
+                  'px-2 py-0.5 rounded text-[10px] font-medium border uppercase transition-all cursor-pointer',
                   (personalInfo.photo?.size || 'md') === sz
                     ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border bg-background text-muted-foreground hover:text-foreground'
@@ -182,38 +203,59 @@ export function ResumeHeaderEditor({ personalInfo, onChange }: ResumeHeaderEdito
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           <div>
-            <label className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-              <Globe className="h-2.5 w-2.5" /> Website / Portfolio URL
+            <label className="text-[10px] text-muted-foreground font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Globe className="h-2.5 w-2.5" /> Website / Portfolio URL
+              </span>
+              {isWebsiteInvalid && (
+                <span className="text-[9px] text-destructive flex items-center gap-0.5">
+                  <AlertCircle className="h-2.5 w-2.5" /> Invalid URL
+                </span>
+              )}
             </label>
             <Input
               value={personalInfo.website || ''}
               placeholder="https://alexchen.dev"
               onChange={e => updateField('website', e.target.value)}
-              className="h-8 text-xs mt-0.5"
+              className={cn('h-8 text-xs mt-0.5', isWebsiteInvalid && 'border-destructive/80')}
             />
           </div>
 
           <div>
-            <label className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-              <Linkedin className="h-2.5 w-2.5 text-blue-600" /> LinkedIn
+            <label className="text-[10px] text-muted-foreground font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Linkedin className="h-2.5 w-2.5 text-blue-600" /> LinkedIn
+              </span>
+              {isLinkedinInvalid && (
+                <span className="text-[9px] text-destructive flex items-center gap-0.5">
+                  <AlertCircle className="h-2.5 w-2.5" /> Invalid URL
+                </span>
+              )}
             </label>
             <Input
               value={personalInfo.linkedin || ''}
               placeholder="linkedin.com/in/alexchen"
               onChange={e => updateField('linkedin', e.target.value)}
-              className="h-8 text-xs mt-0.5"
+              className={cn('h-8 text-xs mt-0.5', isLinkedinInvalid && 'border-destructive/80')}
             />
           </div>
 
           <div>
-            <label className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-              <Github className="h-2.5 w-2.5" /> GitHub
+            <label className="text-[10px] text-muted-foreground font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Github className="h-2.5 w-2.5" /> GitHub
+              </span>
+              {isGithubInvalid && (
+                <span className="text-[9px] text-destructive flex items-center gap-0.5">
+                  <AlertCircle className="h-2.5 w-2.5" /> Invalid URL
+                </span>
+              )}
             </label>
             <Input
               value={personalInfo.github || ''}
               placeholder="github.com/alexchen"
               onChange={e => updateField('github', e.target.value)}
-              className="h-8 text-xs mt-0.5"
+              className={cn('h-8 text-xs mt-0.5', isGithubInvalid && 'border-destructive/80')}
             />
           </div>
 
@@ -241,7 +283,7 @@ export function ResumeHeaderEditor({ personalInfo, onChange }: ResumeHeaderEdito
               variant="outline"
               size="sm"
               onClick={addCustomLink}
-              className="h-6 text-[10px] gap-1 px-2"
+              className="h-6 text-[10px] gap-1 px-2 cursor-pointer"
             >
               <Plus className="h-3 w-3" /> Add Link
             </Button>

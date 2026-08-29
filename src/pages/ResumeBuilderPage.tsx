@@ -4,20 +4,18 @@ import {
   ResumeEngine, ResumeData, ResumeDesignConfig, RESUME_TEMPLATES_METADATA,
   ResumeCustomSection
 } from '@/engines/ResumeEngine';
+import { ResumeExportEngine } from '@/engines/ResumeExportEngine';
+import { ResumeValidator, ResumeAuditReport } from '@/utils/resumeValidator';
 import { useDocumentsStore } from '@/store/documentsStore';
 import {
   FileText, ArrowLeft, Download, Plus, Trash2, Edit3, Check,
   Sparkles, Palette, Type, Printer, Eye, ChevronDown, ChevronUp,
   Briefcase, GraduationCap, Code2, Award, CheckCircle2, User,
   Globe, Share2, Layers, Undo2, Redo2, Sliders, ZoomIn, ZoomOut,
-  Maximize2, RefreshCw, Layout, Smartphone
+  Maximize2, RefreshCw, Layout, Smartphone, ShieldCheck, FileCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
 import { cn } from '@/utils/cn';
 import { SEOHead } from '@/components/seo/SEOHead';
 
@@ -27,6 +25,8 @@ import { ResumeSectionListEditor } from '@/components/resume/ResumeSectionListEd
 import { ResumeDesignPanel } from '@/components/resume/ResumeDesignPanel';
 import { ResumeTemplateGalleryModal } from '@/components/resume/ResumeTemplateGalleryModal';
 import { ResumeCustomSectionModal } from '@/components/resume/ResumeCustomSectionModal';
+import { ResumeExportModal } from '@/components/resume/ResumeExportModal';
+import { ResumeQualityCheckModal } from '@/components/resume/ResumeQualityCheckModal';
 import { ResumeMobileToolbar } from '@/components/resume/ResumeMobileToolbar';
 
 const STORAGE_KEY = 'docpro_resume_draft_v2';
@@ -65,7 +65,14 @@ export function ResumeBuilderPage() {
   const [mobileSheet, setMobileSheet] = useState<'none' | 'content' | 'design' | 'sections' | 'templates'>('none');
   const [showTemplateModal, setShowTemplateModal] = useState<boolean>(false);
   const [showCustomSectionModal, setShowCustomSectionModal] = useState<boolean>(false);
+  const [showExportModal, setShowExportModal] = useState<boolean>(false);
+  const [showQualityCheckModal, setShowQualityCheckModal] = useState<boolean>(false);
   const [zoomScale, setZoomScale] = useState<number>(100);
+
+  // ── Resume Audit & Validation ──────────────────────────────────────────────
+  const auditReport: ResumeAuditReport = useMemo(() => {
+    return ResumeValidator.auditResume(resumeData);
+  }, [resumeData]);
 
   // ── Undo / Redo History Stack ──────────────────────────────────────────────
   const [history, setHistory] = useState<ResumeData[]>([resumeData]);
@@ -157,9 +164,9 @@ export function ResumeBuilderPage() {
     navigate(`/editor/${doc.id}`);
   };
 
-  // ── Print / PDF Export ─────────────────────────────────────────────────────
-  const handlePrint = () => {
-    window.print();
+  // ── Isolated PDF Export Trigger ───────────────────────────────────────────
+  const handleOpenExportModal = () => {
+    setShowExportModal(true);
   };
 
   const selectedTemplateMeta = RESUME_TEMPLATES_METADATA.find(t => t.id === selectedTemplateId) || RESUME_TEMPLATES_METADATA[0];
@@ -191,8 +198,8 @@ export function ResumeBuilderPage() {
 
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-foreground">Resume Builder</span>
-            <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full hidden sm:inline">
-              ATS-Optimized &amp; Canva-Grade
+            <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full hidden md:inline">
+              ATS &amp; Canva Grade
             </span>
           </div>
         </div>
@@ -221,6 +228,19 @@ export function ResumeBuilderPage() {
             </button>
           </div>
 
+          {/* Quality Check Trigger Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowQualityCheckModal(true)}
+            className="h-8 text-xs gap-1.5 font-medium cursor-pointer border-emerald-500/30 hover:bg-emerald-500/10"
+            title="Scan for ATS compliance and missing fields"
+          >
+            <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
+            <span className="hidden sm:inline">Audit:</span>
+            <span className="font-bold text-emerald-600">{auditReport.score}%</span>
+          </Button>
+
           {/* Template Selector Modal Trigger */}
           <Button
             variant="outline"
@@ -239,18 +259,18 @@ export function ResumeBuilderPage() {
             variant="outline"
             size="sm"
             onClick={handleOpenInEditor}
-            className="h-8 text-xs gap-1.5 hidden lg:flex font-medium cursor-pointer"
+            className="h-8 text-xs gap-1.5 hidden xl:flex font-medium cursor-pointer"
           >
             <FileText className="h-3.5 w-3.5 text-blue-500" /> Edit in DocProEditor
           </Button>
 
-          {/* Print / Download PDF */}
+          {/* Download PDF / Export */}
           <Button
             size="sm"
-            onClick={handlePrint}
-            className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold shadow-2xs cursor-pointer"
+            onClick={handleOpenExportModal}
+            className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-2xs cursor-pointer"
           >
-            <Printer className="h-3.5 w-3.5" />
+            <Download className="h-3.5 w-3.5" />
             <span>Download PDF</span>
           </Button>
         </div>
@@ -316,12 +336,19 @@ export function ResumeBuilderPage() {
               <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-mono">
                 {resumeData.design?.paperSize || 'A4'} Portrait
               </span>
+              <button
+                type="button"
+                onClick={() => setShowQualityCheckModal(true)}
+                className="text-[10px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 px-2 py-0.5 rounded-full font-medium flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <FileCheck className="h-3 w-3" /> {auditReport.pageEstimate} Page{auditReport.pageEstimate > 1 ? 's' : ''}
+              </button>
             </div>
 
             <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg p-0.5 shadow-2xs">
               <button
                 type="button"
-                onClick={() => setZoomScale(z => Math.max(60, z - 10))}
+                onClick={() => setZoomScale(z => Math.max(50, z - 10))}
                 className="p-1 hover:text-foreground cursor-pointer rounded"
                 title="Zoom out"
               >
@@ -332,7 +359,7 @@ export function ResumeBuilderPage() {
               </span>
               <button
                 type="button"
-                onClick={() => setZoomScale(z => Math.min(150, z + 10))}
+                onClick={() => setZoomScale(z => Math.min(200, z + 10))}
                 className="p-1 hover:text-foreground cursor-pointer rounded"
                 title="Zoom in"
               >
@@ -393,7 +420,7 @@ export function ResumeBuilderPage() {
       <ResumeMobileToolbar
         activeSheet={mobileSheet}
         onSelectSheet={setMobileSheet}
-        onExportPdf={handlePrint}
+        onExportPdf={handleOpenExportModal}
       />
 
       {/* ── MOBILE BOTTOM SHEETS (Slide-up Overlays) ────────────────────────── */}
@@ -495,6 +522,19 @@ export function ResumeBuilderPage() {
       )}
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
+      <ResumeExportModal
+        open={showExportModal}
+        onOpenChange={setShowExportModal}
+        resumeData={resumeData}
+        selectedTemplateId={selectedTemplateId}
+      />
+
+      <ResumeQualityCheckModal
+        open={showQualityCheckModal}
+        onOpenChange={setShowQualityCheckModal}
+        resumeData={resumeData}
+      />
+
       <ResumeTemplateGalleryModal
         open={showTemplateModal}
         onOpenChange={setShowTemplateModal}

@@ -85,6 +85,18 @@ export function ResumeSectionListEditor({
     });
   };
 
+  const duplicateExperience = (idx: number) => {
+    const exp = resumeData.experience[idx];
+    const duplicated: ResumeExperience = {
+      ...exp,
+      id: `exp_${Date.now()}`,
+      highlights: [...exp.highlights],
+    };
+    const list = [...resumeData.experience];
+    list.splice(idx + 1, 0, duplicated);
+    onChange({ ...resumeData, experience: list });
+  };
+
   const addExperienceBullet = (expIdx: number) => {
     const exp = resumeData.experience[expIdx];
     const updatedHighlights = [...exp.highlights, 'Key achievement or responsibility metric.'];
@@ -131,6 +143,17 @@ export function ResumeSectionListEditor({
     });
   };
 
+  const duplicateEducation = (idx: number) => {
+    const edu = resumeData.education[idx];
+    const duplicated: ResumeEducation = {
+      ...edu,
+      id: `edu_${Date.now()}`,
+    };
+    const list = [...resumeData.education];
+    list.splice(idx + 1, 0, duplicated);
+    onChange({ ...resumeData, education: list });
+  };
+
   // ── Projects Helpers ───────────────────────────────────────────────────────
   const addProject = () => {
     const newProj: ResumeProject = {
@@ -156,6 +179,19 @@ export function ResumeSectionListEditor({
       ...resumeData,
       projects: resumeData.projects.filter((_, i) => i !== idx),
     });
+  };
+
+  const duplicateProject = (idx: number) => {
+    const proj = resumeData.projects[idx];
+    const duplicated: ResumeProject = {
+      ...proj,
+      id: `proj_${Date.now()}`,
+      techStack: [...proj.techStack],
+      highlights: [...proj.highlights],
+    };
+    const list = [...resumeData.projects];
+    list.splice(idx + 1, 0, duplicated);
+    onChange({ ...resumeData, projects: list });
   };
 
   const addProjectBullet = (projIdx: number) => {
@@ -422,14 +458,24 @@ export function ResumeSectionListEditor({
                       <div key={expIdx} className="p-3 border border-border/80 rounded-lg space-y-2.5 bg-muted/20">
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-[11px] text-primary">Role #{expIdx + 1}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeExperience(expIdx)}
-                            className="text-destructive hover:bg-destructive/10 p-1 rounded transition-colors"
-                            title="Remove role"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => duplicateExperience(expIdx)}
+                              className="text-muted-foreground hover:text-primary hover:bg-primary/10 p-1 rounded transition-colors"
+                              title="Duplicate role"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeExperience(expIdx)}
+                              className="text-destructive hover:bg-destructive/10 p-1 rounded transition-colors"
+                              title="Remove role"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -522,13 +568,23 @@ export function ResumeSectionListEditor({
                       <div key={eduIdx} className="p-3 border border-border/80 rounded-lg space-y-2 bg-muted/20">
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-[11px] text-primary">Degree #{eduIdx + 1}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeEducation(eduIdx)}
-                            className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => duplicateEducation(eduIdx)}
+                              className="text-muted-foreground hover:text-primary hover:bg-primary/10 p-1 rounded transition-colors"
+                              title="Duplicate degree"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeEducation(eduIdx)}
+                              className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -584,13 +640,23 @@ export function ResumeSectionListEditor({
                       <div key={projIdx} className="p-3 border border-border/80 rounded-lg space-y-2 bg-muted/20">
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-[11px] text-primary">Project #{projIdx + 1}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeProject(projIdx)}
-                            className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => duplicateProject(projIdx)}
+                              className="text-muted-foreground hover:text-primary hover:bg-primary/10 p-1 rounded transition-colors"
+                              title="Duplicate project"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeProject(projIdx)}
+                              className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">

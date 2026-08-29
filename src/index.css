@@ -288,12 +288,19 @@
 
 /* Print styles */
 @media print {
-  body {
-    background: transparent !important;
-    color: #000 !important;
+  @page {
+    size: auto;
+    margin: 0;
   }
 
-  header, aside, .no-print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  header, aside, footer, nav, .no-print, [role="dialog"], button {
     display: none !important;
   }
 
