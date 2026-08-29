@@ -97,10 +97,10 @@ export class ResumeValidator {
       });
     });
 
-    // Baseline: ~1700 score units per standard A4 page with default margins
+    // Baseline: ~1250 score units per standard A4 page with default margins
     const pageMargin = data.design?.spacing?.pageMargin || 32;
     const spacingFactor = (data.design?.spacing?.lineHeight || 1.5) / 1.5;
-    const adjustedPageCapacity = 1700 * (32 / pageMargin) * (1 / spacingFactor);
+    const adjustedPageCapacity = 1250 * (32 / pageMargin) * (1 / spacingFactor);
 
     const pages = Math.max(1, Math.ceil(totalScore / adjustedPageCapacity));
 

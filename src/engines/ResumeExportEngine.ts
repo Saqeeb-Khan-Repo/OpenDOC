@@ -16,8 +16,8 @@ export class ResumeExportEngine {
   static getIsolatedPrintHtml(options: ResumeExportOptions): string {
     const paperSize = options.paperSize || 'A4';
     const isLetter = paperSize === 'Letter';
-    const pageWidth = isLetter ? '8.5in' : '210mm';
-    const pageMinHeight = isLetter ? '11in' : '297mm';
+    const pageWidth = isLetter ? '215.9mm' : '210mm';
+    const pageMinHeight = isLetter ? '279.4mm' : '297mm';
     const docTitle = options.title || 'Resume';
 
     let contentHtml = options.html;
@@ -41,9 +41,10 @@ export class ResumeExportEngine {
       margin: 0;
     }
     *, *::before, *::after {
-      box-sizing: border-box;
+      box-sizing: border-box !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+      color-adjust: exact !important;
     }
     html, body {
       margin: 0 !important;
@@ -77,16 +78,20 @@ export class ResumeExportEngine {
       text-underline-offset: 2px;
     }
     /* Page Break Rules for Clean Multi-page Resumes */
-    .page-break-avoid, [style*="page-break-inside: avoid"], [style*="break-inside: avoid"] {
+    .page-break-avoid,
+    [style*="page-break-inside: avoid"],
+    [style*="break-inside: avoid"] {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
-    h1, h2, h3, [style*="page-break-after: avoid"], [style*="break-after: avoid"] {
+    h1, h2, h3,
+    [style*="page-break-after: avoid"],
+    [style*="break-after: avoid"] {
       page-break-after: avoid !important;
       break-after: avoid !important;
     }
     @media print {
-      body {
+      html, body {
         background: #ffffff !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -111,6 +116,7 @@ export class ResumeExportEngine {
   /**
    * Executes pristine isolated PDF download/print.
    * Spawns a sandboxed hidden iframe with ONLY the resume content, guaranteeing 0% editor UI leakage.
+   * Automatically waits for fonts and resources before triggering print.
    */
   static exportToPdf(options: ResumeExportOptions): Promise<boolean> {
     return new Promise((resolve) => {
@@ -128,8 +134,8 @@ export class ResumeExportEngine {
         iframe.style.position = 'fixed';
         iframe.style.right = '0';
         iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
+        iframe.style.width = '210mm';
+        iframe.style.height = '297mm';
         iframe.style.border = '0';
         iframe.style.opacity = '0';
         iframe.style.pointerEvents = 'none';
@@ -148,24 +154,34 @@ export class ResumeExportEngine {
         frameDoc.write(printHtml);
         frameDoc.close();
 
-        // Wait briefly for fonts and layouts to settle inside iframe
-        setTimeout(() => {
+        const triggerPrint = () => {
           try {
             iframe.contentWindow?.focus();
             iframe.contentWindow?.print();
             resolve(true);
           } catch (e) {
-            console.error('Print iframe execution failed', e);
+            console.error('Print execution failed inside isolated iframe', e);
             resolve(false);
           } finally {
-            // Clean up iframe after a safety timeout
+            // Clean up iframe after print dialog completes
             setTimeout(() => {
               if (iframe.parentNode) {
                 iframe.parentNode.removeChild(iframe);
               }
             }, 3000);
           }
-        }, 350);
+        };
+
+        // Wait for fonts to be ready inside iframe or fallback after 350ms
+        if (frameDoc.fonts && frameDoc.fonts.ready) {
+          frameDoc.fonts.ready.then(() => {
+            setTimeout(triggerPrint, 150);
+          }).catch(() => {
+            setTimeout(triggerPrint, 350);
+          });
+        } else {
+          setTimeout(triggerPrint, 350);
+        }
       } catch (err) {
         console.error('Error during isolated resume export', err);
         resolve(false);
@@ -218,7 +234,7 @@ export class ResumeExportEngine {
     const renderedHtml = ResumeEngine.renderTemplate(data, 'tmpl_ats_classic', atsDesign);
     return this.getIsolatedPrintHtml({
       html: renderedHtml,
-      title: `${data.personalInfo?.name || 'Candidate'}_ATS_Resume`,
+      title: `${(data.personalInfo?.name || 'Candidate').replace(/\s+/g, '_')}_ATS_Resume`,
       paperSize,
       clickableLinks: true,
       quality: 'high',
