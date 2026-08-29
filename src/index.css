@@ -286,22 +286,59 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Print styles */
+/* Print styles - ABSOLUTE ISOLATION FOR RESUME BUILDER */
 @media print {
   @page {
-    size: auto;
+    size: A4 portrait;
     margin: 0;
   }
 
   html, body {
+    margin: 0 !important;
+    padding: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  header, aside, footer, nav, .no-print, [role="dialog"], button {
+  /* Hide EVERYTHING on the page by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Make ONLY #resume-print-area and its descendants visible */
+  #resume-print-area,
+  #resume-print-area * {
+    visibility: visible !important;
+  }
+
+  /* Position #resume-print-area at top-left 0,0, reset any transform, scaling, borders, shadows */
+  #resume-print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    z-index: 99999 !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure no fixed dialogs or toolbars obstruct printing */
+  header, footer, nav, aside, [role="dialog"], [data-radix-portal], button, input, .no-print {
     display: none !important;
+    visibility: hidden !important;
   }
 
   .page-break-node {
