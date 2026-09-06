@@ -7,14 +7,14 @@ import { ResumeData } from '@/engines/ResumeEngine';
 import { ResumeImportEngine, ResumeImportResult } from '@/engines/ResumeImportEngine';
 import {
   UploadCloud, FileText, CheckCircle2, AlertTriangle, XCircle,
-  Briefcase, GraduationCap, Wrench, Sparkles, Loader2, ArrowRight, User
+  Briefcase, GraduationCap, Wrench, Sparkles, Loader2, ArrowRight, User, Plus
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 interface ResumeImportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onImportSuccess: (importedData: ResumeData) => void;
+  onImportSuccess: (importedData: ResumeData, mode?: 'replace' | 'merge') => void;
 }
 
 export function ResumeImportModal({
@@ -72,7 +72,7 @@ export function ResumeImportModal({
 
   const handleConfirmImport = () => {
     if (importResult?.resumeData) {
-      onImportSuccess(importResult.resumeData);
+      onImportSuccess(importResult.resumeData, 'replace');
       onOpenChange(false);
       handleReset();
     }
@@ -193,6 +193,21 @@ export function ResumeImportModal({
                 {importResult?.sourceType}
               </span>
             </div>
+
+            {/* Confidence & Ambiguity Warnings */}
+            {importResult?.warnings && importResult.warnings.length > 0 && (
+              <div className="p-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-[11px]">Field Confidence Notice</p>
+                  <ul className="list-disc pl-4 space-y-0.5 text-[10px] text-amber-700 dark:text-amber-400">
+                    {importResult.warnings.map((w, idx) => (
+                      <li key={idx}>{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
 
             {/* Sub-tabs */}
             <div className="flex gap-1 border-b border-border/80 pb-1 text-xs shrink-0">
@@ -317,7 +332,7 @@ export function ResumeImportModal({
           </div>
         )}
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 pt-2 shrink-0">
+        <DialogFooter className="flex-col sm:flex-row gap-2 pt-2 shrink-0 sm:justify-between">
           <Button
             type="button"
             variant="outline"
@@ -329,14 +344,38 @@ export function ResumeImportModal({
           </Button>
 
           {step === 'review' && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleConfirmImport}
-              className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-2xs cursor-pointer flex-1"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" /> Replace &amp; Open in Editor
-            </Button>
+            <div className="flex items-center gap-2 flex-1 sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (importResult?.resumeData) {
+                    onImportSuccess(importResult.resumeData, 'merge');
+                    onOpenChange(false);
+                    handleReset();
+                  }
+                }}
+                className="h-8 text-xs gap-1.5 font-semibold cursor-pointer border-primary/30 text-primary hover:bg-primary/10"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add to Existing
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  if (importResult?.resumeData) {
+                    onImportSuccess(importResult.resumeData, 'replace');
+                    onOpenChange(false);
+                    handleReset();
+                  }
+                }}
+                className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-2xs cursor-pointer"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" /> Import &amp; Replace
+              </Button>
+            </div>
           )}
         </DialogFooter>
       </DialogContent>

@@ -282,6 +282,49 @@ export interface TOCItem {
   pageNumber: number;
 }
 
+// ─── Structured PDF Document Model (Normalized Coordinates) ───────────────────
+export interface PDFTextBlock {
+  id: string;
+  text: string;
+  x: number; // Normalized coordinate (in points or mm relative to page top-left)
+  y: number; // Normalized coordinate
+  width: number;
+  height: number;
+  fontSize: number;
+  fontFamily?: string;
+  fontWeight?: string | number;
+  fontStyle?: 'normal' | 'italic';
+  textDecoration?: 'none' | 'underline';
+  color?: string;
+  alignment?: 'left' | 'center' | 'right' | 'justify';
+  isHeading?: boolean;
+}
+
+export interface PDFImageBlock {
+  id: string;
+  src: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PDFDocumentPage {
+  id: string;
+  pageNumber: number;
+  width: number;
+  height: number;
+  textBlocks: PDFTextBlock[];
+  images: PDFImageBlock[];
+  backgroundVisualDataUrl?: string; // Non-destructive visual layer for complex vector backgrounds
+}
+
+export interface EditablePDFDocument {
+  pages: PDFDocumentPage[];
+  activeBlockId?: string | null;
+  selectedPageNumber?: number;
+}
+
 // ─── Unified Document Model ────────────────────────────────────────────────────
 export interface StudioDocument {
   id: string;
@@ -294,6 +337,7 @@ export interface StudioDocument {
   updatedAt: string;
   deletedAt: string | null;
   thumbnail?: string;
+  importedSourceType?: 'pdf' | 'docx' | 'txt' | 'json';
 
   // Mode 1: Document content (Rich Text HTML + Page Settings)
   content: string; // Paginated HTML
@@ -301,6 +345,7 @@ export interface StudioDocument {
   coverPageData?: CoverPageData;
   references: ReferenceItem[];
   figures: FigureItem[];
+  editablePdf?: EditablePDFDocument;
 
   // Mode 2: Presentation slides
   slides: Slide[];

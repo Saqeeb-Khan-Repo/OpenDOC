@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Editor } from '@tiptap/react';
 import { PageEngine, MM_TO_PX } from '@/engines/PageEngine';
-import { PageSettings, PageSize, PageOrientation, PageBorderSettings } from '@/engines/types';
+import { PageSettings, PageSize, PageOrientation, PageBorderSettings, EditablePDFDocument, PDFDocumentPage, PDFTextBlock } from '@/engines/types';
 import { HorizontalRuler } from './Ruler';
 import { TiptapEditor, TiptapToolbar } from './TiptapEditor';
 import { MobileEditorToolbar } from './MobileEditorToolbar';
@@ -13,7 +13,7 @@ import {
   ZoomIn, ZoomOut, Layout,
   ChevronDown, Ruler, Check, AlignCenter,
   AlignLeft, AlignRight, Grid, SplitSquareVertical, Plus, Trash2,
-  Square, Frame, Minus
+  Square, Frame, Minus, FileText, Type, Copy, Sparkles, Move
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +28,9 @@ interface DocumentCanvasProps {
   pageSettings: PageSettings;
   onChangePageSettings: (settings: PageSettings) => void;
   editable?: boolean;
+  editablePdf?: EditablePDFDocument;
+  onChangeEditablePdf?: (pdf: EditablePDFDocument) => void;
+  onOpenPdfImportModal?: () => void;
   onOpenImageUploadModal?: () => void;
   onOpenEquationModal?: () => void;
   onOpenDiagramModal?: () => void;
@@ -64,6 +67,9 @@ export function DocumentCanvas({
   pageSettings,
   onChangePageSettings,
   editable = true,
+  editablePdf,
+  onChangeEditablePdf,
+  onOpenPdfImportModal,
   onOpenImageUploadModal,
   onOpenEquationModal,
   onOpenDiagramModal,
@@ -85,6 +91,140 @@ export function DocumentCanvas({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const touchStartDist = React.useRef<number | null>(null);
   const initialZoomRef = React.useRef<number>(100);
+
+  // PDF Overlay State & Handlers
+  const [activePdfBlockId, setActivePdfBlockId] = useState<string | null>(null);
+  const [isAddingPdfText, setIsAddingPdfText] = useState<boolean>(false);
+
+  const handlePdfTextBlockChange = (pageNumber: number, blockId: string, newText: string) => {
+    if (!editablePdf || !onChangeEditablePdf) return;
+    const updatedPages = editablePdf.pages.map(p => {
+      if (p.pageNumber === pageNumber) {
+        return {
+          ...p,
+          textBlocks: p.textBlocks.map(b => b.id === blockId ? { ...b, text: newText } : b),
+        };
+      }
+      return p;
+    });
+    onChangeEditablePdf({
+      ...editablePdf,
+      pages: updatedPages,
+    });
+  };
+
+  const handleAddPdfTextBlock = (pageNumber: number, clientX: number, clientY: number, pageEl: HTMLElement) => {
+    if (!editablePdf || !onChangeEditablePdf || !isAddingPdfText) return;
+    const rect = pageEl.getBoundingClientRect();
+    const x = Math.max(10, Math.round((clientX - rect.left) / scale));
+    const y = Math.max(10, Math.round((clientY - rect.top) / scale));
+
+    const newBlock: PDFTextBlock = {
+      id: `tb_${pageNumber}_${Date.now()}`,
+      text: 'Click to edit text',
+      x,
+      y,
+      width: 180,
+      height: 24,
+      fontSize: 14,
+      fontWeight: 'normal',
+      color: '#0f172a',
+      alignment: 'left',
+    };
+
+    const updatedPages = editablePdf.pages.map(p => {
+      if (p.pageNumber === pageNumber) {
+        return {
+          ...p,
+          textBlocks: [...p.textBlocks, newBlock],
+        };
+      }
+      return p;
+    });
+
+    onChangeEditablePdf({
+      ...editablePdf,
+      pages: updatedPages,
+      activeBlockId: newBlock.id,
+    });
+    setActivePdfBlockId(newBlock.id);
+    setIsAddingPdfText(false);
+  };
+
+  const handleDeletePdfTextBlock = (blockId: string) => {
+    if (!editablePdf || !onChangeEditablePdf) return;
+    const updatedPages = editablePdf.pages.map(p => ({
+      ...p,
+      textBlocks: p.textBlocks.filter(b => b.id !== blockId),
+    }));
+    onChangeEditablePdf({
+      ...editablePdf,
+      pages: updatedPages,
+      activeBlockId: null,
+    });
+    setActivePdfBlockId(null);
+  };
+
+  const handleAddPdfPage = () => {
+    if (!editablePdf || !onChangeEditablePdf) return;
+    const nextNum = editablePdf.pages.length + 1;
+    const newPage: PDFDocumentPage = {
+      id: `pdf_page_${nextNum}`,
+      pageNumber: nextNum,
+      width: baseDims.width,
+      height: baseDims.height,
+      textBlocks: [
+        {
+          id: `tb_${nextNum}_init`,
+          text: `Page ${nextNum} Content`,
+          x: 40,
+          y: 60,
+          width: baseDims.width - 80,
+          height: 28,
+          fontSize: 16,
+          fontWeight: 'bold',
+          color: '#0f172a',
+        },
+      ],
+      images: [],
+    };
+    onChangeEditablePdf({
+      ...editablePdf,
+      pages: [...editablePdf.pages, newPage],
+      selectedPageNumber: nextNum,
+    });
+  };
+
+  const handleDuplicatePdfPage = (pageIndex: number) => {
+    if (!editablePdf || !onChangeEditablePdf) return;
+    const target = editablePdf.pages[pageIndex];
+    if (!target) return;
+    const nextPages = [...editablePdf.pages];
+    const duplicated: PDFDocumentPage = {
+      ...target,
+      id: `pdf_page_${Date.now()}`,
+      pageNumber: target.pageNumber + 1,
+      textBlocks: target.textBlocks.map(b => ({ ...b, id: `tb_${Date.now()}_${b.id}` })),
+    };
+    nextPages.splice(pageIndex + 1, 0, duplicated);
+    const renumbered = nextPages.map((p, idx) => ({ ...p, pageNumber: idx + 1 }));
+    onChangeEditablePdf({
+      ...editablePdf,
+      pages: renumbered,
+      selectedPageNumber: target.pageNumber + 1,
+    });
+  };
+
+  const handleDeletePdfPage = (pageIndex: number) => {
+    if (!editablePdf || !onChangeEditablePdf || editablePdf.pages.length <= 1) return;
+    const nextPages = editablePdf.pages.filter((_, idx) => idx !== pageIndex);
+    const renumbered = nextPages.map((p, idx) => ({ ...p, pageNumber: idx + 1 }));
+    onChangeEditablePdf({
+      ...editablePdf,
+      pages: renumbered,
+      selectedPageNumber: Math.max(1, Math.min(pageIndex, renumbered.length)),
+    });
+  };
 
   // Zoom Mode: 'fit-width' | 'fit-page' | 'custom'
   const [zoomMode, setZoomMode] = useState<'fit-width' | 'fit-page' | 'custom'>(() => {
@@ -411,7 +551,76 @@ export function DocumentCanvas({
       {/* ── Fixed Top Editing Ribbon Toolbar (Row 1 - Desktop Only) ──────────── */}
       <div className="hidden md:block">
         {editable && (
-          <TiptapToolbar editor={activeEditor} onAddPage={handleAddNewPage} />
+          editablePdf ? (
+            <div className="h-10 bg-background/95 backdrop-blur border-b border-border px-3 sm:px-4 flex items-center justify-between text-xs select-none z-20">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-[11px]">
+                  <FileText className="w-3.5 h-3.5" /> PDF Layout Active ({editablePdf.pages.length} Pages)
+                </span>
+
+                <div className="h-4 w-px bg-border mx-1" />
+
+                {/* + Text Button */}
+                <Button
+                  variant={isAddingPdfText ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsAddingPdfText(!isAddingPdfText)}
+                  className={cn(
+                    "h-7 px-2.5 text-xs gap-1.5 font-semibold shadow-2xs",
+                    isAddingPdfText ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-blue-300 text-blue-600 dark:text-blue-400"
+                  )}
+                  title="Click anywhere on the PDF page to place new text"
+                >
+                  <Type className="w-3.5 h-3.5" />
+                  <span>{isAddingPdfText ? "Click Page to Drop Text" : "+ Text"}</span>
+                </Button>
+
+                {/* + Page Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddPdfPage}
+                  className="h-7 px-2.5 text-xs gap-1.5 bg-primary/10 text-primary border-primary/30 font-semibold hover:bg-primary/20 shadow-2xs"
+                  title="Add a new page sheet to this PDF"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Page</span>
+                </Button>
+
+                {/* Delete Selected Block */}
+                {activePdfBlockId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeletePdfTextBlock(activePdfBlockId)}
+                    className="h-7 px-2 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    title="Delete selected text block"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete Block
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {onOpenPdfImportModal && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onOpenPdfImportModal}
+                    className="h-7 text-xs text-slate-600 dark:text-slate-300 hover:bg-muted"
+                  >
+                    Import Another PDF
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <TiptapToolbar
+              editor={activeEditor}
+              onAddPage={handleAddNewPage}
+              onImportPdf={onOpenPdfImportModal}
+            />
+          )
         )}
       </div>
 
@@ -676,11 +885,24 @@ export function DocumentCanvas({
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-[11px] gap-1 text-primary hover:bg-primary/10 font-semibold"
-            onClick={handleAddNewPage}
+            onClick={editablePdf ? handleAddPdfPage : handleAddNewPage}
             title="Add a New Page Sheet"
           >
             <Plus className="h-3.5 w-3.5" /> Add Page
           </Button>
+
+          {/* Import PDF Button */}
+          {onOpenPdfImportModal && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-[11px] gap-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 font-semibold"
+              onClick={onOpenPdfImportModal}
+              title="Import an existing PDF file"
+            >
+              <FileText className="h-3.5 w-3.5" /> + Import PDF
+            </Button>
+          )}
         </div>
 
         {/* Zoom Controls */}
@@ -825,166 +1047,290 @@ export function DocumentCanvas({
               }}
             >
               {/* Render Each Independent Page Sheet with Strict Boundaries and 32px Page Gap */}
-              {pages.map((pageHtml, pageIndex) => {
-                const pageNumber = pageIndex + 1;
-                const isCover = pageIndex === 0 && pageSettings.hideNumberOnCover;
+              {editablePdf && editablePdf.pages.length > 0 ? (
+                editablePdf.pages.map((pdfPage, pageIndex) => {
+                  const isSelected = (editablePdf.selectedPageNumber || 1) === pdfPage.pageNumber;
+                  const pWidth = pdfPage.width || baseDims.width;
+                  const pHeight = pdfPage.height || baseDims.height;
 
-                const shouldRenderBorder = pageBorder?.enabled && (
-                  pageBorder.applyTo === 'all' ||
-                  (pageBorder.applyTo === 'first-page-only' && pageIndex === 0) ||
-                  (pageBorder.applyTo === 'except-first-page' && pageIndex !== 0)
-                );
-
-                const isSelected = activePageIndex === pageIndex;
-
-                return (
-                  <div
-                    key={pageIndex}
-                    data-page-index={pageIndex}
-                    className={cn(
-                      "bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 rounded-[2px] border transition-all duration-150 flex flex-col relative w-full overflow-hidden select-text group",
-                      isSelected ? "border-primary/50 ring-2 ring-primary/20 shadow-xl" : "border-black/10 dark:border-white/10"
-                    )}
-                    style={{
-                      width: `${baseDims.width}px`,
-                      height: `${baseDims.height}px`, // Strict Fixed Height (e.g. 1123px for A4)
-                      minHeight: `${baseDims.height}px`,
-                      maxHeight: `${baseDims.height}px`,
-                      marginBottom: '32px', // 32px CLEAR VISUAL PAGE GAP
-                      boxShadow: isSelected
-                        ? '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
-                        : '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.08)',
-                      direction: pageSettings.textDirection || 'ltr',
-                    }}
-                    onClick={() => {
-                      setActivePageIndex(pageIndex);
-                    }}
-                  >
-                    {/* Decorative Page Border Frame Overlay */}
-                    {shouldRenderBorder && (
-                      <div
-                        className="absolute pointer-events-none z-10"
-                        style={{
-                          top: `${pageBorder?.inset || 16}px`,
-                          right: `${pageBorder?.inset || 16}px`,
-                          bottom: `${pageBorder?.inset || 16}px`,
-                          left: `${pageBorder?.inset || 16}px`,
-                          borderStyle: pageBorder?.style || 'solid',
-                          borderWidth: `${pageBorder?.width || 2}px`,
-                          borderColor: pageBorder?.color || '#1e3a8a',
-                        }}
-                      />
-                    )}
-
-                    {/* Visual Margin Guidelines Overlay */}
-                    {pageSettings.showMarginGuides !== false && (
-                      <div
-                        className="absolute pointer-events-none border border-dashed border-blue-400/30 dark:border-blue-400/20 z-0"
-                        style={{
-                          top: `${baseMarginsPx.top}px`,
-                          right: `${baseMarginsPx.right}px`,
-                          bottom: `${baseMarginsPx.bottom}px`,
-                          left: `${baseMarginsPx.left}px`,
-                        }}
-                      />
-                    )}
-
-                    {/* ── HEADER REGION (Fixed Height: 36px) ──────────────────── */}
+                  return (
                     <div
-                      className="h-9 pt-2 pb-1 border-b border-dashed border-border/40 text-[11px] text-muted-foreground flex items-center justify-between select-none relative z-10 shrink-0"
+                      key={pdfPage.id || pageIndex}
+                      data-page-index={pageIndex}
+                      onClick={(e) => {
+                        if (isAddingPdfText) {
+                          handleAddPdfTextBlock(pdfPage.pageNumber, e.clientX, e.clientY, e.currentTarget);
+                        } else {
+                          setActivePdfBlockId(null);
+                        }
+                      }}
+                      className={cn(
+                        "bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 rounded-[2px] border transition-all duration-150 flex flex-col relative overflow-hidden select-text group",
+                        isSelected ? "border-blue-500/50 ring-2 ring-blue-500/20 shadow-xl" : "border-black/10 dark:border-white/10",
+                        isAddingPdfText && "cursor-crosshair ring-2 ring-blue-400/40"
+                      )}
                       style={{
-                        paddingLeft: `${baseMarginsPx.left}px`,
-                        paddingRight: `${baseMarginsPx.right}px`,
+                        width: `${pWidth}px`,
+                        height: `${pHeight}px`,
+                        minHeight: `${pHeight}px`,
+                        maxHeight: `${pHeight}px`,
+                        marginBottom: '32px',
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05), 0 20px 25px -5px rgba(0,0,0,0.08)',
                       }}
                     >
-                      <input
-                        type="text"
-                        value={pageSettings.headerText || ''}
-                        onChange={(e) => onChangePageSettings({ ...pageSettings, headerText: e.target.value })}
-                        placeholder="Type document header..."
-                        className="font-serif italic text-muted-foreground hover:text-foreground bg-transparent border-b border-transparent hover:border-border/60 focus:border-primary focus:bg-accent/40 rounded px-1.5 py-0.5 text-[11px] outline-none max-w-sm transition-all"
-                        title="Click to edit document header"
-                      />
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-semibold text-muted-foreground">
-                          {!isCover && pageSettings.showPageNumbers && PageEngine.formatPageNumber(pageNumber, pageSettings.pageNumberFormat, pages.length)}
+                      {/* PDF Page Header Tool Strip (Page Number, Duplicate, Delete) */}
+                      <div className="h-7 px-3 bg-slate-100/70 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700/60 text-[10px] text-muted-foreground flex items-center justify-between select-none z-10 shrink-0">
+                        <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                          Page {pdfPage.pageNumber} of {editablePdf.pages.length}
                         </span>
-                        {pages.length > 1 && (
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeletePage(pageIndex);
+                              handleDuplicatePdfPage(pageIndex);
                             }}
-                            className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded hover:bg-destructive/10"
-                            title="Delete this page sheet"
+                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                            title="Duplicate this PDF page"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Copy className="h-3 w-3" />
                           </button>
-                        )}
+                          {editablePdf.pages.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePdfPage(pageIndex);
+                              }}
+                              className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-950/50 text-rose-600"
+                              title="Delete this PDF page"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* PDF Text Blocks Overlay */}
+                      <div className="flex-1 relative overflow-hidden">
+                        {pdfPage.textBlocks.map(block => {
+                          const isBlockActive = activePdfBlockId === block.id;
+                          return (
+                            <div
+                              key={block.id}
+                              data-block-id={block.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActivePdfBlockId(block.id);
+                              }}
+                              className={cn(
+                                "absolute p-1 transition-all rounded select-text",
+                                isBlockActive
+                                  ? "ring-2 ring-blue-500 bg-blue-50/50 dark:bg-blue-900/30 z-20 shadow-xs"
+                                  : "hover:ring-1 hover:ring-blue-300 dark:hover:ring-blue-700 hover:bg-blue-50/20"
+                              )}
+                              style={{
+                                left: `${block.x}px`,
+                                top: `${block.y}px`,
+                                width: block.width ? `${block.width}px` : 'auto',
+                                minHeight: `${block.height || 20}px`,
+                                fontSize: `${block.fontSize || 14}px`,
+                                fontFamily: block.fontFamily || 'Inter, sans-serif',
+                                fontWeight: block.fontWeight || (block.isHeading ? 'bold' : 'normal'),
+                                color: block.color || '#0f172a',
+                                textAlign: block.alignment || 'left',
+                                lineHeight: 1.3,
+                              }}
+                            >
+                              <div
+                                contentEditable={editable}
+                                suppressContentEditableWarning
+                                onBlur={(e) => handlePdfTextBlockChange(pdfPage.pageNumber, block.id, e.currentTarget.innerText)}
+                                className="outline-none whitespace-pre-wrap cursor-text"
+                              >
+                                {block.text}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
+                  );
+                })
+              ) : (
+                pages.map((pageHtml, pageIndex) => {
+                  const pageNumber = pageIndex + 1;
+                  const isCover = pageIndex === 0 && pageSettings.hideNumberOnCover;
 
-                    {/* ── USABLE PAGE CONTENT REGION (Tiptap Instance) ────────── */}
+                  const shouldRenderBorder = pageBorder?.enabled && (
+                    pageBorder.applyTo === 'all' ||
+                    (pageBorder.applyTo === 'first-page-only' && pageIndex === 0) ||
+                    (pageBorder.applyTo === 'except-first-page' && pageIndex !== 0)
+                  );
+
+                  const isSelected = activePageIndex === pageIndex;
+
+                  return (
                     <div
-                      className="flex-1 relative overflow-hidden"
+                      key={pageIndex}
+                      data-page-index={pageIndex}
+                      className={cn(
+                        "bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 rounded-[2px] border transition-all duration-150 flex flex-col relative w-full overflow-hidden select-text group",
+                        isSelected ? "border-primary/50 ring-2 ring-primary/20 shadow-xl" : "border-black/10 dark:border-white/10"
+                      )}
                       style={{
-                        paddingTop: `${baseMarginsPx.top}px`,
-                        paddingRight: `${baseMarginsPx.right}px`,
-                        paddingBottom: `${baseMarginsPx.bottom}px`,
-                        paddingLeft: `${baseMarginsPx.left}px`,
+                        width: `${baseDims.width}px`,
+                        height: `${baseDims.height}px`, // Strict Fixed Height (e.g. 1123px for A4)
+                        minHeight: `${baseDims.height}px`,
+                        maxHeight: `${baseDims.height}px`,
+                        marginBottom: '32px', // 32px CLEAR VISUAL PAGE GAP
+                        boxShadow: isSelected
+                          ? '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+                          : '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.08)',
+                        direction: pageSettings.textDirection || 'ltr',
+                      }}
+                      onClick={() => {
+                        setActivePageIndex(pageIndex);
                       }}
                     >
-                      <TiptapEditor
-                        content={pageHtml}
-                        editable={editable}
-                        onChange={(html) => handlePageContentChange(pageIndex, html)}
-                        onEditorReady={(ed) => {
-                          if (pageIndex === 0 && !activeEditor) {
-                            setActiveEditor(ed);
-                          }
-                          ed.on('focus', () => {
-                            setActiveEditor(ed);
-                          });
+                      {/* Decorative Page Border Frame Overlay */}
+                      {shouldRenderBorder && (
+                        <div
+                          className="absolute pointer-events-none z-10"
+                          style={{
+                            top: `${pageBorder?.inset || 16}px`,
+                            right: `${pageBorder?.inset || 16}px`,
+                            bottom: `${pageBorder?.inset || 16}px`,
+                            left: `${pageBorder?.inset || 16}px`,
+                            borderStyle: pageBorder?.style || 'solid',
+                            borderWidth: `${pageBorder?.width || 2}px`,
+                            borderColor: pageBorder?.color || '#1e3a8a',
+                          }}
+                        />
+                      )}
+
+                      {/* Visual Margin Guidelines Overlay */}
+                      {pageSettings.showMarginGuides !== false && (
+                        <div
+                          className="absolute pointer-events-none border border-dashed border-blue-400/30 dark:border-blue-400/20 z-0"
+                          style={{
+                            top: `${baseMarginsPx.top}px`,
+                            right: `${baseMarginsPx.right}px`,
+                            bottom: `${baseMarginsPx.bottom}px`,
+                            left: `${baseMarginsPx.left}px`,
+                          }}
+                        />
+                      )}
+
+                      {/* ── HEADER REGION (Fixed Height: 36px) ──────────────────── */}
+                      <div
+                        className="h-9 pt-2 pb-1 border-b border-dashed border-border/40 text-[11px] text-muted-foreground flex items-center justify-between select-none relative z-10 shrink-0"
+                        style={{
+                          paddingLeft: `${baseMarginsPx.left}px`,
+                          paddingRight: `${baseMarginsPx.right}px`,
                         }}
-                      />
-                    </div>
+                      >
+                        <input
+                          type="text"
+                          value={pageSettings.headerText || ''}
+                          onChange={(e) => onChangePageSettings({ ...pageSettings, headerText: e.target.value })}
+                          placeholder="Type document header..."
+                          className="font-serif italic text-muted-foreground hover:text-foreground bg-transparent border-b border-transparent hover:border-border/60 focus:border-primary focus:bg-accent/40 rounded px-1.5 py-0.5 text-[11px] outline-none max-w-sm transition-all"
+                          title="Click to edit document header"
+                        />
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-semibold text-muted-foreground">
+                            {!isCover && pageSettings.showPageNumbers && PageEngine.formatPageNumber(pageNumber, pageSettings.pageNumberFormat, pages.length)}
+                          </span>
+                          {pages.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePage(pageIndex);
+                              }}
+                              className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded hover:bg-destructive/10"
+                              title="Delete this page sheet"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* ── FOOTER REGION (Fixed Height: 36px) ──────────────────── */}
-                    <div
-                      className="h-9 pb-2 pt-1 border-t border-dashed border-border/40 text-[11px] text-muted-foreground flex items-center justify-between select-none mt-auto relative z-10 shrink-0"
-                      style={{
-                        paddingLeft: `${baseMarginsPx.left}px`,
-                        paddingRight: `${baseMarginsPx.right}px`,
-                      }}
-                    >
-                      <input
-                        type="text"
-                        value={pageSettings.footerText || ''}
-                        onChange={(e) => onChangePageSettings({ ...pageSettings, footerText: e.target.value })}
-                        placeholder="Type confidentiality or footer tag..."
-                        className="font-serif text-muted-foreground hover:text-foreground bg-transparent border-b border-transparent hover:border-border/60 focus:border-primary focus:bg-accent/40 rounded px-1.5 py-0.5 text-[11px] outline-none max-w-sm transition-all"
-                        title="Click to edit document footer"
-                      />
-                      <span className="font-mono font-semibold text-xs text-foreground">
-                        {!isCover && pageSettings.showPageNumbers && PageEngine.formatPageNumber(pageNumber, pageSettings.pageNumberFormat, pages.length)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                      {/* ── USABLE PAGE CONTENT REGION (Tiptap Instance) ────────── */}
+                      <div
+                        className="flex-1 relative overflow-hidden"
+                        style={{
+                          paddingTop: `${baseMarginsPx.top}px`,
+                          paddingRight: `${baseMarginsPx.right}px`,
+                          paddingBottom: `${baseMarginsPx.bottom}px`,
+                          paddingLeft: `${baseMarginsPx.left}px`,
+                        }}
+                      >
+                        <TiptapEditor
+                          content={pageHtml}
+                          editable={editable}
+                          onChange={(html) => handlePageContentChange(pageIndex, html)}
+                          onEditorReady={(ed) => {
+                            if (pageIndex === 0 && !activeEditor) {
+                              setActiveEditor(ed);
+                            }
+                            ed.on('focus', () => {
+                              setActiveEditor(ed);
+                            });
+                          }}
+                        />
+                      </div>
 
-              {/* Bottom "+ Add Page" document action card */}
-              <div className="w-full flex items-center justify-center pt-2 pb-8">
+                      {/* ── FOOTER REGION (Fixed Height: 36px) ──────────────────── */}
+                      <div
+                        className="h-9 pb-2 pt-1 border-t border-dashed border-border/40 text-[11px] text-muted-foreground flex items-center justify-between select-none mt-auto relative z-10 shrink-0"
+                        style={{
+                          paddingLeft: `${baseMarginsPx.left}px`,
+                          paddingRight: `${baseMarginsPx.right}px`,
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={pageSettings.footerText || ''}
+                          onChange={(e) => onChangePageSettings({ ...pageSettings, footerText: e.target.value })}
+                          placeholder="Type confidentiality or footer tag..."
+                          className="font-serif text-muted-foreground hover:text-foreground bg-transparent border-b border-transparent hover:border-border/60 focus:border-primary focus:bg-accent/40 rounded px-1.5 py-0.5 text-[11px] outline-none max-w-sm transition-all"
+                          title="Click to edit document footer"
+                        />
+                        <span className="font-mono font-semibold text-xs text-foreground">
+                          {!isCover && pageSettings.showPageNumbers && PageEngine.formatPageNumber(pageNumber, pageSettings.pageNumberFormat, pages.length)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              {/* Bottom Action Cards */}
+              <div className="w-full flex items-center justify-center gap-3 pt-2 pb-8 flex-wrap">
                 <button
                   type="button"
-                  onClick={handleAddNewPage}
+                  onClick={editablePdf ? handleAddPdfPage : handleAddNewPage}
                   className="gap-2 px-6 py-2.5 text-xs font-bold border-2 border-dashed border-primary/40 bg-card hover:bg-primary/10 hover:border-primary text-primary rounded-2xl shadow-xs transition-all active:scale-98 flex items-center cursor-pointer select-none"
                   title="Add a fresh blank page to this document"
                 >
                   <Plus className="h-4 w-4" />
-                  <span>+ Add Page (Page {pages.length + 1})</span>
+                  <span>+ Add Page (Page {(editablePdf ? editablePdf.pages.length : pages.length) + 1})</span>
                 </button>
+
+                {onOpenPdfImportModal && (
+                  <button
+                    type="button"
+                    onClick={onOpenPdfImportModal}
+                    className="gap-2 px-5 py-2.5 text-xs font-bold border-2 border-dashed border-blue-400/50 bg-card hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-500 text-blue-600 dark:text-blue-400 rounded-2xl shadow-xs transition-all active:scale-98 flex items-center cursor-pointer select-none"
+                    title="Import and edit an existing PDF"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>+ Import PDF</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1047,7 +1393,8 @@ export function DocumentCanvas({
           onOpenVersionHistoryModal={onOpenVersionHistoryModal}
           onDownload={onDownload}
           onPrint={onPrint}
-          onAddPage={handleAddNewPage}
+          onAddPage={editablePdf ? handleAddPdfPage : handleAddNewPage}
+          onOpenPdfImportModal={onOpenPdfImportModal}
         />
       )}
     </div>

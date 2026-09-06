@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Presentation, GitFork, UserCheck, FileText, Clock, Star, HardDrive, Plus, Layers } from 'lucide-react';
+import {
+  Presentation, GitFork, UserCheck, FileText, Clock, Star,
+  HardDrive, Plus, Layers, Copy, Trash2, LayoutGrid, List,
+  ExternalLink, MoreHorizontal
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDocumentsStore } from '@/store/documentsStore';
 import { useToastStore } from '@/store/toastStore';
@@ -22,8 +26,13 @@ function StatCard({ icon: Icon, label, value, color }: { icon: React.ComponentTy
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { createDocument, getActiveDocuments, getRecentDocuments, getStarredDocuments } = useDocumentsStore();
+  const {
+    createDocument, getActiveDocuments, getRecentDocuments,
+    getStarredDocuments, duplicateDocument, deleteDocument, toggleStar
+  } = useDocumentsStore();
   const toast = useToastStore();
+
+  const [recentViewMode, setRecentViewMode] = useState<'grid' | 'list'>('grid');
 
   const allDocs = getActiveDocuments();
   const recent = getRecentDocuments(6);
@@ -126,34 +135,199 @@ export function DashboardPage() {
 
       {/* Recent documents */}
       {recent.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Recent Documents</h2>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Recent Documents</h2>
+              <div className="flex items-center border border-border rounded-md bg-muted/30 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setRecentViewMode('grid')}
+                  className={cn(
+                    'p-1 rounded cursor-pointer transition-colors',
+                    recentViewMode === 'grid' ? 'bg-background text-primary shadow-2xs' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title="Grid view"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecentViewMode('list')}
+                  className={cn(
+                    'p-1 rounded cursor-pointer transition-colors',
+                    recentViewMode === 'list' ? 'bg-background text-primary shadow-2xs' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title="List view"
+                >
+                  <List className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
             <Button variant="ghost" size="sm" onClick={() => navigate('/documents/recent')}>View all</Button>
           </div>
-          <div className="flex flex-col gap-1">
-            {recent.map(doc => (
-              <button
-                key={doc.id}
-                onClick={() => navigate(`/editor/${doc.id}`)}
-                className="group flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-muted/50 border border-transparent hover:border-border transition-all text-left"
-              >
-                <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
+
+          {recentViewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {recent.map(doc => (
+                <div
+                  key={doc.id}
+                  className="group relative flex flex-col rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-md transition-all duration-200 overflow-hidden"
+                >
+                  {/* Miniature Preview Canvas Container */}
+                  <div
+                    onClick={() => navigate(`/editor/${doc.id}`)}
+                    className="h-32 bg-muted/30 dark:bg-muted/10 border-b border-border/60 p-3.5 flex flex-col justify-between cursor-pointer relative group-hover:bg-primary/5 transition-colors overflow-hidden"
+                  >
+                    {/* Simulated miniature document page */}
+                    <div className="absolute inset-x-8 top-3 bottom-0 bg-background rounded-t-sm shadow-xs border border-border/40 p-2.5 flex flex-col gap-1 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
+                      <div className="h-1.5 w-1/3 bg-primary/40 rounded-full mb-1" />
+                      <div className="h-1 w-full bg-muted-foreground/20 rounded-full" />
+                      <div className="h-1 w-5/6 bg-muted-foreground/20 rounded-full" />
+                      <div className="h-1 w-4/6 bg-muted-foreground/15 rounded-full" />
+                      <div className="h-1 w-full bg-muted-foreground/15 rounded-full" />
+                    </div>
+
+                    {/* Top pill badges and star */}
+                    <div className="relative z-10 flex items-center justify-between w-full">
+                      <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', getFileTypeColor(doc.fileType))}>
+                        {getFileTypeLabel(doc.fileType)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleStar(doc.id);
+                        }}
+                        className="p-1 rounded-full bg-background/80 hover:bg-background border border-border/60 text-muted-foreground hover:text-amber-500 cursor-pointer transition-colors shadow-2xs"
+                        title={doc.isStarred ? 'Unstar' : 'Star'}
+                      >
+                        <Star className={cn('h-3.5 w-3.5', doc.isStarred && 'fill-amber-400 text-amber-400')} />
+                      </button>
+                    </div>
+
+                    {/* Subtle format tag */}
+                    <div className="relative z-10 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+                      <span>{doc.mode || 'document'}</span>
+                      <span>{doc.wordCount} words</span>
+                    </div>
+                  </div>
+
+                  {/* Card Content & Details */}
+                  <div className="p-3 sm:p-3.5 flex flex-col flex-1 justify-between gap-2.5">
+                    <div>
+                      <h3
+                        onClick={() => navigate(`/editor/${doc.id}`)}
+                        className="font-semibold text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate"
+                        title={doc.title}
+                      >
+                        {doc.title || 'Untitled Document'}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                        <Clock className="h-3 w-3" />
+                        <span>Edited {formatRelative(doc.updatedAt)}</span>
+                      </p>
+                    </div>
+
+                    {/* Quick Action Buttons */}
+                    <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => navigate(`/editor/${doc.id}`)}
+                        className="h-7 text-xs px-2.5 gap-1 font-semibold cursor-pointer"
+                      >
+                        <ExternalLink className="h-3 w-3" /> Open
+                      </Button>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const copy = duplicateDocument(doc.id);
+                            if (copy) toast.success('Duplicated', `Created copy of ${doc.title}`);
+                          }}
+                          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer"
+                          title="Duplicate document"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteDocument(doc.id);
+                            toast.info('Moved to trash', doc.title);
+                          }}
+                          className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors cursor-pointer"
+                          title="Delete document"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{doc.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{doc.wordCount} words</p>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {recent.map(doc => (
+                <div
+                  key={doc.id}
+                  className="group flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-2.5 rounded-lg hover:bg-muted/50 border border-transparent hover:border-border transition-all"
+                >
+                  <div
+                    onClick={() => navigate(`/editor/${doc.id}`)}
+                    className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 cursor-pointer"
+                  >
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div
+                    onClick={() => navigate(`/editor/${doc.id}`)}
+                    className="flex-1 min-w-0 cursor-pointer"
+                  >
+                    <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{doc.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{doc.wordCount} words • {formatRelative(doc.updatedAt)}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full hidden sm:inline-block', getFileTypeColor(doc.fileType))}>
+                      {getFileTypeLabel(doc.fileType)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleStar(doc.id)}
+                      className="p-1 text-muted-foreground hover:text-amber-500 rounded cursor-pointer"
+                      title={doc.isStarred ? 'Unstar' : 'Star'}
+                    >
+                      <Star className={cn('h-3.5 w-3.5', doc.isStarred && 'fill-amber-400 text-amber-400')} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const copy = duplicateDocument(doc.id);
+                        if (copy) toast.success('Duplicated', `Created copy of ${doc.title}`);
+                      }}
+                      className="p-1 text-muted-foreground hover:text-foreground rounded cursor-pointer"
+                      title="Duplicate"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        deleteDocument(doc.id);
+                        toast.info('Moved to trash', doc.title);
+                      }}
+                      className="p-1 text-muted-foreground hover:text-destructive rounded cursor-pointer"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', getFileTypeColor(doc.fileType))}>
-                    {getFileTypeLabel(doc.fileType)}
-                  </span>
-                  <span className="text-xs text-muted-foreground hidden sm:block">{formatRelative(doc.updatedAt)}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

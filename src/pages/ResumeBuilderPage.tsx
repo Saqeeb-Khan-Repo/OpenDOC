@@ -74,6 +74,80 @@ export function ResumeBuilderPage() {
   const [showPageSettingsModal, setShowPageSettingsModal] = useState<boolean>(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [zoomScale, setZoomScale] = useState<number>(100);
+  const [inlineEditEnabled, setInlineEditEnabled] = useState<boolean>(true);
+
+  // ── Inline Edit Blur Sync ──────────────────────────────────────────────────
+  const handlePreviewBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (!target || typeof target.getAttribute !== 'function') return;
+    const field = target.getAttribute('data-field');
+    if (!field) return;
+
+    const newText = (target.innerText || target.textContent || '').trim();
+    const itemId = target.getAttribute('data-id');
+
+    updateResumeData(prev => {
+      const next = { ...prev };
+      if (field === 'name') {
+        next.personalInfo = { ...next.personalInfo, name: newText };
+      } else if (field === 'title') {
+        next.personalInfo = { ...next.personalInfo, title: newText };
+      } else if (field === 'summary') {
+        next.summary = newText;
+      } else if (field === 'exp-title' && itemId) {
+        next.experience = next.experience?.map(item => item.id === itemId ? { ...item, title: newText } : item);
+      } else if (field === 'exp-company' && itemId) {
+        next.experience = next.experience?.map(item => item.id === itemId ? { ...item, company: newText } : item);
+      } else if (field === 'exp-period' && itemId) {
+        next.experience = next.experience?.map(item => item.id === itemId ? { ...item, period: newText } : item);
+      } else if (field === 'exp-bullet' && itemId) {
+        const bulletIdx = parseInt(target.getAttribute('data-bullet-idx') || '0', 10);
+        next.experience = next.experience?.map(item => {
+          if (item.id === itemId && item.highlights) {
+            const highlights = [...item.highlights];
+            highlights[bulletIdx] = newText;
+            return { ...item, highlights };
+          }
+          return item;
+        });
+      } else if (field === 'edu-degree' && itemId) {
+        next.education = next.education?.map(item => item.id === itemId ? { ...item, degree: newText } : item);
+      } else if (field === 'edu-school' && itemId) {
+        next.education = next.education?.map(item => item.id === itemId ? { ...item, school: newText } : item);
+      } else if (field === 'proj-name' && itemId) {
+        next.projects = next.projects?.map(item => item.id === itemId ? { ...item, name: newText } : item);
+      } else if (field === 'proj-role' && itemId) {
+        next.projects = next.projects?.map(item => item.id === itemId ? { ...item, role: newText } : item);
+      }
+      return next;
+    });
+  };
+
+  // ── Import Success with Replace vs Merge Support ───────────────────────────
+  const handleImportSuccess = (importedData: ResumeData, mode: 'replace' | 'merge' = 'replace') => {
+    if (mode === 'merge') {
+      updateResumeData(prev => ({
+        ...prev,
+        summary: prev.summary || importedData.summary,
+        personalInfo: {
+          ...prev.personalInfo,
+          name: prev.personalInfo.name || importedData.personalInfo.name,
+          title: prev.personalInfo.title || importedData.personalInfo.title,
+          email: prev.personalInfo.email || importedData.personalInfo.email,
+          phone: prev.personalInfo.phone || importedData.personalInfo.phone,
+          location: prev.personalInfo.location || importedData.personalInfo.location,
+        },
+        experience: [...(prev.experience || []), ...(importedData.experience || [])],
+        education: [...(prev.education || []), ...(importedData.education || [])],
+        skills: Array.from(new Set([...(prev.skills || []), ...(importedData.skills || [])])),
+        projects: [...(prev.projects || []), ...(importedData.projects || [])],
+        certifications: [...(prev.certifications || []), ...(importedData.certifications || [])],
+        customSections: [...(prev.customSections || []), ...(importedData.customSections || [])],
+      }));
+    } else {
+      updateResumeData(importedData);
+    }
+  };
 
   // ── Resume Audit & Validation ──────────────────────────────────────────────
   const auditReport: ResumeAuditReport = useMemo(() => {
@@ -360,8 +434,8 @@ export function ResumeBuilderPage() {
 
         {/* ── CENTER PANEL: Live A4/Letter Multi-Page Canvas Stage ─────────── */}
         <div className="flex-1 bg-muted/30 dark:bg-background/60 overflow-y-auto overflow-x-auto p-4 sm:p-8 flex flex-col items-center justify-start touch-pan-y overscroll-y-contain pb-20 md:pb-8">
-          {/* Stage Controls: Zoom & Paper Info */}
-          <div className="w-full max-w-[820px] flex items-center justify-between mb-3 text-xs text-muted-foreground select-none px-1">
+          {/* Stage Controls: Zoom, Paper Info, and Inline Edit */}
+          <div className="w-full max-w-[820px] flex items-center justify-between mb-3 text-xs text-muted-foreground select-none px-1 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-foreground flex items-center gap-1.5">
                 <FileText className="h-3.5 w-3.5 text-primary" /> Live Document Preview
@@ -375,6 +449,21 @@ export function ResumeBuilderPage() {
                 className="text-[10px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 px-2 py-0.5 rounded-full font-medium flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <FileCheck className="h-3 w-3" /> {auditReport.pageEstimate} Page{auditReport.pageEstimate > 1 ? 's' : ''}
+              </button>
+              {/* Inline Edit Toggle Pill */}
+              <button
+                type="button"
+                onClick={() => setInlineEditEnabled(prev => !prev)}
+                className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1 cursor-pointer transition-all border',
+                  inlineEditEnabled
+                    ? 'bg-primary/10 text-primary border-primary/30 font-semibold'
+                    : 'bg-muted text-muted-foreground border-transparent hover:text-foreground'
+                )}
+                title="Toggle direct click-to-edit on live resume canvas"
+              >
+                <Edit3 className="h-3 w-3" />
+                <span>{inlineEditEnabled ? 'Inline Edit: ON' : 'View Only'}</span>
               </button>
             </div>
 
@@ -420,9 +509,13 @@ export function ResumeBuilderPage() {
           >
             <div
               id="resume-print-area"
+              contentEditable={inlineEditEnabled}
+              suppressContentEditableWarning
+              onBlur={handlePreviewBlur}
               className={cn(
                 'w-full max-w-[794px] min-h-[1123px] bg-white text-[#0f172a] shadow-2xl rounded-sm transition-all relative border border-border/30',
-                resumeData.design?.paperSize === 'Letter' ? 'max-w-[816px] min-h-[1056px]' : 'max-w-[794px] min-h-[1123px]'
+                resumeData.design?.paperSize === 'Letter' ? 'max-w-[816px] min-h-[1056px]' : 'max-w-[794px] min-h-[1123px]',
+                inlineEditEnabled && 'focus:outline-none selection:bg-primary/20 [&_[data-field]:hover]:outline [&_[data-field]:hover]:outline-1 [&_[data-field]:hover]:outline-dashed [&_[data-field]:hover]:outline-primary/50 [&_[data-field]]:cursor-text [&_[data-field]:focus]:outline-2 [&_[data-field]:focus]:outline-primary [&_[data-field]:focus]:rounded-xs'
               )}
               dangerouslySetInnerHTML={{ __html: resumeHtml }}
             />
@@ -558,7 +651,7 @@ export function ResumeBuilderPage() {
       <ResumeImportModal
         open={showImportModal}
         onOpenChange={setShowImportModal}
-        onImportSuccess={data => updateResumeData(data)}
+        onImportSuccess={(data, mode) => handleImportSuccess(data, mode)}
       />
 
       <ResumePageSettingsModal

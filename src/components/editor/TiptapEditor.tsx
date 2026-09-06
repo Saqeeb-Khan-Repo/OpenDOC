@@ -30,7 +30,7 @@ import {
   Superscript as SuperscriptIcon, Subscript as SubscriptIcon,
   RemoveFormatting, Code2, Square, RectangleVertical,
   PanelTopOpen, PanelBottomOpen, Frame, SplitSquareVertical,
-  Plus, Minus as MinusIcon, Rows, Columns, Trash, Sparkles
+  Plus, Minus as MinusIcon, Rows, Columns, Trash, Sparkles, FileText
 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -276,7 +276,15 @@ function FontSizeSelector({ editor }: { editor: Editor }) {
 }
 
 // ── Fixed Top Canva-Style Ribbon Toolbar Component ────────────────────────────
-export function TiptapToolbar({ editor, onAddPage }: { editor: Editor | null; onAddPage?: () => void }) {
+export function TiptapToolbar({
+  editor,
+  onAddPage,
+  onImportPdf,
+}: {
+  editor: Editor | null;
+  onAddPage?: () => void;
+  onImportPdf?: () => void;
+}) {
   const [linkUrl, setLinkUrl] = useState('')
   const [showLinkInput, setShowLinkInput] = useState(false)
   const [imageModalOpen, setImageModalOpen] = useState(false)
@@ -452,6 +460,14 @@ export function TiptapToolbar({ editor, onAddPage }: { editor: Editor | null; on
                   <DropdownMenuSeparator />
                 </>
               )}
+              {onImportPdf && (
+                <>
+                  <DropdownMenuItem onClick={onImportPdf} className="font-semibold text-blue-600 dark:text-blue-400">
+                    <FileText className="h-3.5 w-3.5 mr-2 text-blue-600 dark:text-blue-400" /> Import PDF Document
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={addImage}><ImageIcon className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Image (Upload / Photo)</DropdownMenuItem>
               <DropdownMenuItem onClick={insertTable}><TableIcon className="h-3.5 w-3.5 mr-2 text-blue-500" /> Table (3x3)</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowLinkInput(true)}><LinkIcon className="h-3.5 w-3.5 mr-2 text-indigo-500" /> Web Link (Ctrl+K)</DropdownMenuItem>
@@ -472,6 +488,20 @@ export function TiptapToolbar({ editor, onAddPage }: { editor: Editor | null; on
             >
               <Plus className="h-3.5 w-3.5" />
               <span>+ Page</span>
+            </Button>
+          )}
+
+          {/* Import PDF Button directly in Toolbar */}
+          {onImportPdf && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onImportPdf}
+              className="h-7 px-2.5 text-xs gap-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 font-semibold hover:bg-blue-100/60 dark:hover:bg-blue-900/40 shadow-2xs"
+              title="Import an existing PDF (Edit layout or Convert to document)"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span>+ Import PDF</span>
             </Button>
           )}
 

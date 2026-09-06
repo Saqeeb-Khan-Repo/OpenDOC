@@ -9,7 +9,8 @@ import {
   Palette, Highlighter, ChevronRight, Check, Sparkles,
   Calculator, GitFork, QrCode, PenTool, GraduationCap,
   Search, Hash, ShieldCheck, ListTree, History, Download,
-  Printer, Square, Frame, SplitSquareVertical, ArrowUp, ArrowDown
+  Printer, Square, Frame, SplitSquareVertical, ArrowUp, ArrowDown,
+  FileText
 } from 'lucide-react';
 import { MobileBottomSheet } from './MobileBottomSheet';
 import { PageSettings, PageSize, PageOrientation, PageBorderSettings } from '@/engines/types';
@@ -59,6 +60,7 @@ interface MobileEditorToolbarProps {
   onDownload?: () => void;
   onPrint?: () => void;
   onAddPage?: () => void;
+  onOpenPdfImportModal?: () => void;
 }
 
 export function MobileEditorToolbar({
@@ -81,6 +83,7 @@ export function MobileEditorToolbar({
   onDownload,
   onPrint,
   onAddPage,
+  onOpenPdfImportModal,
 }: MobileEditorToolbarProps) {
   const responsive = useResponsiveEditor();
   // Bottom Sheet Navigation State
@@ -690,6 +693,26 @@ export function MobileEditorToolbar({
               <div>
                 <p className="font-bold text-xs text-primary">+ Add New Blank Page</p>
                 <p className="text-[10px] text-muted-foreground">Appends a fresh editable page to this document</p>
+              </div>
+            </button>
+          )}
+
+          {/* Import PDF Document */}
+          {onOpenPdfImportModal && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSheet(null);
+                onOpenPdfImportModal();
+              }}
+              className="col-span-2 h-14 px-4 rounded-2xl border-2 border-dashed border-blue-400/60 bg-blue-50/40 dark:bg-blue-950/20 hover:border-blue-500 flex items-center gap-3 text-left active:scale-98 transition-all"
+            >
+              <div className="h-9 w-9 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-600 shrink-0">
+                <FileText className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="font-bold text-xs text-blue-600 dark:text-blue-400">+ Import PDF Document</p>
+                <p className="text-[10px] text-muted-foreground">Direct PDF layout editing or convert to document</p>
               </div>
             </button>
           )}

@@ -950,8 +950,8 @@ export class ResumeEngine {
       return `
         <div style="text-align: center; border-bottom: 2px solid ${colors.primary}; padding-bottom: 14px; margin-bottom: ${design.spacing.sectionGap}px;">
           ${hasPhoto ? `<div style="display: flex; justify-content: center; margin-bottom: 8px;">${photoHtml}</div>` : ''}
-          <h1 style="font-size: ${nameSize}px; font-weight: 800; color: ${colors.heading}; margin: 0 0 4px 0; letter-spacing: -0.02em;">${p.name}</h1>
-          <p style="font-size: ${bodySize * 1.15}px; font-weight: 600; color: ${colors.primary}; margin: 0 0 6px 0;">${p.title}</p>
+          <h1 data-field="name" style="font-size: ${nameSize}px; font-weight: 800; color: ${colors.heading}; margin: 0 0 4px 0; letter-spacing: -0.02em;">${p.name}</h1>
+          <p data-field="title" style="font-size: ${bodySize * 1.15}px; font-weight: 600; color: ${colors.primary}; margin: 0 0 6px 0;">${p.title}</p>
           <div style="font-size: ${metadataSize}px; color: ${colors.muted}; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; line-height: 1.4;">
             ${contactParts.join(' • ')}
           </div>
@@ -965,8 +965,8 @@ export class ResumeEngine {
           <div style="display: flex; align-items: center; gap: 14px;">
             ${photoHtml}
             <div>
-              <h1 style="font-size: ${nameSize}px; font-weight: 800; color: ${colors.heading}; margin: 0 0 4px 0; letter-spacing: -0.02em;">${p.name}</h1>
-              <p style="font-size: ${bodySize * 1.15}px; font-weight: 600; color: ${colors.primary}; margin: 0;">${p.title}</p>
+              <h1 data-field="name" style="font-size: ${nameSize}px; font-weight: 800; color: ${colors.heading}; margin: 0 0 4px 0; letter-spacing: -0.02em;">${p.name}</h1>
+              <p data-field="title" style="font-size: ${bodySize * 1.15}px; font-weight: 600; color: ${colors.primary}; margin: 0;">${p.title}</p>
             </div>
           </div>
           <div style="text-align: right; font-size: ${metadataSize}px; color: ${colors.muted}; line-height: 1.5; max-width: 45%;">
@@ -980,8 +980,8 @@ export class ResumeEngine {
       return `
         <div style="border-bottom: 1px solid ${colors.border}; padding-bottom: 10px; margin-bottom: ${design.spacing.sectionGap}px;">
           <div style="display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-            <h1 style="font-size: ${nameSize * 0.9}px; font-weight: 700; color: ${colors.heading}; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">${p.name}</h1>
-            <span style="font-size: ${bodySize}px; font-weight: 500; color: ${colors.primary};">${p.title}</span>
+            <h1 data-field="name" style="font-size: ${nameSize * 0.9}px; font-weight: 700; color: ${colors.heading}; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">${p.name}</h1>
+            <span data-field="title" style="font-size: ${bodySize}px; font-weight: 500; color: ${colors.primary};">${p.title}</span>
           </div>
           <div style="font-size: ${metadataSize}px; color: ${colors.muted}; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 10px;">
             ${contactParts.join(' | ')}
@@ -994,7 +994,7 @@ export class ResumeEngine {
       return `
         <div style="border-bottom: 1.5px solid ${colors.primary}; padding-bottom: 8px; margin-bottom: ${design.spacing.sectionGap * 0.75}px; display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <h1 style="font-size: ${nameSize * 0.85}px; font-weight: 800; color: ${colors.heading}; margin: 0;">${p.name} — <span style="font-size: ${bodySize}px; font-weight: 600; color: ${colors.primary};">${p.title}</span></h1>
+            <h1 style="font-size: ${nameSize * 0.85}px; font-weight: 800; color: ${colors.heading}; margin: 0;"><span data-field="name">${p.name}</span> — <span data-field="title" style="font-size: ${bodySize}px; font-weight: 600; color: ${colors.primary};">${p.title}</span></h1>
             <div style="font-size: ${metadataSize * 0.95}px; color: ${colors.muted}; margin-top: 2px;">
               ${contactParts.join(' • ')}
             </div>
@@ -1008,8 +1008,8 @@ export class ResumeEngine {
     return `
       <div style="border-bottom: 2px solid ${colors.primary}; padding-bottom: 12px; margin-bottom: ${design.spacing.sectionGap}px; display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <h1 style="font-size: ${nameSize}px; font-weight: 800; color: ${colors.heading}; margin: 0 0 4px 0; letter-spacing: -0.02em;">${p.name}</h1>
-          <p style="font-size: ${bodySize * 1.15}px; font-weight: 600; color: ${colors.primary}; margin: 0;">${p.title}</p>
+          <h1 data-field="name" style="font-size: ${nameSize}px; font-weight: 800; color: ${colors.heading}; margin: 0 0 4px 0; letter-spacing: -0.02em;">${p.name}</h1>
+          <p data-field="title" style="font-size: ${bodySize * 1.15}px; font-weight: 600; color: ${colors.primary}; margin: 0;">${p.title}</p>
           ${contactRow}
         </div>
         ${photoHtml}
@@ -1063,7 +1063,7 @@ export class ResumeEngine {
   }
 
   // ── Helper: Render Bullet Points ────────────────────────────────────────────
-  private static renderBullets(bullets: string[], design: ResumeDesignConfig): string {
+  private static renderBullets(bullets: string[], design: ResumeDesignConfig, expIdx?: number): string {
     if (!bullets || bullets.length === 0) return '';
     const { colors, bodySize, bulletStyle } = design;
 
@@ -1073,7 +1073,7 @@ export class ResumeEngine {
 
     return `
       <ul style="margin: 4px 0 0 0; padding-left: ${bulletStyle === 'minimal' ? '0' : '16px'}; font-size: ${bodySize}px; color: ${colors.body}; line-height: ${design.spacing.lineHeight}; list-style-type: ${listStyleType};">
-        ${bullets.map(b => `<li style="margin-bottom: ${design.spacing.paragraphGap}px;">${b}</li>`).join('')}
+        ${bullets.map((b, bIdx) => `<li data-field="exp-bullet" ${expIdx !== undefined ? `data-exp-idx="${expIdx}" data-bullet-idx="${bIdx}"` : ''} style="margin-bottom: ${design.spacing.paragraphGap}px;">${b}</li>`).join('')}
       </ul>
     `;
   }
@@ -1109,14 +1109,14 @@ export class ResumeEngine {
         html += `
           <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
             ${this.renderSectionHeading(sec.title || 'Professional Summary', design)}
-            <p style="font-size: ${design.bodySize}px; color: ${colors.body}; margin: 0; line-height: ${design.spacing.lineHeight};">${d.summary}</p>
+            <p data-field="summary" style="font-size: ${design.bodySize}px; color: ${colors.body}; margin: 0; line-height: ${design.spacing.lineHeight};">${d.summary}</p>
           </div>
         `;
       } else if (sec.type === 'objective' && d.objective) {
         html += `
           <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
             ${this.renderSectionHeading(sec.title || 'Career Objective', design)}
-            <p style="font-size: ${design.bodySize}px; color: ${colors.body}; margin: 0; line-height: ${design.spacing.lineHeight};">${d.objective}</p>
+            <p data-field="summary" style="font-size: ${design.bodySize}px; color: ${colors.body}; margin: 0; line-height: ${design.spacing.lineHeight};">${d.objective}</p>
           </div>
         `;
       } else if (sec.type === 'skills' && d.skillCategories && d.skillCategories.length > 0) {
@@ -1136,17 +1136,17 @@ export class ResumeEngine {
         html += `
           <div style="margin-bottom: ${design.spacing.sectionGap}px;">
             ${this.renderSectionHeading(sec.title || 'Work Experience', design)}
-            ${d.experience.map(exp => `
+            ${d.experience.map((exp, expIdx) => `
               <div style="margin-bottom: ${design.spacing.entryGap}px; page-break-inside: avoid; break-inside: avoid;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;">
                   <h3 style="font-size: ${design.bodySize * 1.05}px; font-weight: 700; color: ${colors.heading}; margin: 0;">
-                    ${exp.title} — <span style="font-weight: 600; color: ${colors.primary};">${exp.company}</span>
+                    <span data-field="exp-title" data-idx="${expIdx}">${exp.title}</span> — <span data-field="exp-company" data-idx="${expIdx}" style="font-weight: 600; color: ${colors.primary};">${exp.company}</span>
                   </h3>
-                  <span style="font-size: ${design.metadataSize}px; color: ${colors.muted}; font-weight: 500;">
+                  <span data-field="exp-period" data-idx="${expIdx}" style="font-size: ${design.metadataSize}px; color: ${colors.muted}; font-weight: 500;">
                     ${exp.period} ${exp.location ? `| ${exp.location}` : ''}
                   </span>
                 </div>
-                ${this.renderBullets(exp.highlights, design)}
+                ${this.renderBullets(exp.highlights, design, expIdx)}
               </div>
             `).join('')}
           </div>
@@ -1155,17 +1155,17 @@ export class ResumeEngine {
         html += `
           <div style="margin-bottom: ${design.spacing.sectionGap}px;">
             ${this.renderSectionHeading(sec.title || 'Key Projects', design)}
-            ${d.projects.map(proj => `
+            ${d.projects.map((proj, projIdx) => `
               <div style="margin-bottom: ${design.spacing.entryGap}px; page-break-inside: avoid; break-inside: avoid;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;">
                   <h3 style="font-size: ${design.bodySize * 1.02}px; font-weight: 700; color: ${colors.heading}; margin: 0;">
-                    ${proj.name} ${proj.techStack && proj.techStack.length > 0 ? `<span style="font-size: ${design.metadataSize}px; font-weight: normal; color: ${colors.muted};">(${proj.techStack.join(', ')})</span>` : ''}
+                    <span data-field="proj-name" data-idx="${projIdx}">${proj.name}</span> ${proj.techStack && proj.techStack.length > 0 ? `<span style="font-size: ${design.metadataSize}px; font-weight: normal; color: ${colors.muted};">(${proj.techStack.join(', ')})</span>` : ''}
                   </h3>
                   <div style="font-size: ${design.metadataSize}px; color: ${colors.primary};">
                     ${proj.liveDemoUrl ? this.formatLink(proj.liveDemoUrl, 'Live Demo') : proj.link ? this.formatLink(proj.link, 'View Project') : ''}
                   </div>
                 </div>
-                ${proj.role ? `<div style="font-size: ${design.metadataSize}px; color: ${colors.muted}; margin-top: 1px;">Role: ${proj.role}</div>` : ''}
+                ${proj.role ? `<div style="font-size: ${design.metadataSize}px; color: ${colors.muted}; margin-top: 1px;">Role: <span data-field="proj-role" data-idx="${projIdx}">${proj.role}</span></div>` : ''}
                 ${this.renderBullets(proj.highlights, design)}
               </div>
             `).join('')}
@@ -1175,11 +1175,11 @@ export class ResumeEngine {
         html += `
           <div style="margin-bottom: ${design.spacing.sectionGap}px; page-break-inside: avoid; break-inside: avoid;">
             ${this.renderSectionHeading(sec.title || 'Education', design)}
-            ${d.education.map(edu => `
+            ${d.education.map((edu, eduIdx) => `
               <div style="margin-bottom: ${design.spacing.entryGap * 0.75}px; page-break-inside: avoid; break-inside: avoid;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: ${design.bodySize}px;">
                   <div>
-                    <strong style="color: ${colors.heading};">${edu.degree}</strong> — ${edu.school}${edu.location ? `, ${edu.location}` : ''}
+                    <strong data-field="edu-degree" data-idx="${eduIdx}" style="color: ${colors.heading};">${edu.degree}</strong> — <span data-field="edu-school" data-idx="${eduIdx}">${edu.school}</span>${edu.location ? `, ${edu.location}` : ''}
                     ${edu.details ? `<div style="color: ${colors.muted}; font-size: ${design.metadataSize}px; margin-top: 2px;">${edu.details}</div>` : ''}
                   </div>
                   <span style="color: ${colors.muted}; font-size: ${design.metadataSize}px; font-weight: 500;">${edu.year}</span>

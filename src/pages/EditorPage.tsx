@@ -42,6 +42,8 @@ import { CommentsSidebar } from '@/components/editor/CommentsSidebar';
 import { CommandPaletteModal, CommandItem } from '@/components/editor/CommandPaletteModal';
 import { ResumeTemplateModal } from '@/components/editor/ResumeTemplateModal';
 import { ImageUploadModal } from '@/components/editor/ImageUploadModal';
+import { PDFImportModal } from '@/components/editor/PDFImportModal';
+import { EditablePDFDocument, PageSettings } from '@/engines/types';
 
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
@@ -94,6 +96,7 @@ export function EditorPage() {
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [pdfImportOpen, setPdfImportOpen] = useState(false);
 
   const doc = useDocumentsStore(
     useCallback(state => state.documents.find(d => d.id === id) as unknown as StudioDocument | undefined, [id])
@@ -178,6 +181,32 @@ export function EditorPage() {
       mode: 'document',
     });
     toast.success('AI Document Generated Successfully!');
+  };
+
+  // PDF Import Handlers
+  const handleImportAsEditablePdf = (editablePdf: EditablePDFDocument, settings: PageSettings, title: string) => {
+    if (!id || !doc) return;
+    handleImmediatePatch({
+      title: title || doc.title,
+      editablePdf,
+      pageSettings: settings,
+      importedSourceType: 'pdf',
+      mode: 'document',
+    });
+    toast.success(`Imported ${editablePdf.pages.length} pages as editable PDF layout`);
+  };
+
+  const handleImportAsDocflow = (htmlContent: string, settings: PageSettings, title: string) => {
+    if (!id || !doc) return;
+    handleImmediatePatch({
+      title: title || doc.title,
+      content: htmlContent,
+      pageSettings: settings,
+      importedSourceType: 'pdf',
+      mode: 'document',
+      editablePdf: undefined,
+    });
+    toast.success('Imported PDF as editable flowable document');
   };
 
   // AI Presentation handler
@@ -279,6 +308,13 @@ export function EditorPage() {
 
   // List of all Command Palette Actions
   const commandList: CommandItem[] = [
+    {
+      id: 'cmd_import_pdf',
+      title: 'Import PDF Document (Edit or Convert)',
+      category: 'File',
+      icon: FileText,
+      action: () => setPdfImportOpen(true),
+    },
     {
       id: 'cmd_ai_writing',
       title: 'AI Writing Assistant',
@@ -496,6 +532,9 @@ export function EditorPage() {
               onChangeContent={html => handlePatch({ content: html })}
               pageSettings={doc.pageSettings || {}}
               onChangePageSettings={ps => handlePatch({ pageSettings: ps })}
+              editablePdf={doc.editablePdf}
+              onChangeEditablePdf={pdf => handleImmediatePatch({ editablePdf: pdf })}
+              onOpenPdfImportModal={() => setPdfImportOpen(true)}
               onOpenImageUploadModal={() => setImageUploadOpen(true)}
               onOpenEquationModal={() => setEquationOpen(true)}
               onOpenDiagramModal={() => setDiagramOpen(true)}
@@ -777,6 +816,14 @@ export function EditorPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* PDF Import Modal */}
+      <PDFImportModal
+        open={pdfImportOpen}
+        onClose={() => setPdfImportOpen(false)}
+        onImportAsEditablePdf={handleImportAsEditablePdf}
+        onImportAsDocflow={handleImportAsDocflow}
+      />
     </div>
   );
 }
