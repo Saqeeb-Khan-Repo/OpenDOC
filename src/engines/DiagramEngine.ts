@@ -15,6 +15,7 @@ export interface FlowchartTheme {
   id: string;
   name: string;
   background: string;
+  cardBackground?: string;
   canvasBorder: string;
   startColor: string;
   processColor: string;
@@ -27,6 +28,21 @@ export interface FlowchartTheme {
 }
 
 export const DIAGRAM_THEMES: FlowchartTheme[] = [
+  {
+    id: 'midnight-navy',
+    name: 'Midnight Studio',
+    background: '#050A18',
+    cardBackground: '#070D1F',
+    canvasBorder: 'rgba(255, 255, 255, 0.08)',
+    startColor: '#10b981',
+    processColor: '#2563eb',
+    decisionColor: '#f59e0b',
+    ioColor: '#06b6d4',
+    databaseColor: '#8b5cf6',
+    textColor: '#ffffff',
+    connectorColor: '#60a5fa',
+    connectorLabelBg: '#0B1224',
+  },
   {
     id: 'modern-blue',
     name: 'Modern Blue',
@@ -108,6 +124,7 @@ export interface FlowAnalysisResult {
   connectorCount: number;
   branchCount: number;
   loopCount: number;
+  isolatedNodeCount: number;
   hasStart: boolean;
   hasEnd: boolean;
   warnings: string[];
@@ -310,24 +327,48 @@ export class DiagramEngine {
       }
     });
 
+    let isolatedNodeCount = 0;
     // Check for validation issues
     nodes.forEach(n => {
       const out = outgoingCount.get(n.id) || 0;
       const inc = incomingCount.get(n.id) || 0;
 
-      if (n.type === 'decision' && out < 2) {
-        warnings.push(`Decision "${n.text}" has only ${out} outgoing path (recommend 2: Yes/No).`);
-      }
-      if (n.type !== 'start' && inc === 0) {
-        warnings.push(`Node "${n.text}" has no incoming connection.`);
-      }
-      if (n.type !== 'end' && out === 0) {
-        warnings.push(`Node "${n.text}" is a dead end with no outgoing connection.`);
+      if (inc === 0 && out === 0 && nodes.length > 1) {
+        isolatedNodeCount++;
+        warnings.push(`Isolated Node: "${n.text}" is completely disconnected.`);
+      } else {
+        if (n.type === 'decision' && out < 2) {
+          warnings.push(`Decision "${n.text}" has only ${out} outgoing path (recommend 2: Yes/No).`);
+        }
+        if (n.type !== 'start' && inc === 0) {
+          warnings.push(`Node "${n.text}" has no incoming connection.`);
+        }
+        if (n.type !== 'end' && out === 0) {
+          warnings.push(`Node "${n.text}" is a dead end with no outgoing connection.`);
+        }
       }
     });
 
-    if (!hasStart) warnings.push('No explicit "START" terminator node detected.');
-    if (!hasEnd) warnings.push('No explicit "END" terminator node detected.');
+    // Architecture pattern validation: Client directly to Database check & Self-connections
+    connectors.forEach(c => {
+      if (c.fromNodeId === c.toNodeId) {
+        const node = nodes.find(n => n.id === c.fromNodeId);
+        warnings.push(`Invalid Connection: Node "${node?.text || c.fromNodeId}" connects directly to itself.`);
+      }
+
+      const fromNode = nodes.find(n => n.id === c.fromNodeId);
+      const toNode = nodes.find(n => n.id === c.toNodeId);
+      if (fromNode && toNode) {
+        const isClient = /client|user|browser|frontend|mobile app|customer/i.test(fromNode.text);
+        const isDb = toNode.type === 'database' || /database|sql|postgres|mysql|nosql|mongo|database/i.test(toNode.text);
+        if (isClient && isDb) {
+          warnings.push(`Architecture Security Warning: "${fromNode.text}" connects directly to Database "${toNode.text}". Consider placing an API Gateway or Service between them.`);
+        }
+      }
+    });
+
+    if (!hasStart && nodes.length >= 4) warnings.push('No explicit "START" terminator node detected.');
+    if (!hasEnd && nodes.length >= 4) warnings.push('No explicit "END" terminator node detected.');
 
     // Compute Flow Summary
     const flowPath = nodes.slice(0, 5).map(n => n.text).join(' → ') + (nodes.length > 5 ? ' → ...' : '');
@@ -341,6 +382,7 @@ export class DiagramEngine {
       connectorCount: connectors.length,
       branchCount: Math.max(0, connectors.length - (nodeCount - 1)),
       loopCount,
+      isolatedNodeCount,
       hasStart,
       hasEnd,
       warnings,
